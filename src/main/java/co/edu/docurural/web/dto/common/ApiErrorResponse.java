@@ -1,0 +1,36 @@
+package co.edu.docurural.web.dto.common;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+import java.time.LocalDateTime;
+import java.util.Map;
+
+/**
+ * Estructura estandar de error usada por {@code GlobalExceptionHandler}.
+ *
+ * <p>Campos alineados con {@code docs/api-rest-sprint1.md} seccion 1.2.
+ * {@code fieldErrors} es opcional: solo se incluye en errores de validacion.
+ */
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public record ApiErrorResponse(
+        LocalDateTime timestamp,
+        int status,
+        String error,
+        String message,
+        Map<String, String> fieldErrors
+) {
+
+    /**
+     * Constructor conveniente para errores sin {@code fieldErrors}.
+     */
+    public static ApiErrorResponse of(int status, String error, String message) {
+        return new ApiErrorResponse(LocalDateTime.now(), status, error, message, null);
+    }
+
+    /**
+     * Constructor conveniente para errores de validacion con mapa de campos.
+     */
+    public static ApiErrorResponse ofValidation(int status, String error, String message, Map<String, String> fieldErrors) {
+        return new ApiErrorResponse(LocalDateTime.now(), status, error, message, fieldErrors);
+    }
+}
