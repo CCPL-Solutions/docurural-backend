@@ -1,5 +1,6 @@
 package co.edu.docurural.config.security;
 
+import co.edu.docurural.web.dto.common.ApiErrorResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -28,11 +29,6 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.io.IOException;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 /**
  * Configuracion global de Spring Security para DocuRural.
@@ -49,6 +45,12 @@ import java.util.Map;
  * <p>Las rutas se evaluan con el {@code context-path} de la aplicacion ya resuelto
  * por Spring, por lo que {@code /auth/login} aqui corresponde al endpoint publico
  * {@code /api/auth/login} en la URL externa.
+ *
+ * <p>Los errores de autenticacion y autorizacion que ocurren <em>antes</em> de entrar
+ * al controller (filtro JWT, rechazos del {@code FilterSecurityInterceptor}) se
+ * serializan aqui con el mismo {@link ApiErrorResponse} que usa el
+ * {@code GlobalExceptionHandler} para los errores capturados dentro del controller.
+ * Asi el cliente siempre recibe la misma estructura.
  */
 @Configuration
 @EnableWebSecurity
@@ -57,8 +59,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 public class SecurityConfig {
-
-    private static final String ISO_TIMESTAMP_PATTERN = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
 
     private static final String MSG_SESSION_EXPIRED =
             "Su sesion ha expirado por inactividad. Por favor inicie sesion nuevamente";
@@ -128,14 +128,14 @@ public class SecurityConfig {
         return (request, response, authException) -> {
             AuthenticationException cause = resolveCause(request, authException);
             String message = resolveUnauthorizedMessage(cause);
-            writeJsonError(response, HttpStatus.UNAUTHORIZED, "Unauthorized", message);
+            writeJsonError(response, HttpStatus.UNAUTHORIZED, message);
         };
     }
 
     @Bean
     public AccessDeniedHandler accessDeniedHandler() {
         return (request, response, accessDeniedException) ->
-                writeJsonError(response, HttpStatus.FORBIDDEN, "Forbidden", MSG_ACCESS_DENIED);
+                writeJsonError(response, HttpStatus.FORBIDDEN, MSG_ACCESS_DENIED);
     }
 
     private AuthenticationException resolveCause(HttpServletRequest request, AuthenticationException fallback) {
@@ -159,18 +159,15 @@ public class SecurityConfig {
     private void writeJsonError(
             HttpServletResponse response,
             HttpStatus status,
-            String error,
             String message) throws IOException {
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
 
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("timestamp", DateTimeFormatter.ofPattern(ISO_TIMESTAMP_PATTERN)
-                .format(OffsetDateTime.now(ZoneOffset.UTC)));
-        body.put("status", status.value());
-        body.put("error", error);
-        body.put("message", message);
+        ApiErrorResponse body = ApiErrorResponse.of(
+                status.value(),
+                status.getReasonPhrase(),
+                message);
 
         objectMapper.writeValue(response.getWriter(), body);
     }
