@@ -1,7 +1,7 @@
-package co.edu.docurural.repository;
+package co.edu.docurural.domain.repository;
 
-import co.edu.docurural.entity.User;
-import co.edu.docurural.enums.UserStatus;
+import co.edu.docurural.domain.entity.User;
+import co.edu.docurural.domain.enums.enums.UserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

@@ -1,6 +1,6 @@
-package co.edu.docurural.entity;
+package co.edu.docurural.domain.entity;
 
-import co.edu.docurural.enums.ActivityAction;
+import co.edu.docurural.domain.enums.enums.ActivityAction;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

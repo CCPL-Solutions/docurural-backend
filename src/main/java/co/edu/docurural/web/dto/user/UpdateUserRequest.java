@@ -1,6 +1,6 @@
 package co.edu.docurural.web.dto.user;
 
-import co.edu.docurural.enums.UserRole;
+import co.edu.docurural.domain.enums.enums.UserRole;
 import co.edu.docurural.web.dto.validation.PasswordsMatch;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

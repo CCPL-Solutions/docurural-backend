@@ -1,7 +1,7 @@
-package co.edu.docurural.entity;
+package co.edu.docurural.domain.entity;
 
-import co.edu.docurural.enums.DocumentFormat;
-import co.edu.docurural.enums.DocumentStatus;
+import co.edu.docurural.domain.enums.enums.DocumentFormat;
+import co.edu.docurural.domain.enums.enums.DocumentStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

@@ -1,4 +1,4 @@
-package co.edu.docurural.enums;
+package co.edu.docurural.domain.enums.enums;
 
 /**
  * Tipos de acciones auditables registradas en {@code activity_log}.

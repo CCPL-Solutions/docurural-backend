@@ -1,8 +1,8 @@
 package co.edu.docurural.config.security;
 
-import co.edu.docurural.entity.User;
-import co.edu.docurural.enums.UserStatus;
-import co.edu.docurural.repository.UserRepository;
+import co.edu.docurural.domain.entity.User;
+import co.edu.docurural.domain.enums.enums.UserStatus;
+import co.edu.docurural.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.DisabledException;

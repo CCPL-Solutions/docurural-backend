@@ -1,6 +1,6 @@
 package co.edu.docurural.web.mapper;
 
-import co.edu.docurural.entity.User;
+import co.edu.docurural.domain.entity.User;
 import co.edu.docurural.web.dto.auth.UserSummary;
 import co.edu.docurural.web.dto.user.CreateUserResponse;
 import co.edu.docurural.web.dto.user.UpdateStatusResponse;

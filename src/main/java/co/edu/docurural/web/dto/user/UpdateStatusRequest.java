@@ -1,6 +1,6 @@
 package co.edu.docurural.web.dto.user;
 
-import co.edu.docurural.enums.UserStatus;
+import co.edu.docurural.domain.enums.enums.UserStatus;
 import jakarta.validation.constraints.NotNull;
 
 /**
