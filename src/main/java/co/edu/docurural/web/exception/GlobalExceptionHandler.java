@@ -3,6 +3,9 @@ package co.edu.docurural.web.exception;
 import co.edu.docurural.web.dto.common.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
+import org.springframework.context.NoSuchMessageException;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -54,16 +57,11 @@ import java.util.Map;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    static final String MSG_VALIDATION_ERRORS = "Errores de validación";
-    static final String MSG_BAD_REQUEST_BODY =
-            "El cuerpo de la solicitud es inválido o contiene un valor no permitido";
-    static final String MSG_BAD_CREDENTIALS = "Correo o contraseña incorrectos";
-    static final String MSG_ACCOUNT_DISABLED =
-            "Su cuenta ha sido desactivada. Contacte al administrador";
-    static final String MSG_ACCESS_DENIED = "No tiene permisos para realizar esta acción";
-    static final String MSG_SESSION_EXPIRED =
-            "Su sesión ha expirado por inactividad. Por favor inicie sesión nuevamente";
-    static final String MSG_INTERNAL_SERVER_ERROR = "Error inesperado del servidor";
+    private final MessageSource messageSource;
+
+    public GlobalExceptionHandler(MessageSource messageSource) {
+        this.messageSource = messageSource;
+    }
 
     /**
      * {@link MethodArgumentNotValidException} es lanzada por {@code @Valid} en request bodies.
@@ -91,7 +89,7 @@ public class GlobalExceptionHandler {
         ApiErrorResponse body = ApiErrorResponse.ofValidation(
                 HttpStatus.BAD_REQUEST.value(),
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                MSG_VALIDATION_ERRORS,
+                resolve("error.validation"),
                 fieldErrors);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
@@ -106,7 +104,7 @@ public class GlobalExceptionHandler {
             HttpMessageNotReadableException ex, HttpServletRequest request) {
         log.warn("Cuerpo de petición inválido en {} {}: {}",
                 request.getMethod(), request.getRequestURI(), ex.getMostSpecificCause().getMessage());
-        return buildResponse(HttpStatus.BAD_REQUEST, MSG_BAD_REQUEST_BODY);
+        return buildResponse(HttpStatus.BAD_REQUEST, resolve("error.bad-request-body"));
     }
 
     /**
@@ -153,7 +151,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleBadCredentials(
             BadCredentialsException ex, HttpServletRequest request) {
         log.warn("Credenciales inválidas en {} {}", request.getMethod(), request.getRequestURI());
-        return buildResponse(HttpStatus.UNAUTHORIZED, MSG_BAD_CREDENTIALS);
+        return buildResponse(HttpStatus.UNAUTHORIZED, resolve("auth.login.invalid-credentials"));
     }
 
     /**
@@ -164,7 +162,7 @@ public class GlobalExceptionHandler {
             DisabledException ex, HttpServletRequest request) {
         log.warn("Intento de login con cuenta desactivada en {} {}",
                 request.getMethod(), request.getRequestURI());
-        return buildResponse(HttpStatus.FORBIDDEN, MSG_ACCOUNT_DISABLED);
+        return buildResponse(HttpStatus.FORBIDDEN, resolve("auth.login.account-disabled"));
     }
 
     /**
@@ -175,7 +173,7 @@ public class GlobalExceptionHandler {
             AccessDeniedException ex, HttpServletRequest request) {
         log.warn("Acceso denegado en {} {}: {}",
                 request.getMethod(), request.getRequestURI(), ex.getMessage());
-        return buildResponse(HttpStatus.FORBIDDEN, MSG_ACCESS_DENIED);
+        return buildResponse(HttpStatus.FORBIDDEN, resolve("auth.access-denied"));
     }
 
     /**
@@ -189,7 +187,7 @@ public class GlobalExceptionHandler {
             AuthenticationException ex, HttpServletRequest request) {
         log.warn("Excepción de autenticación en {} {}: {}",
                 request.getMethod(), request.getRequestURI(), ex.getMessage());
-        return buildResponse(HttpStatus.UNAUTHORIZED, MSG_SESSION_EXPIRED);
+        return buildResponse(HttpStatus.UNAUTHORIZED, resolve("auth.session.expired"));
     }
 
     /**
@@ -202,7 +200,7 @@ public class GlobalExceptionHandler {
             Exception ex, HttpServletRequest request) {
         log.error("Error inesperado en {} {}: {}",
                 request.getMethod(), request.getRequestURI(), ex.getMessage(), ex);
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, MSG_INTERNAL_SERVER_ERROR);
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, resolveInternalError());
     }
 
     private ResponseEntity<ApiErrorResponse> buildResponse(HttpStatus status, String message) {
@@ -211,5 +209,22 @@ public class GlobalExceptionHandler {
                 status.getReasonPhrase(),
                 message);
         return ResponseEntity.status(status).body(body);
+    }
+
+    private String resolve(String key, Object... args) {
+        return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
+    }
+
+    /**
+     * Resuelve el mensaje del 500 con un fallback de último recurso si la clave
+     * {@code error.internal-server} no existiera en {@code messages.properties}.
+     * Es la única cadena que sobrevive como literal en el código.
+     */
+    private String resolveInternalError() {
+        try {
+            return resolve("error.internal-server");
+        } catch (NoSuchMessageException ex) {
+            return "Error inesperado del servidor";
+        }
     }
 }
