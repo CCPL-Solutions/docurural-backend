@@ -5,6 +5,8 @@ import co.edu.docurural.domain.enums.enums.UserStatus;
 import co.edu.docurural.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -32,18 +34,18 @@ import org.springframework.stereotype.Service;
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
+    private final MessageSource messageSource;
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {
                     log.debug("Intento de login con email inexistente: {}", email);
-                    return new UsernameNotFoundException("Correo o contraseña incorrectos");
+                    return new UsernameNotFoundException(resolve("auth.login.invalid-credentials"));
                 });
 
         if (user.getStatus() == UserStatus.INACTIVE) {
-            throw new DisabledException(
-                    "Su cuenta ha sido desactivada. Contacte al administrador");
+            throw new DisabledException(resolve("auth.login.account-disabled"));
         }
 
         return new CustomUserPrincipal(
@@ -52,5 +54,9 @@ public class CustomUserDetailsService implements UserDetailsService {
                 user.getRole(),
                 user.getStatus(),
                 user.getPasswordHash());
+    }
+
+    private String resolve(String key) {
+        return messageSource.getMessage(key, null, LocaleContextHolder.getLocale());
     }
 }

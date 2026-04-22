@@ -11,6 +11,8 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.CredentialsExpiredException;
 import org.springframework.stereotype.Component;
@@ -45,6 +47,7 @@ public class JwtTokenProvider {
     private static final String CLAIM_ROLE = "role";
 
     private final JwtProperties jwtProperties;
+    private final MessageSource messageSource;
 
     /**
      * Genera un token firmado HS256 a partir del usuario autenticado.
@@ -87,12 +90,15 @@ public class JwtTokenProvider {
             return new ParsedJwt(userId, email, role);
         } catch (TokenExpiredException ex) {
             log.debug("JWT expirado: {}", ex.getMessage());
-            throw new CredentialsExpiredException(
-                    "Su sesión ha expirado por inactividad. Por favor inicie sesión nuevamente", ex);
+            throw new CredentialsExpiredException(resolve("auth.session.expired"), ex);
         } catch (JWTVerificationException | IllegalArgumentException ex) {
             log.debug("JWT inválido: {}", ex.getMessage());
-            throw new BadCredentialsException("Token inválido", ex);
+            throw new BadCredentialsException(resolve("auth.token.invalid"), ex);
         }
+    }
+
+    private String resolve(String key) {
+        return messageSource.getMessage(key, null, LocaleContextHolder.getLocale());
     }
 
     private Algorithm buildAlgorithm() {

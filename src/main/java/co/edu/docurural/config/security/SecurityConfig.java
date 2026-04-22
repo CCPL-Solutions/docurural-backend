@@ -7,8 +7,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -60,15 +62,10 @@ import java.io.IOException;
 @Slf4j
 public class SecurityConfig {
 
-    private static final String MSG_SESSION_EXPIRED =
-            "Su sesión ha expirado por inactividad. Por favor inicie sesión nuevamente";
-    private static final String MSG_INVALID_TOKEN = "Token inválido";
-    private static final String MSG_ACCESS_DENIED =
-            "No tiene permisos para realizar esta acción";
-
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomUserDetailsService customUserDetailsService;
     private final ObjectMapper objectMapper;
+    private final MessageSource messageSource;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -135,7 +132,7 @@ public class SecurityConfig {
     @Bean
     public AccessDeniedHandler accessDeniedHandler() {
         return (request, response, accessDeniedException) ->
-                writeJsonError(response, HttpStatus.FORBIDDEN, MSG_ACCESS_DENIED);
+                writeJsonError(response, HttpStatus.FORBIDDEN, resolve("auth.access-denied"));
     }
 
     private AuthenticationException resolveCause(HttpServletRequest request, AuthenticationException fallback) {
@@ -148,12 +145,16 @@ public class SecurityConfig {
 
     private String resolveUnauthorizedMessage(AuthenticationException cause) {
         if (cause instanceof CredentialsExpiredException) {
-            return MSG_SESSION_EXPIRED;
+            return resolve("auth.session.expired");
         }
         if (cause instanceof BadCredentialsException) {
-            return MSG_INVALID_TOKEN;
+            return resolve("auth.token.invalid");
         }
-        return MSG_SESSION_EXPIRED;
+        return resolve("auth.session.expired");
+    }
+
+    private String resolve(String key) {
+        return messageSource.getMessage(key, null, LocaleContextHolder.getLocale());
     }
 
     private void writeJsonError(
