@@ -11,6 +11,8 @@ import co.edu.docurural.web.exception.ResourceNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +44,7 @@ public class ActivityLogService {
     private final ActivityLogRepository activityLogRepository;
     private final UserRepository userRepository;
     private final DocumentRepository documentRepository;
+    private final MessageSource messageSource;
 
     /**
      * Registra una acción de auditoría asociada al usuario {@code userId} y,
@@ -73,13 +76,13 @@ public class ActivityLogService {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Usuario no encontrado con id " + userId));
+                        resolve("user.not-found", userId)));
 
         Document document = null;
         if (documentId != null) {
             document = documentRepository.findById(documentId)
                     .orElseThrow(() -> new ResourceNotFoundException(
-                            "Documento no encontrado con id " + documentId));
+                            resolve("document.not-found", documentId)));
         }
 
         ActivityLog entry = ActivityLog.builder()
@@ -128,5 +131,9 @@ public class ActivityLogService {
             return value;
         }
         return value.substring(0, IP_ADDRESS_MAX_LENGTH);
+    }
+
+    private String resolve(String key, Object... args) {
+        return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
     }
 }

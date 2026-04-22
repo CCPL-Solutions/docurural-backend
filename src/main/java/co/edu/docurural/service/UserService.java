@@ -19,6 +19,8 @@ import co.edu.docurural.web.mapper.UserMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -55,26 +57,6 @@ import java.util.Set;
 @Slf4j
 public class UserService {
 
-    private static final String USER_CREATED_MESSAGE = "Usuario creado exitosamente";
-    private static final String USER_UPDATED_MESSAGE = "Usuario actualizado exitosamente";
-    private static final String USER_ACTIVATED_MESSAGE = "Usuario activado exitosamente";
-    private static final String USER_DEACTIVATED_MESSAGE = "Usuario desactivado exitosamente";
-
-    private static final String EMAIL_ALREADY_REGISTERED_MESSAGE =
-            "Ya existe un usuario registrado con este correo electrónico";
-    private static final String SELF_ROLE_CHANGE_MESSAGE =
-            "No puede cambiar su propio rol";
-    private static final String SELF_DEACTIVATION_MESSAGE =
-            "No puede desactivar su propia cuenta";
-    private static final String DUPLICATE_STATUS_MESSAGE =
-            "El usuario ya se encuentra en el estado solicitado";
-    private static final String PASSWORDS_MISMATCH_MESSAGE =
-            "Las contraseñas no coinciden";
-    private static final String UNSUPPORTED_SORT_FIELD_MESSAGE =
-            "Campo de ordenamiento no soportado: ";
-    private static final String UNSUPPORTED_SORT_DIRECTION_MESSAGE =
-            "Dirección de ordenamiento no soportada: ";
-
     private static final String DEFAULT_SORT_BY = "fullName";
     private static final String DEFAULT_SORT_DIR = "asc";
 
@@ -84,6 +66,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final ActivityLogService activityLogService;
+    private final MessageSource messageSource;
 
     /**
      * Retorna el listado completo de usuarios ordenado según los parámetros.
@@ -104,7 +87,7 @@ public class UserService {
         if (!ALLOWED_SORT_FIELDS.contains(resolvedSortBy)) {
             throw new BusinessRuleException(
                     HttpStatus.BAD_REQUEST,
-                    UNSUPPORTED_SORT_FIELD_MESSAGE + resolvedSortBy);
+                    resolve("user.sort.unsupported-field", resolvedSortBy));
         }
 
         Sort.Direction direction;
@@ -113,7 +96,7 @@ public class UserService {
         } catch (IllegalArgumentException ex) {
             throw new BusinessRuleException(
                     HttpStatus.BAD_REQUEST,
-                    UNSUPPORTED_SORT_DIRECTION_MESSAGE + resolvedSortDir);
+                    resolve("user.sort.unsupported-direction", resolvedSortDir));
         }
 
         List<User> users = userRepository.findAll(Sort.by(direction, resolvedSortBy));
@@ -131,7 +114,7 @@ public class UserService {
     public UserResponse findById(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Usuario no encontrado con id " + id));
+                        resolve("user.not-found", id)));
         return UserMapper.toResponse(user);
     }
 
@@ -154,11 +137,11 @@ public class UserService {
     @Transactional
     public CreateUserResponse create(CreateUserRequest request, Long adminId, HttpServletRequest httpRequest) {
         if (!request.password().equals(request.confirmPassword())) {
-            throw new BusinessRuleException(HttpStatus.BAD_REQUEST, PASSWORDS_MISMATCH_MESSAGE);
+            throw new BusinessRuleException(HttpStatus.BAD_REQUEST, resolve("user.passwords.mismatch"));
         }
 
         if (userRepository.existsByEmail(request.email())) {
-            throw new ConflictException(EMAIL_ALREADY_REGISTERED_MESSAGE);
+            throw new ConflictException(resolve("user.email.already-registered"));
         }
 
         User newUser = User.builder()
@@ -181,7 +164,7 @@ public class UserService {
         log.info("Usuario creado: id={} email={} role={} por adminId={}",
                 savedUser.getId(), savedUser.getEmail(), savedUser.getRole(), adminId);
 
-        return UserMapper.toCreateResponse(savedUser, USER_CREATED_MESSAGE);
+        return UserMapper.toCreateResponse(savedUser, resolve("user.created.success"));
     }
 
     /**
@@ -210,21 +193,21 @@ public class UserService {
 
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Usuario no encontrado con id " + id));
+                        resolve("user.not-found", id)));
 
         boolean emailChanged = !request.email().equalsIgnoreCase(user.getEmail());
         if (emailChanged && userRepository.existsByEmailAndIdNot(request.email(), id)) {
-            throw new ConflictException(EMAIL_ALREADY_REGISTERED_MESSAGE);
+            throw new ConflictException(resolve("user.email.already-registered"));
         }
 
         boolean roleChanged = request.role() != user.getRole();
         if (roleChanged && id.equals(adminId)) {
-            throw new BusinessRuleException(HttpStatus.FORBIDDEN, SELF_ROLE_CHANGE_MESSAGE);
+            throw new BusinessRuleException(HttpStatus.FORBIDDEN, resolve("user.self-role-change.forbidden"));
         }
 
         boolean passwordProvided = request.password() != null && !request.password().isBlank();
         if (passwordProvided && !request.password().equals(request.confirmPassword())) {
-            throw new BusinessRuleException(HttpStatus.BAD_REQUEST, PASSWORDS_MISMATCH_MESSAGE);
+            throw new BusinessRuleException(HttpStatus.BAD_REQUEST, resolve("user.passwords.mismatch"));
         }
 
         List<String> modifiedFields = new ArrayList<>();
@@ -259,7 +242,7 @@ public class UserService {
         log.info("Usuario actualizado: id={} modifiedFields={} por adminId={}",
                 updatedUser.getId(), modifiedFields, adminId);
 
-        return UserMapper.toUpdateResponse(updatedUser, USER_UPDATED_MESSAGE);
+        return UserMapper.toUpdateResponse(updatedUser, resolve("user.updated.success"));
     }
 
     /**
@@ -285,24 +268,24 @@ public class UserService {
 
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Usuario no encontrado con id " + id));
+                        resolve("user.not-found", id)));
 
         UserStatus newStatus = request.status();
 
         if (user.getStatus() == newStatus) {
-            throw new BusinessRuleException(HttpStatus.BAD_REQUEST, DUPLICATE_STATUS_MESSAGE);
+            throw new BusinessRuleException(HttpStatus.BAD_REQUEST, resolve("user.status.duplicate"));
         }
 
         if (id.equals(adminId) && newStatus == UserStatus.INACTIVE) {
-            throw new BusinessRuleException(HttpStatus.FORBIDDEN, SELF_DEACTIVATION_MESSAGE);
+            throw new BusinessRuleException(HttpStatus.FORBIDDEN, resolve("user.self-deactivation.forbidden"));
         }
 
         user.setStatus(newStatus);
         User updatedUser = userRepository.save(user);
 
         String message = newStatus == UserStatus.ACTIVE
-                ? USER_ACTIVATED_MESSAGE
-                : USER_DEACTIVATED_MESSAGE;
+                ? resolve("user.activated.success")
+                : resolve("user.deactivated.success");
 
         activityLogService.record(
                 ActivityAction.DEACTIVATE_USER,
@@ -315,5 +298,9 @@ public class UserService {
                 updatedUser.getId(), newStatus, adminId);
 
         return UserMapper.toStatusResponse(updatedUser, message);
+    }
+
+    private String resolve(String key, Object... args) {
+        return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
     }
 }

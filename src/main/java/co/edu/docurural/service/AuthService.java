@@ -15,6 +15,8 @@ import co.edu.docurural.web.mapper.UserMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -49,13 +51,13 @@ public class AuthService {
 
     private static final String LOGIN_DETAIL = "Inicio de sesión exitoso";
     private static final String LOGOUT_DETAIL = "Cierre de sesión";
-    private static final String LOGOUT_MESSAGE = "Sesión cerrada exitosamente";
 
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtProperties jwtProperties;
     private final UserRepository userRepository;
     private final ActivityLogService activityLogService;
+    private final MessageSource messageSource;
 
     /**
      * Autentica al usuario con email + password y emite un token JWT.
@@ -137,7 +139,7 @@ public class AuthService {
                 httpRequest);
 
         log.info("Logout registrado para userId={} email={}", principal.getId(), principal.getEmail());
-        return new MessageResponse(LOGOUT_MESSAGE);
+        return new MessageResponse(resolve("auth.logout.success"));
     }
 
     private CustomUserPrincipal requireCurrentPrincipal() {
@@ -153,5 +155,9 @@ public class AuthService {
                             + (principal == null ? "null" : principal.getClass().getName()));
         }
         return customPrincipal;
+    }
+
+    private String resolve(String key, Object... args) {
+        return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
     }
 }
