@@ -12,7 +12,7 @@ import jakarta.validation.constraints.NotNull;
  */
 public record UpdateStatusRequest(
 
-        @NotNull(message = "El estado es obligatorio")
+        @NotNull(message = "{validation.user.status.required}")
         UserStatus status
 ) {
 }

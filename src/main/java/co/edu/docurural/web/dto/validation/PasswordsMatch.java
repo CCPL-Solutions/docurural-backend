@@ -26,7 +26,7 @@ import java.lang.annotation.Target;
 @Constraint(validatedBy = PasswordsMatchValidator.class)
 public @interface PasswordsMatch {
 
-    String message() default "La confirmación de contraseña no coincide";
+    String message() default "{validation.user.confirm-password.mismatch}";
 
     Class<?>[] groups() default {};
 
