@@ -19,14 +19,14 @@ import java.io.IOException;
 
 /**
  * Filtro que extrae y valida el token JWT del header {@code Authorization: Bearer <token>}
- * y, si es valido, puebla el {@link SecurityContextHolder} con un
+ * y, si es válido, puebla el {@link SecurityContextHolder} con un
  * {@link UsernamePasswordAuthenticationToken} cuyo principal es un
  * {@link CustomUserPrincipal} construido a partir de los claims.
  *
- * <p>Cuando el token es invalido o expirado, el filtro limpia el contexto y deja que
- * la cadena continue; sera el {@code AuthenticationEntryPoint} configurado en
+ * <p>Cuando el token es inválido o expirado, el filtro limpia el contexto y deja que
+ * la cadena continúe; será el {@code AuthenticationEntryPoint} configurado en
  * {@link SecurityConfig} quien emita el JSON 401 apropiado. No se escribe la respuesta
- * desde aqui para concentrar el formato de error en un unico punto.
+ * desde aquí para concentrar el formato de error en un único punto.
  */
 @Component
 @RequiredArgsConstructor
@@ -63,7 +63,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } catch (AuthenticationException ex) {
             SecurityContextHolder.clearContext();
             request.setAttribute(SecurityConstants.JWT_ERROR_ATTRIBUTE, ex);
-            log.debug("Autenticacion JWT fallida: {}", ex.getMessage());
+            log.debug("Autenticación JWT fallida: {}", ex.getMessage());
         }
 
         filterChain.doFilter(request, response);

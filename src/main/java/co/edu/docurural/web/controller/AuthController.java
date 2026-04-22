@@ -16,16 +16,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Controlador REST del modulo de Autenticacion (AUTH-01, AUTH-02).
+ * Controlador REST del módulo de Autenticación (AUTH-01, AUTH-02).
  *
- * <p>Expone los endpoints publicos y autenticados de login/logout. El
+ * <p>Expone los endpoints públicos y autenticados de login/logout. El
  * {@code context-path} {@code /api} se configura globalmente en
- * {@code application.yaml}, por eso aqui el mapping solo incluye {@code /auth}.
+ * {@code application.yaml}, por eso aquí el mapping solo incluye {@code /auth}.
  *
- * <p>Toda la logica de negocio, validacion de credenciales, generacion del
+ * <p>Toda la lógica de negocio, validación de credenciales, generación del
  * token JWT y registro en {@code activity_log} se delega a {@link AuthService}.
  * Los errores se propagan al {@code GlobalExceptionHandler} (Fase 7) que los
- * traduce al formato estandar de la API.
+ * traduce al formato estándar de la API.
  */
 @RestController
 @RequestMapping("/auth")
@@ -36,11 +36,11 @@ public class AuthController {
     private final AuthService authService;
 
     /**
-     * AUTH-01: inicio de sesion publico.
+     * AUTH-01: inicio de sesión público.
      *
      * @param request     credenciales validadas con Bean Validation.
-     * @param httpRequest peticion HTTP (para resolver la IP del registro de auditoria).
-     * @return 200 {@link LoginResponse} con token, tipo, expiracion y resumen del usuario.
+     * @param httpRequest petición HTTP (para resolver la IP del registro de auditoría).
+     * @return 200 {@link LoginResponse} con token, tipo, expiración y resumen del usuario.
      */
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(
@@ -52,14 +52,14 @@ public class AuthController {
     }
 
     /**
-     * AUTH-02: cierre de sesion del usuario autenticado.
+     * AUTH-02: cierre de sesión del usuario autenticado.
      *
      * <p>Al ser JWT stateless, el cliente invalida el token localmente; este
-     * endpoint existe para registrar la accion {@code LOGOUT} en
+     * endpoint existe para registrar la acción {@code LOGOUT} en
      * {@code activity_log}.
      *
-     * @param httpRequest peticion HTTP (para resolver la IP del registro de auditoria).
-     * @return 200 {@link MessageResponse} con el mensaje de confirmacion.
+     * @param httpRequest petición HTTP (para resolver la IP del registro de auditoría).
+     * @return 200 {@link MessageResponse} con el mensaje de confirmación.
      */
     @PostMapping("/logout")
     @PreAuthorize("isAuthenticated()")

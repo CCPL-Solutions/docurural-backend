@@ -10,9 +10,9 @@ import jakarta.validation.constraints.Size;
 /**
  * Request body de {@code POST /api/users} (USR-03).
  *
- * <p>La validacion cruzada {@code password} / {@code confirmPassword} se
+ * <p>La validación cruzada {@code password} / {@code confirmPassword} se
  * delega en {@link PasswordsMatch}; {@code @NotBlank} en {@code password}
- * garantiza que para esta operacion la contrasena sea obligatoria.
+ * garantiza que para esta operación la contraseña sea obligatoria.
  */
 @PasswordsMatch
 public record CreateUserRequest(
@@ -21,16 +21,16 @@ public record CreateUserRequest(
         @Size(min = 3, max = 100, message = "El nombre debe tener entre 3 y 100 caracteres")
         String fullName,
 
-        @NotBlank(message = "El correo electronico es obligatorio")
-        @Email(message = "El correo electronico no tiene un formato valido")
-        @Size(max = 150, message = "El correo electronico no puede exceder 150 caracteres")
+        @NotBlank(message = "El correo electrónico es obligatorio")
+        @Email(message = "El correo electrónico no tiene un formato válido")
+        @Size(max = 150, message = "El correo electrónico no puede exceder 150 caracteres")
         String email,
 
-        @NotBlank(message = "La contrasena es obligatoria")
-        @Size(min = 8, message = "La contrasena debe tener minimo 8 caracteres")
+        @NotBlank(message = "La contraseña es obligatoria")
+        @Size(min = 8, message = "La contraseña debe tener mínimo 8 caracteres")
         String password,
 
-        @NotBlank(message = "La confirmacion de contrasena es obligatoria")
+        @NotBlank(message = "La confirmación de contraseña es obligatoria")
         String confirmPassword,
 
         @NotNull(message = "El rol es obligatorio")

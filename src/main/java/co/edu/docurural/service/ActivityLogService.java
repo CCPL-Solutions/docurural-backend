@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Servicio que persiste los registros de auditoria ({@code activity_log}) para las
+ * Servicio que persiste los registros de auditoría ({@code activity_log}) para las
  * acciones relevantes del sistema ({@code LOGIN}, {@code LOGOUT}, {@code CREATE_USER},
  * etc.).
  *
@@ -23,11 +23,11 @@ import org.springframework.transaction.annotation.Transactional;
  * <ul>
  *   <li>Resolver las relaciones {@link User} y (opcionalmente) {@link Document} a
  *       partir de sus ids.</li>
- *   <li>Determinar la direccion IP de origen respetando el header
- *       {@code X-Forwarded-For} cuando la aplicacion corre detras de un proxy
- *       reverso (Nginx en produccion), con {@code request.getRemoteAddr()} como
+ *   <li>Determinar la dirección IP de origen respetando el header
+ *       {@code X-Forwarded-For} cuando la aplicación corre detrás de un proxy
+ *       reverso (Nginx en producción), con {@code request.getRemoteAddr()} como
  *       fallback.</li>
- *   <li>Delegar la fijacion de {@code action_timestamp} al {@code @PrePersist} de
+ *   <li>Delegar la fijación de {@code action_timestamp} al {@code @PrePersist} de
  *       la entidad {@link ActivityLog}.</li>
  * </ul>
  */
@@ -44,14 +44,14 @@ public class ActivityLogService {
     private final DocumentRepository documentRepository;
 
     /**
-     * Registra una accion de auditoria asociada al usuario {@code userId} y,
+     * Registra una acción de auditoría asociada al usuario {@code userId} y,
      * opcionalmente, a un documento.
      *
-     * @param action     tipo de accion (no puede ser {@code null}).
-     * @param userId     id del usuario que ejecuta la accion (obligatorio).
+     * @param action     tipo de acción (no puede ser {@code null}).
+     * @param userId     id del usuario que ejecuta la acción (obligatorio).
      * @param documentId id del documento afectado (puede ser {@code null}).
-     * @param detail     descripcion libre en espanol para la trazabilidad.
-     * @param request    peticion HTTP usada para resolver la IP de origen; puede
+     * @param detail     descripción libre en español para la trazabilidad.
+     * @param request    petición HTTP usada para resolver la IP de origen; puede
      *                   ser {@code null} en escenarios de test o tareas en segundo plano.
      * @return entidad {@link ActivityLog} persistida.
      * @throws ResourceNotFoundException si {@code userId} o {@code documentId} no existen.
@@ -102,7 +102,7 @@ public class ActivityLogService {
      * {@link HttpServletRequest#getRemoteAddr()} como fallback.
      *
      * <p>Trunca el valor resultante a {@value #IP_ADDRESS_MAX_LENGTH} caracteres
-     * para respetar la restriccion de la columna {@code ip_address VARCHAR(45)}
+     * para respetar la restricción de la columna {@code ip_address VARCHAR(45)}
      * (longitud suficiente para IPv6).
      */
     private String resolveClientIp(HttpServletRequest request) {

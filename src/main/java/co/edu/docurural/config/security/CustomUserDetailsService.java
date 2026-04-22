@@ -12,17 +12,17 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 /**
- * Carga usuarios por email para el flujo de autenticacion con
+ * Carga usuarios por email para el flujo de autenticación con
  * {@code DaoAuthenticationProvider}.
  *
  * <p>Reglas:
  * <ul>
  *   <li>Si no existe el correo se lanza {@link UsernameNotFoundException}, que el
  *       proveedor convierte en {@code BadCredentialsException} al enmascarar la
- *       diferencia entre "usuario no existe" y "clave invalida" (comportamiento
+ *       diferencia entre "usuario no existe" y "clave inválida" (comportamiento
  *       por defecto de Spring Security con {@code hideUserNotFoundExceptions=true}).</li>
- *   <li>Si la cuenta esta {@link UserStatus#INACTIVE} se lanza
- *       {@link DisabledException} con el mensaje en espanol exacto del requerimiento
+ *   <li>Si la cuenta está {@link UserStatus#INACTIVE} se lanza
+ *       {@link DisabledException} con el mensaje en español exacto del requerimiento
  *       AUTH-01, para que el {@code GlobalExceptionHandler} responda con 403.</li>
  * </ul>
  */
@@ -38,7 +38,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {
                     log.debug("Intento de login con email inexistente: {}", email);
-                    return new UsernameNotFoundException("Correo o contrasena incorrectos");
+                    return new UsernameNotFoundException("Correo o contraseña incorrectos");
                 });
 
         if (user.getStatus() == UserStatus.INACTIVE) {

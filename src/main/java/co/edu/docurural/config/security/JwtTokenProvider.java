@@ -23,18 +23,18 @@ import java.util.Date;
  *
  * <p>Los tokens llevan los claims:
  * <ul>
- *   <li>{@code sub} — id numerico del usuario.</li>
+ *   <li>{@code sub} — id numérico del usuario.</li>
  *   <li>{@code email} — correo del usuario autenticado.</li>
  *   <li>{@code role} — rol del usuario ({@link UserRole}).</li>
  *   <li>{@code iss} — emisor configurado en {@link JwtProperties#getIssuer()}.</li>
- *   <li>{@code iat} / {@code exp} — timestamps estandar.</li>
+ *   <li>{@code iat} / {@code exp} — timestamps estándar.</li>
  * </ul>
  *
- * <p>El {@code secret} se obtiene de configuracion y nunca se loggea.
+ * <p>El {@code secret} se obtiene de configuración y nunca se loggea.
  * Ante tokens expirados se lanza {@link CredentialsExpiredException} para que el
- * {@code AuthenticationEntryPoint} responda 401 con el mensaje de sesion expirada;
+ * {@code AuthenticationEntryPoint} responda 401 con el mensaje de sesión expirada;
  * ante cualquier otra invalidez ({@link JWTVerificationException}) se lanza
- * {@link BadCredentialsException} ("Token invalido").
+ * {@link BadCredentialsException} ("Token inválido").
  */
 @Component
 @RequiredArgsConstructor
@@ -67,10 +67,10 @@ public class JwtTokenProvider {
     }
 
     /**
-     * Valida firma, emisor y expiracion del token y devuelve los claims resueltos.
+     * Valida firma, emisor y expiración del token y devuelve los claims resueltos.
      *
-     * @throws CredentialsExpiredException si el token expiro.
-     * @throws BadCredentialsException     si el token no es valido (firma invalida, mal formado, etc).
+     * @throws CredentialsExpiredException si el token expiró.
+     * @throws BadCredentialsException     si el token no es válido (firma inválida, mal formado, etc).
      */
     public ParsedJwt parseAndValidate(String token) {
         try {
@@ -88,10 +88,10 @@ public class JwtTokenProvider {
         } catch (TokenExpiredException ex) {
             log.debug("JWT expirado: {}", ex.getMessage());
             throw new CredentialsExpiredException(
-                    "Su sesion ha expirado por inactividad. Por favor inicie sesion nuevamente", ex);
+                    "Su sesión ha expirado por inactividad. Por favor inicie sesión nuevamente", ex);
         } catch (JWTVerificationException | IllegalArgumentException ex) {
-            log.debug("JWT invalido: {}", ex.getMessage());
-            throw new BadCredentialsException("Token invalido", ex);
+            log.debug("JWT inválido: {}", ex.getMessage());
+            throw new BadCredentialsException("Token inválido", ex);
         }
     }
 
@@ -99,13 +99,13 @@ public class JwtTokenProvider {
         String secret = jwtProperties.getSecret();
         if (secret == null || secret.isBlank()) {
             throw new IllegalStateException(
-                    "La propiedad docurural.security.jwt.secret no esta configurada");
+                    "La propiedad docurural.security.jwt.secret no está configurada");
         }
         return Algorithm.HMAC256(secret);
     }
 
     /**
-     * Claims relevantes extraidos de un JWT valido.
+     * Claims relevantes extraídos de un JWT válido.
      */
     @Getter
     public static final class ParsedJwt {

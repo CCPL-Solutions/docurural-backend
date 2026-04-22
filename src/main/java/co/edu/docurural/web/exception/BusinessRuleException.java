@@ -5,10 +5,10 @@ import org.springframework.http.HttpStatus;
 /**
  * Se lanza cuando una regla de negocio del dominio se viola.
  *
- * <p>El status HTTP asociado se transporta como campo de la propia excepcion
+ * <p>El status HTTP asociado se transporta como campo de la propia excepción
  * para que la misma clase sirva tanto a {@code 400 Bad Request} (ej. estado
  * duplicado) como a {@code 403 Forbidden} (ej. cambio de rol propio o
- * auto-desactivacion). Esto simplifica el mapeo posterior en el
+ * auto-desactivación). Esto simplifica el mapeo posterior en el
  * {@code GlobalExceptionHandler} (Fase 7).
  *
  * <p>Solo se aceptan valores 4xx distintos de 404 y 409, que ya tienen sus

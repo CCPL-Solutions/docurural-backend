@@ -31,23 +31,23 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Servicio de gestion de usuarios para los endpoints {@code USR-01..USR-05}.
+ * Servicio de gestión de usuarios para los endpoints {@code USR-01..USR-05}.
  *
  * <p>Responsabilidades:
  * <ul>
  *   <li>Orquestar el CRUD de usuarios respetando las reglas del contrato
- *       {@code docs/api-rest-sprint1.md} (unicidad de email, auto-proteccion
+ *       {@code docs/api-rest-sprint1.md} (unicidad de email, auto-protección
  *       del administrador sobre su propio rol y estado).</li>
- *   <li>Hashear contrasenas con {@link PasswordEncoder} antes de persistir.</li>
+ *   <li>Hashear contraseñas con {@link PasswordEncoder} antes de persistir.</li>
  *   <li>Registrar las acciones {@code CREATE_USER}, {@code EDIT_USER} y
  *       {@code DEACTIVATE_USER} en {@code activity_log} con el formato del
  *       contrato.</li>
- *   <li>Mapear entidad -> DTO exclusivamente a traves de {@link UserMapper}
- *       para garantizar que {@code passwordHash} jamas se expone.</li>
+ *   <li>Mapear entidad -> DTO exclusivamente a través de {@link UserMapper}
+ *       para garantizar que {@code passwordHash} jamás se expone.</li>
  * </ul>
  *
  * <p>Todas las excepciones de negocio se propagan hacia el
- * {@code GlobalExceptionHandler} (Fase 7) que las traduce al formato estandar
+ * {@code GlobalExceptionHandler} (Fase 7) que las traduce al formato estándar
  * de error.
  */
 @Service
@@ -61,7 +61,7 @@ public class UserService {
     private static final String USER_DEACTIVATED_MESSAGE = "Usuario desactivado exitosamente";
 
     private static final String EMAIL_ALREADY_REGISTERED_MESSAGE =
-            "Ya existe un usuario registrado con este correo electronico";
+            "Ya existe un usuario registrado con este correo electrónico";
     private static final String SELF_ROLE_CHANGE_MESSAGE =
             "No puede cambiar su propio rol";
     private static final String SELF_DEACTIVATION_MESSAGE =
@@ -69,11 +69,11 @@ public class UserService {
     private static final String DUPLICATE_STATUS_MESSAGE =
             "El usuario ya se encuentra en el estado solicitado";
     private static final String PASSWORDS_MISMATCH_MESSAGE =
-            "Las contrasenas no coinciden";
+            "Las contraseñas no coinciden";
     private static final String UNSUPPORTED_SORT_FIELD_MESSAGE =
             "Campo de ordenamiento no soportado: ";
     private static final String UNSUPPORTED_SORT_DIRECTION_MESSAGE =
-            "Direccion de ordenamiento no soportada: ";
+            "Dirección de ordenamiento no soportada: ";
 
     private static final String DEFAULT_SORT_BY = "fullName";
     private static final String DEFAULT_SORT_DIR = "asc";
@@ -86,15 +86,15 @@ public class UserService {
     private final ActivityLogService activityLogService;
 
     /**
-     * Retorna el listado completo de usuarios ordenado segun los parametros.
+     * Retorna el listado completo de usuarios ordenado según los parámetros.
      *
      * @param sortBy  campo de ordenamiento (default {@code fullName}).
      *                Debe pertenecer a {@link #ALLOWED_SORT_FIELDS}.
-     * @param sortDir direccion {@code asc} o {@code desc} (default {@code asc},
+     * @param sortDir dirección {@code asc} o {@code desc} (default {@code asc},
      *                case-insensitive).
      * @return {@link UserListResponse} con el total y la lista ya mapeada.
      * @throws BusinessRuleException {@code 400} si {@code sortBy} o
-     *                               {@code sortDir} son invalidos.
+     *                               {@code sortDir} son inválidos.
      */
     @Transactional(readOnly = true)
     public UserListResponse list(String sortBy, String sortDir) {
@@ -136,20 +136,20 @@ public class UserService {
     }
 
     /**
-     * Crea un nuevo usuario con {@code status = ACTIVE} y hashea la contrasena
+     * Crea un nuevo usuario con {@code status = ACTIVE} y hashea la contraseña
      * con BCrypt.
      *
      * <p>Reglas:
      * <ul>
-     *   <li>Password y confirmacion deben coincidir (defensa redundante; la
-     *       anotacion {@code @PasswordsMatch} ya se ejecuto a nivel de DTO).</li>
-     *   <li>El email debe ser unico entre usuarios activos e inactivos.</li>
-     *   <li>Al finalizar se registra la accion {@code CREATE_USER} con detalle
+     *   <li>Password y confirmación deben coincidir (defensa redundante; la
+     *       anotación {@code @PasswordsMatch} ya se ejecutó a nivel de DTO).</li>
+     *   <li>El email debe ser único entre usuarios activos e inactivos.</li>
+     *   <li>Al finalizar se registra la acción {@code CREATE_USER} con detalle
      *       {@code "Usuario creado: {id}"} (contrato USR-03).</li>
      * </ul>
      *
-     * @throws BusinessRuleException {@code 400} si las contrasenas no coinciden.
-     * @throws ConflictException     {@code 409} si el email ya esta registrado.
+     * @throws BusinessRuleException {@code 400} si las contraseñas no coinciden.
+     * @throws ConflictException     {@code 409} si el email ya está registrado.
      */
     @Transactional
     public CreateUserResponse create(CreateUserRequest request, Long adminId, HttpServletRequest httpRequest) {
@@ -189,11 +189,11 @@ public class UserService {
      *
      * <p>Reglas:
      * <ul>
-     *   <li>Si el email cambia, debe ser unico entre los demas usuarios.</li>
+     *   <li>Si el email cambia, debe ser único entre los demás usuarios.</li>
      *   <li>El administrador no puede cambiar su propio rol.</li>
-     *   <li>Si se envia {@code password}, debe coincidir con
-     *       {@code confirmPassword} y se rehashea; si se omite o llega vacio,
-     *       la contrasena actual se preserva.</li>
+     *   <li>Si se envía {@code password}, debe coincidir con
+     *       {@code confirmPassword} y se rehashea; si se omite o llega vacío,
+     *       la contraseña actual se preserva.</li>
      *   <li>El detalle del log lista los campos efectivamente modificados en el
      *       formato {@code "Campos modificados: [field1, field2, ...]"}
      *       (contrato USR-04).</li>
@@ -201,7 +201,7 @@ public class UserService {
      *
      * @throws ResourceNotFoundException {@code 404} si el id no existe.
      * @throws ConflictException         {@code 409} si el nuevo email ya pertenece a otro usuario.
-     * @throws BusinessRuleException     {@code 400} si las contrasenas no coinciden,
+     * @throws BusinessRuleException     {@code 400} si las contraseñas no coinciden,
      *                                   o {@code 403} si intenta cambiar su propio rol.
      */
     @Transactional
@@ -269,7 +269,7 @@ public class UserService {
      * <ul>
      *   <li>El nuevo estado no puede ser igual al actual.</li>
      *   <li>El administrador no puede desactivar su propia cuenta.</li>
-     *   <li>Se registra la accion {@code DEACTIVATE_USER} incluso al reactivar:
+     *   <li>Se registra la acción {@code DEACTIVATE_USER} incluso al reactivar:
      *       el enum reutiliza el mismo valor (plan Fase 5 - nota del punto 3.3).
      *       El detalle incluye el nuevo estado aplicado.</li>
      * </ul>
@@ -277,7 +277,7 @@ public class UserService {
      * @throws ResourceNotFoundException {@code 404} si el id no existe.
      * @throws BusinessRuleException     {@code 400} si el usuario ya tiene el estado
      *                                   solicitado, o {@code 403} si el admin intenta
-     *                                   desactivarse a si mismo.
+     *                                   desactivarse a sí mismo.
      */
     @Transactional
     public UpdateStatusResponse changeStatus(

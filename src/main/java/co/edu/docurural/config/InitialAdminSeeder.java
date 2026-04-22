@@ -15,12 +15,12 @@ import org.springframework.stereotype.Component;
  * la cuenta administradora a partir de las variables de entorno
  * {@code ADMIN_SEED_EMAIL} y {@code ADMIN_SEED_PASSWORD}.
  *
- * <p><b>Por que JdbcTemplate y no UserRepository:</b> en la Fase 1 del Sprint 1
- * todavia no existen las entidades JPA ni los repositorios. Acoplar el seed a la
- * Fase 2 romperia la separacion del plan, por lo que aqui se usa JDBC directo
- * contra la tabla {@code users} ya creada por la migracion {@code V1}.
+ * <p><b>Por qué JdbcTemplate y no UserRepository:</b> en la Fase 1 del Sprint 1
+ * todavía no existen las entidades JPA ni los repositorios. Acoplar el seed a la
+ * Fase 2 rompería la separación del plan, por lo que aquí se usa JDBC directo
+ * contra la tabla {@code users} ya creada por la migración {@code V1}.
  *
- * <p><b>Seguridad:</b> la contrasena se hashea con {@link BCryptPasswordEncoder}
+ * <p><b>Seguridad:</b> la contraseña se hashea con {@link BCryptPasswordEncoder}
  * antes de persistirla. La clave en claro nunca se loggea.
  */
 @Component

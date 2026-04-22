@@ -1,7 +1,7 @@
 package co.edu.docurural.web.dto.common;
 
 /**
- * DTO generico para respuestas que solo contienen un mensaje de confirmacion.
+ * DTO genérico para respuestas que solo contienen un mensaje de confirmación.
  */
 public record MessageResponse(String message) {
 }

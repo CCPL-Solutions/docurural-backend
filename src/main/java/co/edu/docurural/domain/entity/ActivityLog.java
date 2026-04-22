@@ -22,10 +22,10 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * Registro de auditoria (tabla {@code activity_log}).
+ * Registro de auditoría (tabla {@code activity_log}).
  *
  * <p>{@link #document} es opcional: acciones como {@code LOGIN}, {@code LOGOUT},
- * {@code CREATE_USER}, etc., no estan ligadas a un documento especifico.
+ * {@code CREATE_USER}, etc., no están ligadas a un documento específico.
  */
 @Entity
 @Table(name = "activity_log")

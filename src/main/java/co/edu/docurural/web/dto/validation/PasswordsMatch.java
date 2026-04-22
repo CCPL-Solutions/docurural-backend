@@ -9,12 +9,12 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Anotacion a nivel de clase que valida que dos campos tipo {@link String}
+ * Anotación a nivel de clase que valida que dos campos tipo {@link String}
  * ({@code password} y {@code confirmPassword}) coincidan.
  *
- * <p>La validacion solo se ejecuta cuando {@code password} es no nulo y no vacio.
- * Esto permite reutilizar la anotacion tanto para la creacion (contrasena
- * obligatoria) como para la edicion (contrasena opcional); el hecho de que
+ * <p>La validación solo se ejecuta cuando {@code password} es no nulo y no vacío.
+ * Esto permite reutilizar la anotación tanto para la creación (contraseña
+ * obligatoria) como para la edición (contraseña opcional); el hecho de que
  * {@code password} sea obligatoria o no se controla con {@code @NotBlank} en el
  * DTO correspondiente.
  *
@@ -26,19 +26,19 @@ import java.lang.annotation.Target;
 @Constraint(validatedBy = PasswordsMatchValidator.class)
 public @interface PasswordsMatch {
 
-    String message() default "La confirmacion de contrasena no coincide";
+    String message() default "La confirmación de contraseña no coincide";
 
     Class<?>[] groups() default {};
 
     Class<? extends Payload>[] payload() default {};
 
     /**
-     * Nombre del campo contrasena en el DTO anotado.
+     * Nombre del campo contraseña en el DTO anotado.
      */
     String passwordField() default "password";
 
     /**
-     * Nombre del campo de confirmacion en el DTO anotado.
+     * Nombre del campo de confirmación en el DTO anotado.
      */
     String confirmPasswordField() default "confirmPassword";
 }

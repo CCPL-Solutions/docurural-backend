@@ -12,15 +12,15 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Configuracion CORS global. El {@link CorsConfigurationSource} expuesto aqui es
- * consumido por Spring Security via {@code cors(Customizer.withDefaults())} en
+ * Configuración CORS global. El {@link CorsConfigurationSource} expuesto aquí es
+ * consumido por Spring Security vía {@code cors(Customizer.withDefaults())} en
  * {@code SecurityConfig}.
  *
- * <p>La lista de origenes permitidos se lee de la propiedad
- * {@code docurural.cors.allowed-origins} (CSV). Si la propiedad no esta presente,
+ * <p>La lista de orígenes permitidos se lee de la propiedad
+ * {@code docurural.cors.allowed-origins} (CSV). Si la propiedad no está presente,
  * el default es el dev server de Angular: {@code http://localhost:4200}.
  *
- * <p>Se permite envio de credenciales (cookies/Authorization) y se expone el header
+ * <p>Se permite envío de credenciales (cookies/Authorization) y se expone el header
  * {@code Authorization} para que el frontend pueda leer el token si llegase a
  * recibirlo en la respuesta.
  */

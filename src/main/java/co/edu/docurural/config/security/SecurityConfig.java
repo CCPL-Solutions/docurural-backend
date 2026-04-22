@@ -31,26 +31,26 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import java.io.IOException;
 
 /**
- * Configuracion global de Spring Security para DocuRural.
+ * Configuración global de Spring Security para DocuRural.
  *
- * <p>Politica:
+ * <p>Política:
  * <ul>
- *   <li>Stateless: no se mantiene sesion HTTP; cada peticion se autentica con JWT.</li>
- *   <li>CSRF deshabilitado (API REST sin cookies de sesion).</li>
- *   <li>CORS habilitado via el {@code CorsConfigurationSource} declarado en {@code CorsConfig}.</li>
- *   <li>Metodo de acceso por rol habilitado con {@link EnableMethodSecurity}
+ *   <li>Stateless: no se mantiene sesión HTTP; cada petición se autentica con JWT.</li>
+ *   <li>CSRF deshabilitado (API REST sin cookies de sesión).</li>
+ *   <li>CORS habilitado vía el {@code CorsConfigurationSource} declarado en {@code CorsConfig}.</li>
+ *   <li>Método de acceso por rol habilitado con {@link EnableMethodSecurity}
  *       para poder usar {@code @PreAuthorize("hasRole('ADMIN')")} en los controllers.</li>
  * </ul>
  *
- * <p>Las rutas se evaluan con el {@code context-path} de la aplicacion ya resuelto
- * por Spring, por lo que {@code /auth/login} aqui corresponde al endpoint publico
+ * <p>Las rutas se evalúan con el {@code context-path} de la aplicación ya resuelto
+ * por Spring, por lo que {@code /auth/login} aquí corresponde al endpoint público
  * {@code /api/auth/login} en la URL externa.
  *
- * <p>Los errores de autenticacion y autorizacion que ocurren <em>antes</em> de entrar
+ * <p>Los errores de autenticación y autorización que ocurren <em>antes</em> de entrar
  * al controller (filtro JWT, rechazos del {@code FilterSecurityInterceptor}) se
- * serializan aqui con el mismo {@link ApiErrorResponse} que usa el
+ * serializan aquí con el mismo {@link ApiErrorResponse} que usa el
  * {@code GlobalExceptionHandler} para los errores capturados dentro del controller.
- * Asi el cliente siempre recibe la misma estructura.
+ * Así el cliente siempre recibe la misma estructura.
  */
 @Configuration
 @EnableWebSecurity
@@ -61,10 +61,10 @@ import java.io.IOException;
 public class SecurityConfig {
 
     private static final String MSG_SESSION_EXPIRED =
-            "Su sesion ha expirado por inactividad. Por favor inicie sesion nuevamente";
-    private static final String MSG_INVALID_TOKEN = "Token invalido";
+            "Su sesión ha expirado por inactividad. Por favor inicie sesión nuevamente";
+    private static final String MSG_INVALID_TOKEN = "Token inválido";
     private static final String MSG_ACCESS_DENIED =
-            "No tiene permisos para realizar esta accion";
+            "No tiene permisos para realizar esta acción";
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomUserDetailsService customUserDetailsService;
@@ -115,12 +115,12 @@ public class SecurityConfig {
     }
 
     /**
-     * Escribe un JSON 401 con el mensaje adecuado segun la causa detectada por el
+     * Escribe un JSON 401 con el mensaje adecuado según la causa detectada por el
      * filtro JWT (ver {@link SecurityConstants#JWT_ERROR_ATTRIBUTE}):
      * <ul>
-     *   <li>Sin atributo o {@code CredentialsExpiredException} -> mensaje "sesion expirada".</li>
-     *   <li>{@code BadCredentialsException} (token malformado/invalido) -> "Token invalido".</li>
-     *   <li>Resto de {@code AuthenticationException} -> fallback "sesion expirada".</li>
+     *   <li>Sin atributo o {@code CredentialsExpiredException} -> mensaje "sesión expirada".</li>
+     *   <li>{@code BadCredentialsException} (token malformado/inválido) -> "Token inválido".</li>
+     *   <li>Resto de {@code AuthenticationException} -> fallback "sesión expirada".</li>
      * </ul>
      */
     @Bean

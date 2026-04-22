@@ -23,9 +23,9 @@ import java.time.LocalDateTime;
 /**
  * Usuario del sistema (tabla {@code users}).
  *
- * <p>La contrasena hasheada ({@link #passwordHash}) se marca con {@link JsonIgnore}
- * como defensa en profundidad: aunque los DTOs ya la excluyen, esta anotacion
- * evita que una serializacion accidental de la entidad la filtre.
+ * <p>La contraseña hasheada ({@link #passwordHash}) se marca con {@link JsonIgnore}
+ * como defensa en profundidad: aunque los DTOs ya la excluyen, esta anotación
+ * evita que una serialización accidental de la entidad la filtre.
  */
 @Entity
 @Table(name = "users")

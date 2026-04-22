@@ -6,10 +6,10 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 /**
- * Estructura estandar de error usada por {@code GlobalExceptionHandler}.
+ * Estructura estándar de error usada por {@code GlobalExceptionHandler}.
  *
- * <p>Campos alineados con {@code docs/api-rest-sprint1.md} seccion 1.2.
- * {@code fieldErrors} es opcional: solo se incluye en errores de validacion.
+ * <p>Campos alineados con {@code docs/api-rest-sprint1.md} sección 1.2.
+ * {@code fieldErrors} es opcional: solo se incluye en errores de validación.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record ApiErrorResponse(
@@ -28,7 +28,7 @@ public record ApiErrorResponse(
     }
 
     /**
-     * Constructor conveniente para errores de validacion con mapa de campos.
+     * Constructor conveniente para errores de validación con mapa de campos.
      */
     public static ApiErrorResponse ofValidation(int status, String error, String message, Map<String, String> fieldErrors) {
         return new ApiErrorResponse(LocalDateTime.now(), status, error, message, fieldErrors);

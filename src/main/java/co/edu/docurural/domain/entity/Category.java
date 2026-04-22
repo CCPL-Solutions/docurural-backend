@@ -22,9 +22,9 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * Categoria documental (tabla {@code categories}).
+ * Categoría documental (tabla {@code categories}).
  *
- * <p>{@link #createdBy} es nullable para soportar el seed de categorias de Flyway
+ * <p>{@link #createdBy} es nullable para soportar el seed de categorías de Flyway
  * ({@code V2__seed_categories.sql}), que se ejecuta antes de existir cualquier
  * usuario administrador.
  */

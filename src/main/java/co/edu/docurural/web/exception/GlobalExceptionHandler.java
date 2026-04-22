@@ -22,29 +22,29 @@ import java.util.Map;
  * Manejador centralizado de excepciones para toda la capa web.
  *
  * <p>Traduce cualquier {@link Throwable} propagado desde controllers/services/filtros
- * a la estructura estandar {@link ApiErrorResponse} definida en
- * {@code docs/api-rest-sprint1.md} seccion 1.2:
+ * a la estructura estándar {@link ApiErrorResponse} definida en
+ * {@code docs/api-rest-sprint1.md} sección 1.2:
  *
  * <pre>
  * {
  *   "timestamp": "2026-04-17T10:30:00",
  *   "status": 400,
  *   "error": "Bad Request",
- *   "message": "Descripcion legible del error",
- *   "fieldErrors": { "campo": "mensaje" }   // solo en validacion
+ *   "message": "Descripción legible del error",
+ *   "fieldErrors": { "campo": "mensaje" }   // solo en validación
  * }
  * </pre>
  *
  * <p>Principios aplicados:
  * <ul>
- *   <li>Los mensajes siempre estan en espanol y coinciden literalmente con los
+ *   <li>Los mensajes siempre están en español y coinciden literalmente con los
  *       textos del contrato de API.</li>
  *   <li>Los errores 4xx se logean como {@code warn}/{@code debug}; los 5xx como
  *       {@code error} con stack trace completo.</li>
  *   <li>El mensaje del 500 nunca expone detalles internos: solo
  *       "Error inesperado del servidor". El detalle real vive en los logs.</li>
  *   <li>{@code AuthenticationException} y {@code AccessDeniedException} lanzadas
- *       por {@code @PreAuthorize} dentro de un controller llegan aqui; las
+ *       por {@code @PreAuthorize} dentro de un controller llegan aquí; las
  *       producidas antes de entrar al controller (filtros JWT) las atienden el
  *       {@code AuthenticationEntryPoint} y el {@code AccessDeniedHandler}
  *       declarados en {@code SecurityConfig}, que emiten el mismo formato JSON.</li>
@@ -54,20 +54,20 @@ import java.util.Map;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    static final String MSG_VALIDATION_ERRORS = "Errores de validacion";
+    static final String MSG_VALIDATION_ERRORS = "Errores de validación";
     static final String MSG_BAD_REQUEST_BODY =
-            "El cuerpo de la solicitud es invalido o contiene un valor no permitido";
-    static final String MSG_BAD_CREDENTIALS = "Correo o contrasena incorrectos";
+            "El cuerpo de la solicitud es inválido o contiene un valor no permitido";
+    static final String MSG_BAD_CREDENTIALS = "Correo o contraseña incorrectos";
     static final String MSG_ACCOUNT_DISABLED =
             "Su cuenta ha sido desactivada. Contacte al administrador";
-    static final String MSG_ACCESS_DENIED = "No tiene permisos para realizar esta accion";
+    static final String MSG_ACCESS_DENIED = "No tiene permisos para realizar esta acción";
     static final String MSG_SESSION_EXPIRED =
-            "Su sesion ha expirado por inactividad. Por favor inicie sesion nuevamente";
+            "Su sesión ha expirado por inactividad. Por favor inicie sesión nuevamente";
     static final String MSG_INTERNAL_SERVER_ERROR = "Error inesperado del servidor";
 
     /**
      * {@link MethodArgumentNotValidException} es lanzada por {@code @Valid} en request bodies.
-     * Se traduce a 400 con el mapa {@code fieldErrors} extraido del {@link org.springframework.validation.BindingResult}.
+     * Se traduce a 400 con el mapa {@code fieldErrors} extraído del {@link org.springframework.validation.BindingResult}.
      * Si hay errores globales (p.ej. {@code @PasswordsMatch} a nivel de clase) se agregan
      * con la clave {@code _global} o el nombre del campo objetivo del {@code ObjectError}.
      */
@@ -85,7 +85,7 @@ public class GlobalExceptionHandler {
             fieldErrors.putIfAbsent(key, globalError.getDefaultMessage());
         });
 
-        log.warn("Validacion fallida en {} {}: {}",
+        log.warn("Validación fallida en {} {}: {}",
                 request.getMethod(), request.getRequestURI(), fieldErrors);
 
         ApiErrorResponse body = ApiErrorResponse.ofValidation(
@@ -98,13 +98,13 @@ public class GlobalExceptionHandler {
 
     /**
      * {@link HttpMessageNotReadableException} cubre cuerpos JSON mal formados y
-     * valores invalidos de enum que Jackson rechaza antes de llegar a Bean Validation
+     * valores inválidos de enum que Jackson rechaza antes de llegar a Bean Validation
      * (p. ej. {@code {"status":"FOO"}} en {@code PATCH /users/{id}/status}).
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiErrorResponse> handleHttpMessageNotReadable(
             HttpMessageNotReadableException ex, HttpServletRequest request) {
-        log.warn("Cuerpo de peticion invalido en {} {}: {}",
+        log.warn("Cuerpo de petición inválido en {} {}: {}",
                 request.getMethod(), request.getRequestURI(), ex.getMostSpecificCause().getMessage());
         return buildResponse(HttpStatus.BAD_REQUEST, MSG_BAD_REQUEST_BODY);
     }
@@ -132,9 +132,9 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Violacion de regla de negocio. El status HTTP viaja como campo de la propia
-     * excepcion (400 o 403 segun el caso: auto-rol, auto-desactivacion, estado
-     * duplicado, ordenamiento invalido, etc.).
+     * Violación de regla de negocio. El status HTTP viaja como campo de la propia
+     * excepción (400 o 403 según el caso: auto-rol, auto-desactivación, estado
+     * duplicado, ordenamiento inválido, etc.).
      */
     @ExceptionHandler(BusinessRuleException.class)
     public ResponseEntity<ApiErrorResponse> handleBusinessRule(
@@ -146,13 +146,13 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Credenciales invalidas (email inexistente o contrasena incorrecta) -> 401
+     * Credenciales inválidas (email inexistente o contraseña incorrecta) -> 401
      * con el mensaje exacto del contrato AUTH-01.
      */
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiErrorResponse> handleBadCredentials(
             BadCredentialsException ex, HttpServletRequest request) {
-        log.warn("Credenciales invalidas en {} {}", request.getMethod(), request.getRequestURI());
+        log.warn("Credenciales inválidas en {} {}", request.getMethod(), request.getRequestURI());
         return buildResponse(HttpStatus.UNAUTHORIZED, MSG_BAD_CREDENTIALS);
     }
 
@@ -181,21 +181,21 @@ public class GlobalExceptionHandler {
     /**
      * Fallback para cualquier otra {@link AuthenticationException} que escape
      * del {@code AuthenticationEntryPoint} (poco probable, pero se cubre para
-     * no caer al handler generico 500 y preservar el mensaje estandar de
-     * sesion expirada).
+     * no caer al handler genérico 500 y preservar el mensaje estándar de
+     * sesión expirada).
      */
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ApiErrorResponse> handleAuthentication(
             AuthenticationException ex, HttpServletRequest request) {
-        log.warn("Excepcion de autenticacion en {} {}: {}",
+        log.warn("Excepción de autenticación en {} {}: {}",
                 request.getMethod(), request.getRequestURI(), ex.getMessage());
         return buildResponse(HttpStatus.UNAUTHORIZED, MSG_SESSION_EXPIRED);
     }
 
     /**
-     * Fallback de ultimo recurso. Cualquier otra excepcion es un bug: se logea
+     * Fallback de último recurso. Cualquier otra excepción es un bug: se logea
      * con stack trace completo pero al cliente solo se le devuelve el mensaje
-     * generico para no filtrar detalles internos.
+     * genérico para no filtrar detalles internos.
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleGeneric(
