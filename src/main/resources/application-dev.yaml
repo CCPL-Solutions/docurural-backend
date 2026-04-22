@@ -5,6 +5,10 @@ spring:
       hibernate:
         format_sql: true
 
+docurural:
+  cors:
+    allowed-origins: http://localhost:4200
+
 logging:
   level:
     co.edu.docurural: DEBUG

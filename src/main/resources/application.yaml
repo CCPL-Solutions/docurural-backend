@@ -14,7 +14,7 @@ spring:
     open-in-view: false
     properties:
       hibernate:
-        physical_naming_strategy: org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy
+        physical_naming_strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
         jdbc:
           time_zone: UTC
   flyway:

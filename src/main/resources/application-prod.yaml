@@ -2,6 +2,10 @@ spring:
   jpa:
     show-sql: false
 
+docurural:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
 server:
   error:
     include-stacktrace: never

@@ -1,0 +1,20 @@
+package co.edu.docurural.domain.enums.enums;
+
+/**
+ * Tipos de acciones auditables registradas en {@code activity_log}.
+ */
+public enum ActivityAction {
+    LOGIN,
+    LOGOUT,
+    UPLOAD,
+    DOWNLOAD,
+    VIEW,
+    EDIT_DOC,
+    DELETE_DOC,
+    CREATE_USER,
+    EDIT_USER,
+    DEACTIVATE_USER,
+    CREATE_CATEGORY,
+    EDIT_CATEGORY,
+    DEACTIVATE_CATEGORY
+}
