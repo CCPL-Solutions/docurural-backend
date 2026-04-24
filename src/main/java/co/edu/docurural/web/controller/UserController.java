@@ -2,6 +2,7 @@ package co.edu.docurural.web.controller;
 
 import co.edu.docurural.config.security.CustomUserPrincipal;
 import co.edu.docurural.service.UserService;
+import co.edu.docurural.web.dto.common.ApiErrorResponse;
 import co.edu.docurural.web.dto.user.CreateUserRequest;
 import co.edu.docurural.web.dto.user.CreateUserResponse;
 import co.edu.docurural.web.dto.user.UpdateStatusRequest;
@@ -10,6 +11,14 @@ import co.edu.docurural.web.dto.user.UpdateUserRequest;
 import co.edu.docurural.web.dto.user.UpdateUserResponse;
 import co.edu.docurural.web.dto.user.UserListResponse;
 import co.edu.docurural.web.dto.user.UserResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +56,8 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Usuarios", description = "CRUD de usuarios (solo ADMIN) — USR-01..USR-05")
+@SecurityRequirement(name = "bearerAuth")
 public class UserController {
 
     private final UserService userService;
@@ -55,9 +66,23 @@ public class UserController {
      * USR-01: listado de usuarios ordenado por {@code sortBy}/{@code sortDir}
      * (defaults: {@code fullName asc}).
      */
+    @Operation(summary = "Listar usuarios", description = "Obtiene un listado de usuarios con paginación y ordenamiento.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Ok",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserListResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Acceso denegado (no ADMIN)",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
     @GetMapping
     public ResponseEntity<UserListResponse> list(
+            @Parameter(name = "sortBy", description = "Campo de ordenamiento: fullName | email | role | status | createdAt", example = "fullName")
             @RequestParam(value = "sortBy", required = false) String sortBy,
+            @Parameter(name = "sortDir", description = "Dirección: asc | desc", example = "asc")
+
             @RequestParam(value = "sortDir", required = false) String sortDir) {
         log.debug("GET /users sortBy={} sortDir={}", sortBy, sortDir);
         return ResponseEntity.ok(userService.list(sortBy, sortDir));
@@ -66,8 +91,23 @@ public class UserController {
     /**
      * USR-02: obtiene un usuario por id.
      */
+    @Operation(summary = "Obtener usuario por ID", description = "Obtiene los detalles de un usuario específico por su ID.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Ok",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Acceso denegado (no ADMIN)",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Usuario no encontrado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
     @GetMapping("/{id}")
-    public ResponseEntity<UserResponse> getById(@PathVariable Long id) {
+    public ResponseEntity<UserResponse> getById(
+            @Parameter(name = "id", description = "ID del usuario", example = "1")
+            @PathVariable Long id) {
         log.debug("GET /users/{}", id);
         return ResponseEntity.ok(userService.findById(id));
     }
@@ -75,6 +115,21 @@ public class UserController {
     /**
      * USR-03: crea un nuevo usuario (201).
      */
+    @Operation(summary = "Crear nuevo usuario", description = "Crea un nuevo usuario con los datos proporcionados.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Usuario creado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateUserResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Campos inválidos",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Acceso denegado (no ADMIN)",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "Conflicto: email ya existe",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
     @PostMapping
     public ResponseEntity<CreateUserResponse> create(
             @Valid @RequestBody CreateUserRequest request,
@@ -88,8 +143,26 @@ public class UserController {
     /**
      * USR-04: edita un usuario existente.
      */
+    @Operation(summary = "Actualizar usuario", description = "Actualiza los datos de un usuario existente por su ID.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Ok",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = UpdateUserResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Campos inválidos",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Acceso denegado (no ADMIN)",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Usuario no encontrado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "Conflicto: email ya existe",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
     @PutMapping("/{id}")
     public ResponseEntity<UpdateUserResponse> update(
+            @Parameter(name = "id", description = "ID del usuario", example = "1")
             @PathVariable Long id,
             @Valid @RequestBody UpdateUserRequest request,
             HttpServletRequest httpRequest) {
@@ -102,8 +175,24 @@ public class UserController {
     /**
      * USR-05: activa o desactiva un usuario.
      */
+    @Operation(summary = "Activar/Desactivar usuario", description = "Cambia el estado de un usuario a ACTIVE o INACTIVE por su ID.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Ok",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = UpdateStatusResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Campos inválidos",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Acceso denegado (no ADMIN)",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Usuario no encontrado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
     @PatchMapping("/{id}/status")
     public ResponseEntity<UpdateStatusResponse> changeStatus(
+            @Parameter(name = "id", description = "ID del usuario", example = "1")
             @PathVariable Long id,
             @Valid @RequestBody UpdateStatusRequest request,
             HttpServletRequest httpRequest) {

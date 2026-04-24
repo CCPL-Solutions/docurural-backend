@@ -1,5 +1,7 @@
 package co.edu.docurural.web.dto.user;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.util.List;
 
 /**
@@ -8,8 +10,11 @@ import java.util.List;
  * <p>Contiene el total de usuarios y la lista completa (sin paginación en el
  * MVP, según nota de implementación de USR-01).
  */
+@Schema(description = "Listado de usuarios del sistema")
 public record UserListResponse(
+        @Schema(description = "Total de usuarios activos e inactivos", example = "12")
         long totalUsers,
+        @Schema(description = "Lista ordenada de usuarios")
         List<UserResponse> users
 ) {
 }

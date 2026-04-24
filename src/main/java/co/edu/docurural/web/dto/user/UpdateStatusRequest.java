@@ -1,6 +1,7 @@
 package co.edu.docurural.web.dto.user;
 
 import co.edu.docurural.domain.enums.enums.UserStatus;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 
 /**
@@ -10,9 +11,11 @@ import jakarta.validation.constraints.NotNull;
  * valores inválidos sean rechazados por Jackson antes de llegar al controller,
  * y para mantener la consistencia con el resto del dominio.
  */
+@Schema(description = "Nuevo estado del usuario")
 public record UpdateStatusRequest(
 
         @NotNull(message = "{validation.user.status.required}")
+        @Schema(description = "Estado: ACTIVE | INACTIVE", example = "INACTIVE")
         UserStatus status
 ) {
 }
