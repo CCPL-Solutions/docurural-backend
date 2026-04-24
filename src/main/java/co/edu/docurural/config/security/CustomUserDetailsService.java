@@ -5,6 +5,8 @@ import co.edu.docurural.domain.enums.enums.UserStatus;
 import co.edu.docurural.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -12,17 +14,17 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 /**
- * Carga usuarios por email para el flujo de autenticacion con
+ * Carga usuarios por email para el flujo de autenticación con
  * {@code DaoAuthenticationProvider}.
  *
  * <p>Reglas:
  * <ul>
  *   <li>Si no existe el correo se lanza {@link UsernameNotFoundException}, que el
  *       proveedor convierte en {@code BadCredentialsException} al enmascarar la
- *       diferencia entre "usuario no existe" y "clave invalida" (comportamiento
+ *       diferencia entre "usuario no existe" y "clave inválida" (comportamiento
  *       por defecto de Spring Security con {@code hideUserNotFoundExceptions=true}).</li>
- *   <li>Si la cuenta esta {@link UserStatus#INACTIVE} se lanza
- *       {@link DisabledException} con el mensaje en espanol exacto del requerimiento
+ *   <li>Si la cuenta está {@link UserStatus#INACTIVE} se lanza
+ *       {@link DisabledException} con el mensaje en español exacto del requerimiento
  *       AUTH-01, para que el {@code GlobalExceptionHandler} responda con 403.</li>
  * </ul>
  */
@@ -32,18 +34,18 @@ import org.springframework.stereotype.Service;
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
+    private final MessageSource messageSource;
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {
                     log.debug("Intento de login con email inexistente: {}", email);
-                    return new UsernameNotFoundException("Correo o contrasena incorrectos");
+                    return new UsernameNotFoundException(resolve("auth.login.invalid-credentials"));
                 });
 
         if (user.getStatus() == UserStatus.INACTIVE) {
-            throw new DisabledException(
-                    "Su cuenta ha sido desactivada. Contacte al administrador");
+            throw new DisabledException(resolve("auth.login.account-disabled"));
         }
 
         return new CustomUserPrincipal(
@@ -52,5 +54,9 @@ public class CustomUserDetailsService implements UserDetailsService {
                 user.getRole(),
                 user.getStatus(),
                 user.getPasswordHash());
+    }
+
+    private String resolve(String key) {
+        return messageSource.getMessage(key, null, LocaleContextHolder.getLocale());
     }
 }

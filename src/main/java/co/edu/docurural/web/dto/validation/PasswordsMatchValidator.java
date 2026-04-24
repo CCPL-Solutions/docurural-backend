@@ -10,9 +10,9 @@ import java.util.Objects;
  * Validador asociado a {@link PasswordsMatch}.
  *
  * <p>Funciona tanto con records como con clases comunes: accede a los campos
- * mediante el accessor del record o, como fallback, por reflexion de campos
- * declarados. Si {@code password} es {@code null} o esta en blanco la
- * validacion pasa (se asume que {@code @NotBlank} en el DTO decide si es
+ * mediante el accessor del record o, como fallback, por reflexión de campos
+ * declarados. Si {@code password} es {@code null} o está en blanco la
+ * validación pasa (se asume que {@code @NotBlank} en el DTO decide si es
  * obligatorio). Cuando {@code password} tiene valor, el validador exige que
  * {@code confirmPassword} sea exactamente igual.
  */
@@ -37,7 +37,7 @@ public class PasswordsMatchValidator implements ConstraintValidator<PasswordsMat
         String password = readField(target, passwordField);
         String confirmPassword = readField(target, confirmPasswordField);
 
-        // Si no se envio password, no hay nada que validar aqui (se deja a @NotBlank si corresponde).
+        // Si no se envió password, no hay nada que validar aquí (se deja a @NotBlank si corresponde).
         if (password == null || password.isBlank()) {
             return true;
         }

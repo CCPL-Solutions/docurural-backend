@@ -1,22 +1,22 @@
 -- =====================================================================
--- DocuRural - Seed de categorias predefinidas (Sprint 1)
+-- DocuRural - Seed de categorías predefinidas (Sprint 1)
 -- =====================================================================
--- Inserta las 8 categorias documentales predefinidas.
+-- Inserta las 8 categorías documentales predefinidas.
 --
--- La operacion es idempotente: ON CONFLICT (name) DO NOTHING evita
--- duplicados si la migracion se reaplica o si las categorias ya
--- existen por otra via. created_by se deja NULL a proposito para no
+-- La operación es idempotente: ON CONFLICT (name) DO NOTHING evita
+-- duplicados si la migración se reaplica o si las categorías ya
+-- existen por otra vía. created_by se deja NULL a propósito para no
 -- acoplar el seed al usuario administrador inicial.
 -- =====================================================================
 
 INSERT INTO categories (name, description, status)
-VALUES ('Actas', 'Actas de reuniones, consejos directivos, comites', 'ACTIVE') ON CONFLICT (name) DO NOTHING;
+VALUES ('Actas', 'Actas de reuniones, consejos directivos, comités', 'ACTIVE') ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO categories (name, description, status)
 VALUES ('Resoluciones', 'Resoluciones rectorales y administrativas', 'ACTIVE') ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO categories (name, description, status)
-VALUES ('Matriculas', 'Documentos de inscripcion y registro de estudiantes', 'ACTIVE') ON CONFLICT (name) DO NOTHING;
+VALUES ('Matrículas', 'Documentos de inscripción y registro de estudiantes', 'ACTIVE') ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO categories (name, description, status)
 VALUES ('Certificados', 'Constancias de estudio, certificados de notas, diplomas',
@@ -26,12 +26,12 @@ INSERT INTO categories (name, description, status)
 VALUES ('Correspondencia', 'Comunicados oficiales enviados y recibidos', 'ACTIVE') ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO categories (name, description, status)
-VALUES ('Informes', 'Informes pedagogicos, academicos, de gestion y del programa de biotecnologia',
+VALUES ('Informes', 'Informes pedagógicos, académicos, de gestión y del programa de biotecnología',
         'ACTIVE') ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO categories (name, description, status)
-VALUES ('Normatividad', 'Manuales de convivencia, PEI, planes de area, protocolos del laboratorio de biotecnologia',
+VALUES ('Normatividad', 'Manuales de convivencia, PEI, planes de área, protocolos del laboratorio de biotecnología',
         'ACTIVE') ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO categories (name, description, status)
-VALUES ('Otro', 'Documentos que no corresponden a ninguna categoria anterior', 'ACTIVE') ON CONFLICT (name) DO NOTHING;
+VALUES ('Otro', 'Documentos que no corresponden a ninguna categoría anterior', 'ACTIVE') ON CONFLICT (name) DO NOTHING;

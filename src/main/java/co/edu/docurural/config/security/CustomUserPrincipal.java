@@ -14,7 +14,7 @@ import java.util.Collections;
  * Principal de seguridad usado tanto por el login con {@code DaoAuthenticationProvider}
  * como por el filtro JWT.
  *
- * <p>Envuelve los datos minimos ({@code id}, {@code email}, {@code role}, {@code status})
+ * <p>Envuelve los datos mínimos ({@code id}, {@code email}, {@code role}, {@code status})
  * necesarios para construir el {@code Authentication} en el contexto de Spring Security
  * sin acoplar las capas superiores a la entidad JPA {@code User}.
  *
@@ -23,7 +23,7 @@ import java.util.Collections;
  *
  * <p>{@link #getPassword()} devuelve el hash BCrypt cuando el principal se construye
  * durante el flujo de login (para que {@code DaoAuthenticationProvider} compare contra
- * la contrasena enviada); en el flujo JWT el hash no esta disponible y se devuelve
+ * la contraseña enviada); en el flujo JWT el hash no está disponible y se devuelve
  * {@code null}.
  */
 @Getter
@@ -44,8 +44,8 @@ public class CustomUserPrincipal implements UserDetails {
     }
 
     /**
-     * Construye un principal sin hash de contrasena; usado por el filtro JWT cuando
-     * los claims ya fueron validados criptograficamente.
+     * Construye un principal sin hash de contraseña; usado por el filtro JWT cuando
+     * los claims ya fueron validados criptográficamente.
      */
     public static CustomUserPrincipal fromJwtClaims(Long id, String email, UserRole role) {
         return new CustomUserPrincipal(id, email, role, UserStatus.ACTIVE, null);

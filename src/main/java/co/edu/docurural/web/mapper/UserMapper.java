@@ -12,14 +12,14 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Mapper estatico sin dependencias (sin MapStruct) entre la entidad
- * {@link User} y los DTOs publicos.
+ * Mapper estático sin dependencias (sin MapStruct) entre la entidad
+ * {@link User} y los DTOs públicos.
  *
  * <p>Responsabilidades:
  * <ul>
  *   <li>Asegurar que {@code passwordHash} nunca se exponga.</li>
  *   <li>Convertir enums a {@link String} para el contrato JSON.</li>
- *   <li>Centralizar los mensajes de confirmacion reutilizados por el servicio.</li>
+ *   <li>Centralizar los mensajes de confirmación reutilizados por el servicio.</li>
  * </ul>
  */
 public final class UserMapper {
@@ -28,7 +28,7 @@ public final class UserMapper {
     }
 
     /**
-     * Convierte una entidad {@link User} a su representacion publica.
+     * Convierte una entidad {@link User} a su representación pública.
      */
     public static UserResponse toResponse(User user) {
         Objects.requireNonNull(user, "user no puede ser null");
@@ -68,7 +68,7 @@ public final class UserMapper {
     }
 
     /**
-     * Construye la respuesta de creacion de usuario (USR-03).
+     * Construye la respuesta de creación de usuario (USR-03).
      */
     public static CreateUserResponse toCreateResponse(User user, String message) {
         Objects.requireNonNull(user, "user no puede ser null");
@@ -84,7 +84,7 @@ public final class UserMapper {
     }
 
     /**
-     * Construye la respuesta de edicion de usuario (USR-04).
+     * Construye la respuesta de edición de usuario (USR-04).
      */
     public static UpdateUserResponse toUpdateResponse(User user, String message) {
         Objects.requireNonNull(user, "user no puede ser null");

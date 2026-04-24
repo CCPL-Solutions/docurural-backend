@@ -137,6 +137,64 @@
 					</execution>
 				</executions>
 			</plugin>
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>0.8.12</version>
+				<configuration>
+					<excludes>
+						<exclude>**/DocururalBackendApplication.class</exclude>
+						<exclude>**/config/CorsConfig.class</exclude>
+						<exclude>**/config/InitialAdminSeeder.class</exclude>
+						<exclude>**/config/security/SecurityConfig.class</exclude>
+						<exclude>**/config/security/SecurityConstants.class</exclude>
+						<exclude>**/config/security/JwtProperties.class</exclude>
+						<exclude>**/config/security/CustomUserPrincipal.class</exclude>
+						<exclude>**/web/dto/**</exclude>
+						<exclude>**/domain/entity/**</exclude>
+						<exclude>**/domain/enums/**</exclude>
+						<exclude>**/domain/repository/**</exclude>
+						<exclude>**/web/exception/BusinessRuleException.class</exclude>
+						<exclude>**/web/exception/ConflictException.class</exclude>
+						<exclude>**/web/exception/ResourceNotFoundException.class</exclude>
+					</excludes>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<phase>test</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>check</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<rule>
+									<element>BUNDLE</element>
+									<limits>
+										<limit>
+											<counter>LINE</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.80</minimum>
+										</limit>
+									</limits>
+								</rule>
+							</rules>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
 

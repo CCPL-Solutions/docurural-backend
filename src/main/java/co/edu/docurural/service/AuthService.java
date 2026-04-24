@@ -15,6 +15,8 @@ import co.edu.docurural.web.mapper.UserMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -27,19 +29,19 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
 /**
- * Servicio de autenticacion para los endpoints {@code AUTH-01} (login) y
+ * Servicio de autenticación para los endpoints {@code AUTH-01} (login) y
  * {@code AUTH-02} (logout).
  *
  * <p>Responsabilidades:
  * <ul>
- *   <li>Delegar la verificacion de credenciales al {@link AuthenticationManager},
+ *   <li>Delegar la verificación de credenciales al {@link AuthenticationManager},
  *       dejando que {@link BadCredentialsException} y {@link DisabledException} se
  *       propaguen hasta el {@code GlobalExceptionHandler} (Fase 7) que los traduce
- *       a 401 y 403 respectivamente con los mensajes en espanol del contrato.</li>
+ *       a 401 y 403 respectivamente con los mensajes en español del contrato.</li>
  *   <li>Emitir el token JWT con {@link JwtTokenProvider}.</li>
  *   <li>Actualizar {@code last_login} tras un login exitoso.</li>
  *   <li>Registrar las acciones {@code LOGIN} y {@code LOGOUT} en {@code activity_log}
- *       a traves de {@link ActivityLogService}.</li>
+ *       a través de {@link ActivityLogService}.</li>
  * </ul>
  */
 @Service
@@ -47,23 +49,23 @@ import java.time.LocalDateTime;
 @Slf4j
 public class AuthService {
 
-    private static final String LOGIN_DETAIL = "Inicio de sesion exitoso";
-    private static final String LOGOUT_DETAIL = "Cierre de sesion";
-    private static final String LOGOUT_MESSAGE = "Sesion cerrada exitosamente";
+    private static final String LOGIN_DETAIL = "Inicio de sesión exitoso";
+    private static final String LOGOUT_DETAIL = "Cierre de sesión";
 
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtProperties jwtProperties;
     private final UserRepository userRepository;
     private final ActivityLogService activityLogService;
+    private final MessageSource messageSource;
 
     /**
      * Autentica al usuario con email + password y emite un token JWT.
      *
      * <p>Comportamiento ante errores:
      * <ul>
-     *   <li>Credenciales invalidas -> propaga {@link BadCredentialsException}
-     *       (401 "Correo o contrasena incorrectos").</li>
+     *   <li>Credenciales inválidas -> propaga {@link BadCredentialsException}
+     *       (401 "Correo o contraseña incorrectos").</li>
      *   <li>Cuenta {@code INACTIVE} -> propaga {@link DisabledException}
      *       (403 "Su cuenta ha sido desactivada...").</li>
      * </ul>
@@ -71,19 +73,19 @@ public class AuthService {
      * <p>Tras un login exitoso:
      * <ol>
      *   <li>Se actualiza {@code user.lastLogin} a {@code LocalDateTime.now()}.</li>
-     *   <li>Se registra la accion {@link ActivityAction#LOGIN} en {@code activity_log}.</li>
+     *   <li>Se registra la acción {@link ActivityAction#LOGIN} en {@code activity_log}.</li>
      *   <li>Se retorna el {@link LoginResponse} con el token, su tipo
-     *       ({@code "Bearer"}), la duracion en segundos y el resumen del usuario.</li>
+     *       ({@code "Bearer"}), la duración en segundos y el resumen del usuario.</li>
      * </ol>
      *
      * @param request     credenciales del usuario (email + password) ya validadas por Bean Validation.
-     * @param httpRequest peticion HTTP usada para resolver la IP de origen del registro de auditoria.
+     * @param httpRequest petición HTTP usada para resolver la IP de origen del registro de auditoría.
      * @return {@link LoginResponse} listo para serializar como body del endpoint.
      */
     @Transactional
     public LoginResponse login(LoginRequest request, HttpServletRequest httpRequest) {
         // Deja que BadCredentialsException y DisabledException se propaguen;
-        // el GlobalExceptionHandler (Fase 7) se encargara de traducirlas a 401 / 403.
+        // el GlobalExceptionHandler (Fase 7) se encargará de traducirlas a 401 / 403.
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.email(), request.password()));
 
@@ -111,19 +113,19 @@ public class AuthService {
     }
 
     /**
-     * Registra el cierre de sesion del usuario autenticado actual en
-     * {@code activity_log} y retorna el mensaje de confirmacion del contrato
+     * Registra el cierre de sesión del usuario autenticado actual en
+     * {@code activity_log} y retorna el mensaje de confirmación del contrato
      * {@code AUTH-02}.
      *
-     * <p>Al ser JWT stateless, la invalidacion del token se gestiona en el cliente;
-     * este metodo solo persiste el evento {@link ActivityAction#LOGOUT} para fines
-     * de auditoria.
+     * <p>Al ser JWT stateless, la invalidación del token se gestiona en el cliente;
+     * este método solo persiste el evento {@link ActivityAction#LOGOUT} para fines
+     * de auditoría.
      *
-     * @param httpRequest peticion HTTP usada para resolver la IP de origen del registro.
-     * @return {@link MessageResponse} con el mensaje "Sesion cerrada exitosamente".
+     * @param httpRequest petición HTTP usada para resolver la IP de origen del registro.
+     * @return {@link MessageResponse} con el mensaje "Sesión cerrada exitosamente".
      * @throws IllegalStateException si no hay un usuario autenticado en el contexto
-     *                               (lo cual no deberia ocurrir porque el endpoint
-     *                               exige autenticacion).
+     *                               (lo cual no debería ocurrir porque el endpoint
+     *                               exige autenticación).
      */
     @Transactional
     public MessageResponse logout(HttpServletRequest httpRequest) {
@@ -137,7 +139,7 @@ public class AuthService {
                 httpRequest);
 
         log.info("Logout registrado para userId={} email={}", principal.getId(), principal.getEmail());
-        return new MessageResponse(LOGOUT_MESSAGE);
+        return new MessageResponse(resolve("auth.logout.success"));
     }
 
     private CustomUserPrincipal requireCurrentPrincipal() {
@@ -153,5 +155,9 @@ public class AuthService {
                             + (principal == null ? "null" : principal.getClass().getName()));
         }
         return customPrincipal;
+    }
+
+    private String resolve(String key, Object... args) {
+        return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
     }
 }

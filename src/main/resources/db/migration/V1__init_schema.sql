@@ -1,17 +1,17 @@
 -- =====================================================================
 -- DocuRural - Esquema inicial (Sprint 1)
 -- =====================================================================
--- Crea las cuatro tablas base del MVP segun docs/modelo-datos.md:
---   * users         : cuentas del sistema (autenticacion + roles)
---   * categories    : taxonomia documental (8 categorias predefinidas)
+-- Crea las cuatro tablas base del MVP según docs/modelo-datos.md:
+--   * users         : cuentas del sistema (autenticación + roles)
+--   * categories    : taxonomía documental (8 categorías predefinidas)
 --   * documents     : metadatos de documentos cargados
---   * activity_log  : pista de auditoria de acciones de usuarios
+--   * activity_log  : pista de auditoría de acciones de usuarios
 --
 -- Convenciones:
---   * Borrado logico (status) en users, categories y documents.
+--   * Borrado lógico (status) en users, categories y documents.
 --   * Enums modelados como VARCHAR + CHECK para mantener legibilidad.
 --   * created_by en categories admite NULL para soportar el seed
---     de categorias sin acoplarlo a la creacion del admin inicial.
+--     de categorías sin acoplarlo a la creación del admin inicial.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
@@ -84,9 +84,9 @@ CREATE INDEX idx_documents_uploaded_by ON documents (uploaded_by);
 CREATE INDEX idx_documents_created_at ON documents (created_at);
 CREATE INDEX idx_documents_status ON documents (status);
 
--- TODO Sprint 3: indice GIN/pg_trgm sobre documents.title y documents.description
--- para soportar busqueda full-text rapida (RF-03). Se difiere del Sprint 1
--- porque la funcionalidad de busqueda no entra en el alcance actual.
+-- TODO Sprint 3: índice GIN/pg_trgm sobre documents.title y documents.description
+-- para soportar búsqueda full-text rápida (RF-03). Se difiere del Sprint 1
+-- porque la funcionalidad de búsqueda no entra en el alcance actual.
 
 -- ---------------------------------------------------------------------
 -- Tabla: activity_log

@@ -19,6 +19,8 @@ import co.edu.docurural.web.mapper.UserMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,49 +33,29 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Servicio de gestion de usuarios para los endpoints {@code USR-01..USR-05}.
+ * Servicio de gestión de usuarios para los endpoints {@code USR-01..USR-05}.
  *
  * <p>Responsabilidades:
  * <ul>
  *   <li>Orquestar el CRUD de usuarios respetando las reglas del contrato
- *       {@code docs/api-rest-sprint1.md} (unicidad de email, auto-proteccion
+ *       {@code docs/api-rest-sprint1.md} (unicidad de email, auto-protección
  *       del administrador sobre su propio rol y estado).</li>
- *   <li>Hashear contrasenas con {@link PasswordEncoder} antes de persistir.</li>
+ *   <li>Hashear contraseñas con {@link PasswordEncoder} antes de persistir.</li>
  *   <li>Registrar las acciones {@code CREATE_USER}, {@code EDIT_USER} y
  *       {@code DEACTIVATE_USER} en {@code activity_log} con el formato del
  *       contrato.</li>
- *   <li>Mapear entidad -> DTO exclusivamente a traves de {@link UserMapper}
- *       para garantizar que {@code passwordHash} jamas se expone.</li>
+ *   <li>Mapear entidad -> DTO exclusivamente a través de {@link UserMapper}
+ *       para garantizar que {@code passwordHash} jamás se expone.</li>
  * </ul>
  *
  * <p>Todas las excepciones de negocio se propagan hacia el
- * {@code GlobalExceptionHandler} (Fase 7) que las traduce al formato estandar
+ * {@code GlobalExceptionHandler} (Fase 7) que las traduce al formato estándar
  * de error.
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class UserService {
-
-    private static final String USER_CREATED_MESSAGE = "Usuario creado exitosamente";
-    private static final String USER_UPDATED_MESSAGE = "Usuario actualizado exitosamente";
-    private static final String USER_ACTIVATED_MESSAGE = "Usuario activado exitosamente";
-    private static final String USER_DEACTIVATED_MESSAGE = "Usuario desactivado exitosamente";
-
-    private static final String EMAIL_ALREADY_REGISTERED_MESSAGE =
-            "Ya existe un usuario registrado con este correo electronico";
-    private static final String SELF_ROLE_CHANGE_MESSAGE =
-            "No puede cambiar su propio rol";
-    private static final String SELF_DEACTIVATION_MESSAGE =
-            "No puede desactivar su propia cuenta";
-    private static final String DUPLICATE_STATUS_MESSAGE =
-            "El usuario ya se encuentra en el estado solicitado";
-    private static final String PASSWORDS_MISMATCH_MESSAGE =
-            "Las contrasenas no coinciden";
-    private static final String UNSUPPORTED_SORT_FIELD_MESSAGE =
-            "Campo de ordenamiento no soportado: ";
-    private static final String UNSUPPORTED_SORT_DIRECTION_MESSAGE =
-            "Direccion de ordenamiento no soportada: ";
 
     private static final String DEFAULT_SORT_BY = "fullName";
     private static final String DEFAULT_SORT_DIR = "asc";
@@ -84,17 +66,18 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final ActivityLogService activityLogService;
+    private final MessageSource messageSource;
 
     /**
-     * Retorna el listado completo de usuarios ordenado segun los parametros.
+     * Retorna el listado completo de usuarios ordenado según los parámetros.
      *
      * @param sortBy  campo de ordenamiento (default {@code fullName}).
      *                Debe pertenecer a {@link #ALLOWED_SORT_FIELDS}.
-     * @param sortDir direccion {@code asc} o {@code desc} (default {@code asc},
+     * @param sortDir dirección {@code asc} o {@code desc} (default {@code asc},
      *                case-insensitive).
      * @return {@link UserListResponse} con el total y la lista ya mapeada.
      * @throws BusinessRuleException {@code 400} si {@code sortBy} o
-     *                               {@code sortDir} son invalidos.
+     *                               {@code sortDir} son inválidos.
      */
     @Transactional(readOnly = true)
     public UserListResponse list(String sortBy, String sortDir) {
@@ -104,7 +87,7 @@ public class UserService {
         if (!ALLOWED_SORT_FIELDS.contains(resolvedSortBy)) {
             throw new BusinessRuleException(
                     HttpStatus.BAD_REQUEST,
-                    UNSUPPORTED_SORT_FIELD_MESSAGE + resolvedSortBy);
+                    resolve("user.sort.unsupported-field", resolvedSortBy));
         }
 
         Sort.Direction direction;
@@ -113,7 +96,7 @@ public class UserService {
         } catch (IllegalArgumentException ex) {
             throw new BusinessRuleException(
                     HttpStatus.BAD_REQUEST,
-                    UNSUPPORTED_SORT_DIRECTION_MESSAGE + resolvedSortDir);
+                    resolve("user.sort.unsupported-direction", resolvedSortDir));
         }
 
         List<User> users = userRepository.findAll(Sort.by(direction, resolvedSortBy));
@@ -131,34 +114,34 @@ public class UserService {
     public UserResponse findById(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Usuario no encontrado con id " + id));
+                        resolve("user.not-found", id)));
         return UserMapper.toResponse(user);
     }
 
     /**
-     * Crea un nuevo usuario con {@code status = ACTIVE} y hashea la contrasena
+     * Crea un nuevo usuario con {@code status = ACTIVE} y hashea la contraseña
      * con BCrypt.
      *
      * <p>Reglas:
      * <ul>
-     *   <li>Password y confirmacion deben coincidir (defensa redundante; la
-     *       anotacion {@code @PasswordsMatch} ya se ejecuto a nivel de DTO).</li>
-     *   <li>El email debe ser unico entre usuarios activos e inactivos.</li>
-     *   <li>Al finalizar se registra la accion {@code CREATE_USER} con detalle
+     *   <li>Password y confirmación deben coincidir (defensa redundante; la
+     *       anotación {@code @PasswordsMatch} ya se ejecutó a nivel de DTO).</li>
+     *   <li>El email debe ser único entre usuarios activos e inactivos.</li>
+     *   <li>Al finalizar se registra la acción {@code CREATE_USER} con detalle
      *       {@code "Usuario creado: {id}"} (contrato USR-03).</li>
      * </ul>
      *
-     * @throws BusinessRuleException {@code 400} si las contrasenas no coinciden.
-     * @throws ConflictException     {@code 409} si el email ya esta registrado.
+     * @throws BusinessRuleException {@code 400} si las contraseñas no coinciden.
+     * @throws ConflictException     {@code 409} si el email ya está registrado.
      */
     @Transactional
     public CreateUserResponse create(CreateUserRequest request, Long adminId, HttpServletRequest httpRequest) {
         if (!request.password().equals(request.confirmPassword())) {
-            throw new BusinessRuleException(HttpStatus.BAD_REQUEST, PASSWORDS_MISMATCH_MESSAGE);
+            throw new BusinessRuleException(HttpStatus.BAD_REQUEST, resolve("user.passwords.mismatch"));
         }
 
         if (userRepository.existsByEmail(request.email())) {
-            throw new ConflictException(EMAIL_ALREADY_REGISTERED_MESSAGE);
+            throw new ConflictException(resolve("user.email.already-registered"));
         }
 
         User newUser = User.builder()
@@ -181,7 +164,7 @@ public class UserService {
         log.info("Usuario creado: id={} email={} role={} por adminId={}",
                 savedUser.getId(), savedUser.getEmail(), savedUser.getRole(), adminId);
 
-        return UserMapper.toCreateResponse(savedUser, USER_CREATED_MESSAGE);
+        return UserMapper.toCreateResponse(savedUser, resolve("user.created.success"));
     }
 
     /**
@@ -189,11 +172,11 @@ public class UserService {
      *
      * <p>Reglas:
      * <ul>
-     *   <li>Si el email cambia, debe ser unico entre los demas usuarios.</li>
+     *   <li>Si el email cambia, debe ser único entre los demás usuarios.</li>
      *   <li>El administrador no puede cambiar su propio rol.</li>
-     *   <li>Si se envia {@code password}, debe coincidir con
-     *       {@code confirmPassword} y se rehashea; si se omite o llega vacio,
-     *       la contrasena actual se preserva.</li>
+     *   <li>Si se envía {@code password}, debe coincidir con
+     *       {@code confirmPassword} y se rehashea; si se omite o llega vacío,
+     *       la contraseña actual se preserva.</li>
      *   <li>El detalle del log lista los campos efectivamente modificados en el
      *       formato {@code "Campos modificados: [field1, field2, ...]"}
      *       (contrato USR-04).</li>
@@ -201,7 +184,7 @@ public class UserService {
      *
      * @throws ResourceNotFoundException {@code 404} si el id no existe.
      * @throws ConflictException         {@code 409} si el nuevo email ya pertenece a otro usuario.
-     * @throws BusinessRuleException     {@code 400} si las contrasenas no coinciden,
+     * @throws BusinessRuleException     {@code 400} si las contraseñas no coinciden,
      *                                   o {@code 403} si intenta cambiar su propio rol.
      */
     @Transactional
@@ -210,21 +193,21 @@ public class UserService {
 
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Usuario no encontrado con id " + id));
+                        resolve("user.not-found", id)));
 
         boolean emailChanged = !request.email().equalsIgnoreCase(user.getEmail());
         if (emailChanged && userRepository.existsByEmailAndIdNot(request.email(), id)) {
-            throw new ConflictException(EMAIL_ALREADY_REGISTERED_MESSAGE);
+            throw new ConflictException(resolve("user.email.already-registered"));
         }
 
         boolean roleChanged = request.role() != user.getRole();
         if (roleChanged && id.equals(adminId)) {
-            throw new BusinessRuleException(HttpStatus.FORBIDDEN, SELF_ROLE_CHANGE_MESSAGE);
+            throw new BusinessRuleException(HttpStatus.FORBIDDEN, resolve("user.self-role-change.forbidden"));
         }
 
         boolean passwordProvided = request.password() != null && !request.password().isBlank();
         if (passwordProvided && !request.password().equals(request.confirmPassword())) {
-            throw new BusinessRuleException(HttpStatus.BAD_REQUEST, PASSWORDS_MISMATCH_MESSAGE);
+            throw new BusinessRuleException(HttpStatus.BAD_REQUEST, resolve("user.passwords.mismatch"));
         }
 
         List<String> modifiedFields = new ArrayList<>();
@@ -259,7 +242,7 @@ public class UserService {
         log.info("Usuario actualizado: id={} modifiedFields={} por adminId={}",
                 updatedUser.getId(), modifiedFields, adminId);
 
-        return UserMapper.toUpdateResponse(updatedUser, USER_UPDATED_MESSAGE);
+        return UserMapper.toUpdateResponse(updatedUser, resolve("user.updated.success"));
     }
 
     /**
@@ -269,7 +252,7 @@ public class UserService {
      * <ul>
      *   <li>El nuevo estado no puede ser igual al actual.</li>
      *   <li>El administrador no puede desactivar su propia cuenta.</li>
-     *   <li>Se registra la accion {@code DEACTIVATE_USER} incluso al reactivar:
+     *   <li>Se registra la acción {@code DEACTIVATE_USER} incluso al reactivar:
      *       el enum reutiliza el mismo valor (plan Fase 5 - nota del punto 3.3).
      *       El detalle incluye el nuevo estado aplicado.</li>
      * </ul>
@@ -277,7 +260,7 @@ public class UserService {
      * @throws ResourceNotFoundException {@code 404} si el id no existe.
      * @throws BusinessRuleException     {@code 400} si el usuario ya tiene el estado
      *                                   solicitado, o {@code 403} si el admin intenta
-     *                                   desactivarse a si mismo.
+     *                                   desactivarse a sí mismo.
      */
     @Transactional
     public UpdateStatusResponse changeStatus(
@@ -285,24 +268,24 @@ public class UserService {
 
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Usuario no encontrado con id " + id));
+                        resolve("user.not-found", id)));
 
         UserStatus newStatus = request.status();
 
         if (user.getStatus() == newStatus) {
-            throw new BusinessRuleException(HttpStatus.BAD_REQUEST, DUPLICATE_STATUS_MESSAGE);
+            throw new BusinessRuleException(HttpStatus.BAD_REQUEST, resolve("user.status.duplicate"));
         }
 
         if (id.equals(adminId) && newStatus == UserStatus.INACTIVE) {
-            throw new BusinessRuleException(HttpStatus.FORBIDDEN, SELF_DEACTIVATION_MESSAGE);
+            throw new BusinessRuleException(HttpStatus.FORBIDDEN, resolve("user.self-deactivation.forbidden"));
         }
 
         user.setStatus(newStatus);
         User updatedUser = userRepository.save(user);
 
         String message = newStatus == UserStatus.ACTIVE
-                ? USER_ACTIVATED_MESSAGE
-                : USER_DEACTIVATED_MESSAGE;
+                ? resolve("user.activated.success")
+                : resolve("user.deactivated.success");
 
         activityLogService.record(
                 ActivityAction.DEACTIVATE_USER,
@@ -315,5 +298,9 @@ public class UserService {
                 updatedUser.getId(), newStatus, adminId);
 
         return UserMapper.toStatusResponse(updatedUser, message);
+    }
+
+    private String resolve(String key, Object... args) {
+        return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
     }
 }

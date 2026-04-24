@@ -11,30 +11,30 @@ import jakarta.validation.constraints.Size;
  * Request body de {@code PUT /api/users/{id}} (USR-04).
  *
  * <p>{@code password} y {@code confirmPassword} son opcionales: si
- * {@code password} se omite o se envia vacio, la contrasena actual se
- * preserva. La regla de tamano minimo se evalua con
+ * {@code password} se omite o se envía vacío, la contraseña actual se
+ * preserva. La regla de tamaño mínimo se evalúa con
  * {@code @Size(min = 8)}, que por defecto ignora los valores {@code null};
- * la cadena vacia no supera {@code min=8}, por lo que el servicio deberia
- * tratarla como "mantener" antes de llegar aqui, o bien el cliente debe
- * omitir el campo. {@link PasswordsMatch} solo entra en accion cuando
- * {@code password} es no nulo y no vacio.
+ * la cadena vacía no supera {@code min=8}, por lo que el servicio debería
+ * tratarla como "mantener" antes de llegar aquí, o bien el cliente debe
+ * omitir el campo. {@link PasswordsMatch} solo entra en acción cuando
+ * {@code password} es no nulo y no vacío.
  */
 @PasswordsMatch
 public record UpdateUserRequest(
 
-        @NotBlank(message = "El nombre es obligatorio")
-        @Size(min = 3, max = 100, message = "El nombre debe tener entre 3 y 100 caracteres")
+        @NotBlank(message = "{validation.user.full-name.required}")
+        @Size(min = 3, max = 100, message = "{validation.user.full-name.size}")
         String fullName,
 
-        @NotBlank(message = "El correo electronico es obligatorio")
-        @Email(message = "El correo electronico no tiene un formato valido")
-        @Size(max = 150, message = "El correo electronico no puede exceder 150 caracteres")
+        @NotBlank(message = "{validation.user.email.required}")
+        @Email(message = "{validation.user.email.format}")
+        @Size(max = 150, message = "{validation.user.email.size}")
         String email,
 
-        @NotNull(message = "El rol es obligatorio")
+        @NotNull(message = "{validation.user.role.required}")
         UserRole role,
 
-        @Size(min = 8, message = "La contrasena debe tener minimo 8 caracteres")
+        @Size(min = 8, message = "{validation.user.password.size}")
         String password,
 
         String confirmPassword

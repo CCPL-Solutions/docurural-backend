@@ -10,30 +10,30 @@ import jakarta.validation.constraints.Size;
 /**
  * Request body de {@code POST /api/users} (USR-03).
  *
- * <p>La validacion cruzada {@code password} / {@code confirmPassword} se
+ * <p>La validación cruzada {@code password} / {@code confirmPassword} se
  * delega en {@link PasswordsMatch}; {@code @NotBlank} en {@code password}
- * garantiza que para esta operacion la contrasena sea obligatoria.
+ * garantiza que para esta operación la contraseña sea obligatoria.
  */
 @PasswordsMatch
 public record CreateUserRequest(
 
-        @NotBlank(message = "El nombre es obligatorio")
-        @Size(min = 3, max = 100, message = "El nombre debe tener entre 3 y 100 caracteres")
+        @NotBlank(message = "{validation.user.full-name.required}")
+        @Size(min = 3, max = 100, message = "{validation.user.full-name.size}")
         String fullName,
 
-        @NotBlank(message = "El correo electronico es obligatorio")
-        @Email(message = "El correo electronico no tiene un formato valido")
-        @Size(max = 150, message = "El correo electronico no puede exceder 150 caracteres")
+        @NotBlank(message = "{validation.user.email.required}")
+        @Email(message = "{validation.user.email.format}")
+        @Size(max = 150, message = "{validation.user.email.size}")
         String email,
 
-        @NotBlank(message = "La contrasena es obligatoria")
-        @Size(min = 8, message = "La contrasena debe tener minimo 8 caracteres")
+        @NotBlank(message = "{validation.user.password.required}")
+        @Size(min = 8, message = "{validation.user.password.size}")
         String password,
 
-        @NotBlank(message = "La confirmacion de contrasena es obligatoria")
+        @NotBlank(message = "{validation.user.confirm-password.required}")
         String confirmPassword,
 
-        @NotNull(message = "El rol es obligatorio")
+        @NotNull(message = "{validation.user.role.required}")
         UserRole role
 ) {
 }

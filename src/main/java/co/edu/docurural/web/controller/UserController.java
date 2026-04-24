@@ -30,17 +30,17 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Controlador REST del modulo de Usuarios (USR-01..USR-05).
+ * Controlador REST del módulo de Usuarios (USR-01..USR-05).
  *
- * <p>Todos los endpoints requieren rol {@code ADMIN}; la restriccion se declara
+ * <p>Todos los endpoints requieren rol {@code ADMIN}; la restricción se declara
  * a nivel de clase con {@code @PreAuthorize("hasRole('ADMIN')")} para evitar
- * duplicacion. El {@code context-path} {@code /api} se configura globalmente en
- * {@code application.yaml}, por eso aqui el mapping solo incluye {@code /users}.
+ * duplicación. El {@code context-path} {@code /api} se configura globalmente en
+ * {@code application.yaml}, por eso aquí el mapping solo incluye {@code /users}.
  *
- * <p>La logica de negocio, validacion de reglas (email unico, auto-proteccion
+ * <p>La lógica de negocio, validación de reglas (email único, auto-protección
  * de admin, cambio de estado, etc.) y el registro en {@code activity_log} vive
  * en {@link UserService}. El {@code adminId} se extrae del
- * {@link SecurityContextHolder} via {@link CustomUserPrincipal}.
+ * {@link SecurityContextHolder} vía {@link CustomUserPrincipal}.
  */
 @RestController
 @RequestMapping("/users")
@@ -118,8 +118,8 @@ public class UserController {
      * Obtiene el id del administrador autenticado desde el {@code SecurityContext}.
      *
      * <p>El filtro JWT siempre establece un {@link CustomUserPrincipal} como
-     * {@code principal}; si por alguna razon eso no ocurre se lanza
-     * {@link IllegalStateException} (sintoma de un bug en la cadena de
+     * {@code principal}; si por alguna razón eso no ocurre se lanza
+     * {@link IllegalStateException} (síntoma de un bug en la cadena de
      * seguridad, no un error de negocio).
      */
     private Long currentAdminId() {
