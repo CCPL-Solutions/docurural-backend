@@ -3,7 +3,15 @@ package co.edu.docurural.web.controller;
 import co.edu.docurural.service.AuthService;
 import co.edu.docurural.web.dto.auth.LoginRequest;
 import co.edu.docurural.web.dto.auth.LoginResponse;
+import co.edu.docurural.web.dto.common.ApiErrorResponse;
 import co.edu.docurural.web.dto.common.MessageResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Autenticación", description = "Login y logout — AUTH-01, AUTH-02")
 public class AuthController {
 
     private final AuthService authService;
@@ -42,6 +51,15 @@ public class AuthController {
      * @param httpRequest petición HTTP (para resolver la IP del registro de auditoría).
      * @return 200 {@link LoginResponse} con token, tipo, expiración y resumen del usuario.
      */
+    @Operation(summary = "Iniciar sesión", description = "Autentica con email y contraseña. Devuelve token JWT.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Login exitoso",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Campos inválidos",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Credenciales incorrectas",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(
             @Valid @RequestBody LoginRequest request,
@@ -61,6 +79,14 @@ public class AuthController {
      * @param httpRequest petición HTTP (para resolver la IP del registro de auditoría).
      * @return 200 {@link MessageResponse} con el mensaje de confirmación.
      */
+    @Operation(summary = "Cerrar sesión", description = "Registra el logout en el log de actividad. El cliente invalida el token localmente.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Logout registrado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = MessageResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
     @PostMapping("/logout")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MessageResponse> logout(HttpServletRequest httpRequest) {

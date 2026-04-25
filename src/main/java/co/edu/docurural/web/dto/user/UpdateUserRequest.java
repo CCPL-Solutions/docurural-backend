@@ -2,6 +2,7 @@ package co.edu.docurural.web.dto.user;
 
 import co.edu.docurural.domain.enums.enums.UserRole;
 import co.edu.docurural.web.dto.validation.PasswordsMatch;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -20,23 +21,29 @@ import jakarta.validation.constraints.Size;
  * {@code password} es no nulo y no vacío.
  */
 @PasswordsMatch
+@Schema(description = "Campos editables del usuario")
 public record UpdateUserRequest(
 
         @NotBlank(message = "{validation.user.full-name.required}")
         @Size(min = 3, max = 100, message = "{validation.user.full-name.size}")
+        @Schema(description = "Nombre completo", example = "María García López")
         String fullName,
 
         @NotBlank(message = "{validation.user.email.required}")
         @Email(message = "{validation.user.email.format}")
         @Size(max = 150, message = "{validation.user.email.size}")
+        @Schema(description = "Email", example = "maria.garcia@docurural.edu.co")
         String email,
 
         @NotNull(message = "{validation.user.role.required}")
+        @Schema(description = "Nuevo rol", example = "READER")
         UserRole role,
 
         @Size(min = 8, message = "{validation.user.password.size}")
+        @Schema(description = "Nueva contraseña (opcional, omitir para no cambiar)", example = "NuevaClave1!")
         String password,
 
+        @Schema(description = "Confirmación de la nueva contraseña (debe coincidir con 'password')", example = "NuevaClave1!")
         String confirmPassword
 ) {
 }

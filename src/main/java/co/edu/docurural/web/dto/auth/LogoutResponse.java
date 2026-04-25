@@ -1,7 +1,13 @@
 package co.edu.docurural.web.dto.auth;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Response body de {@code POST /api/auth/logout} (AUTH-02).
  */
-public record LogoutResponse(String message) {
+@Schema(description = "Confirmación de cierre de sesión")
+public record LogoutResponse(
+        @Schema(description = "Mensaje de confirmación", example = "Sesión cerrada exitosamente")
+        String message
+) {
 }

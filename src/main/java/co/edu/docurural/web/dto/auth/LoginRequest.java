@@ -1,18 +1,17 @@
 package co.edu.docurural.web.dto.auth;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
 /**
  * Request body de {@code POST /api/auth/login} (AUTH-01).
  */
+@Schema(description = "Credenciales de acceso")
 public record LoginRequest(
-
-        @NotBlank(message = "{validation.user.email.required}")
-        @Email(message = "{validation.user.email.format}")
-        String email,
-
-        @NotBlank(message = "{validation.user.password.required}")
-        String password
+        @Schema(description = "Correo electrónico registrado", example = "admin@docurural.edu.co")
+        @NotBlank @Email String email,
+        @Schema(description = "Contraseña del usuario", example = "Admin1234!")
+        @NotBlank String password
 ) {
 }
