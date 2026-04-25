@@ -1,6 +1,6 @@
 package co.edu.docurural.web.dto.user;
 
-import co.edu.docurural.domain.enums.enums.UserStatus;
+import co.edu.docurural.domain.enums.UserStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 

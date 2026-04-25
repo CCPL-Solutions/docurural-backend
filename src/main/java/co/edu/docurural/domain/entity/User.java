@@ -1,7 +1,7 @@
 package co.edu.docurural.domain.entity;
 
-import co.edu.docurural.domain.enums.enums.UserRole;
-import co.edu.docurural.domain.enums.enums.UserStatus;
+import co.edu.docurural.domain.enums.UserRole;
+import co.edu.docurural.domain.enums.UserStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

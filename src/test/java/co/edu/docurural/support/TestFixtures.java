@@ -1,8 +1,8 @@
 package co.edu.docurural.support;
 
 import co.edu.docurural.domain.entity.User;
-import co.edu.docurural.domain.enums.enums.UserRole;
-import co.edu.docurural.domain.enums.enums.UserStatus;
+import co.edu.docurural.domain.enums.UserRole;
+import co.edu.docurural.domain.enums.UserStatus;
 import co.edu.docurural.web.dto.auth.LoginRequest;
 import co.edu.docurural.web.dto.user.CreateUserRequest;
 import co.edu.docurural.web.dto.user.UpdateStatusRequest;

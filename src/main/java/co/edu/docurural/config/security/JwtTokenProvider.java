@@ -1,7 +1,7 @@
 package co.edu.docurural.config.security;
 
 import co.edu.docurural.domain.entity.User;
-import co.edu.docurural.domain.enums.enums.UserRole;
+import co.edu.docurural.domain.enums.UserRole;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;

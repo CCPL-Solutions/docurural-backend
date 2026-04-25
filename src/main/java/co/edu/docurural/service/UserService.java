@@ -1,8 +1,8 @@
 package co.edu.docurural.service;
 
 import co.edu.docurural.domain.entity.User;
-import co.edu.docurural.domain.enums.enums.ActivityAction;
-import co.edu.docurural.domain.enums.enums.UserStatus;
+import co.edu.docurural.domain.enums.ActivityAction;
+import co.edu.docurural.domain.enums.UserStatus;
 import co.edu.docurural.domain.repository.UserRepository;
 import co.edu.docurural.web.dto.user.CreateUserRequest;
 import co.edu.docurural.web.dto.user.CreateUserResponse;

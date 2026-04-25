@@ -1,6 +1,6 @@
 package co.edu.docurural.domain.entity;
 
-import co.edu.docurural.domain.enums.enums.CategoryStatus;
+import co.edu.docurural.domain.enums.CategoryStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

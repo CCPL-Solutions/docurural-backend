@@ -1,6 +1,6 @@
 package co.edu.docurural.web.dto.user;
 
-import co.edu.docurural.domain.enums.enums.UserRole;
+import co.edu.docurural.domain.enums.UserRole;
 import co.edu.docurural.web.dto.validation.PasswordsMatch;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;

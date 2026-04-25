@@ -3,7 +3,7 @@ package co.edu.docurural.service;
 import co.edu.docurural.domain.entity.ActivityLog;
 import co.edu.docurural.domain.entity.Document;
 import co.edu.docurural.domain.entity.User;
-import co.edu.docurural.domain.enums.enums.ActivityAction;
+import co.edu.docurural.domain.enums.ActivityAction;
 import co.edu.docurural.domain.repository.ActivityLogRepository;
 import co.edu.docurural.domain.repository.DocumentRepository;
 import co.edu.docurural.domain.repository.UserRepository;

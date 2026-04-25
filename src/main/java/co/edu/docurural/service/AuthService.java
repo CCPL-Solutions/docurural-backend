@@ -4,7 +4,7 @@ import co.edu.docurural.config.security.CustomUserPrincipal;
 import co.edu.docurural.config.security.JwtProperties;
 import co.edu.docurural.config.security.JwtTokenProvider;
 import co.edu.docurural.domain.entity.User;
-import co.edu.docurural.domain.enums.enums.ActivityAction;
+import co.edu.docurural.domain.enums.ActivityAction;
 import co.edu.docurural.domain.repository.UserRepository;
 import co.edu.docurural.web.dto.auth.LoginRequest;
 import co.edu.docurural.web.dto.auth.LoginResponse;

@@ -1,6 +1,6 @@
 package co.edu.docurural.config.security;
 
-import co.edu.docurural.domain.enums.enums.UserRole;
+import co.edu.docurural.domain.enums.UserRole;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

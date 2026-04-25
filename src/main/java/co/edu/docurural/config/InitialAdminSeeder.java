@@ -1,8 +1,8 @@
 package co.edu.docurural.config;
 
 import co.edu.docurural.domain.entity.User;
-import co.edu.docurural.domain.enums.enums.UserRole;
-import co.edu.docurural.domain.enums.enums.UserStatus;
+import co.edu.docurural.domain.enums.UserRole;
+import co.edu.docurural.domain.enums.UserStatus;
 import co.edu.docurural.domain.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
