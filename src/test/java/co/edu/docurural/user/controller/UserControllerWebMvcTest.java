@@ -1,7 +1,7 @@
 package co.edu.docurural.user.controller;
 
 import co.edu.docurural.shared.security.JwtAuthenticationFilter;
-import co.edu.docurural.shared.security.SecurityConfig;
+import co.edu.docurural.shared.config.SecurityConfig;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.audit.AuditContextResolver;
 import co.edu.docurural.shared.exception.BusinessErrorCode;

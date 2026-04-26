@@ -1,6 +1,10 @@
-package co.edu.docurural.shared.security;
+package co.edu.docurural.shared.config;
 
 import co.edu.docurural.shared.dto.ApiErrorResponse;
+import co.edu.docurural.shared.security.CustomUserDetailsService;
+import co.edu.docurural.shared.security.JwtAuthenticationFilter;
+import co.edu.docurural.shared.security.JwtProperties;
+import co.edu.docurural.shared.security.SecurityConstants;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

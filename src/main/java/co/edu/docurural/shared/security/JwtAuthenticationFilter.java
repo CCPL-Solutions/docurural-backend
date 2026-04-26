@@ -1,5 +1,6 @@
 package co.edu.docurural.shared.security;
 
+import co.edu.docurural.shared.config.SecurityConfig;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
