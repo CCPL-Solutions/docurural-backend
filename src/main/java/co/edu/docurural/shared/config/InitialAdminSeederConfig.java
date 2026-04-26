@@ -22,9 +22,9 @@ import org.springframework.stereotype.Component;
  * antes de persistirla. La clave en claro nunca se loggea.
  */
 @Component
-public class InitialAdminSeeder implements CommandLineRunner {
+public class InitialAdminSeederConfig implements CommandLineRunner {
 
-    private static final Logger log = LoggerFactory.getLogger(InitialAdminSeeder.class);
+    private static final Logger log = LoggerFactory.getLogger(InitialAdminSeederConfig.class);
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
@@ -32,7 +32,7 @@ public class InitialAdminSeeder implements CommandLineRunner {
     private final String adminPassword;
     private final String adminFullName;
 
-    public InitialAdminSeeder(
+    public InitialAdminSeederConfig(
             UserRepository userRepository,
             @Value("${docurural.seed.admin.email:}") String adminEmail,
             @Value("${docurural.seed.admin.password:}") String adminPassword,
