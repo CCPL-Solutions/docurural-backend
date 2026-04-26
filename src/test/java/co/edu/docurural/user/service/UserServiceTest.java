@@ -1,6 +1,7 @@
 package co.edu.docurural.user.service;
 
 import co.edu.docurural.activitylog.service.ActivityLogService;
+import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.domain.entity.User;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.activitylog.enums.ActivityAction;
@@ -19,7 +20,6 @@ import co.edu.docurural.user.dto.UserResponse;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.exception.ConflictException;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
-import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,7 +40,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -51,6 +50,7 @@ import static org.mockito.Mockito.when;
 class UserServiceTest {
 
     private static final Long ADMIN_ID = 1L;
+    private static final AuditContext AUDIT_ADMIN = new AuditContext(ADMIN_ID, "203.0.113.10");
 
     @Mock
     UserRepository userRepository;
@@ -60,8 +60,6 @@ class UserServiceTest {
     ActivityLogService activityLogService;
     @Mock
     MessageSource messageSource;
-    @Mock
-    HttpServletRequest httpRequest;
 
     @InjectMocks
     UserService userService;
@@ -175,7 +173,7 @@ class UserServiceTest {
             return u;
         });
 
-        CreateUserResponse response = userService.create(request, ADMIN_ID, httpRequest);
+        CreateUserResponse response = userService.create(request, AUDIT_ADMIN);
 
         assertThat(response.id()).isEqualTo(50L);
         assertThat(response.email()).isEqualTo(request.email());
@@ -193,10 +191,9 @@ class UserServiceTest {
 
         verify(activityLogService).record(
                 eq(ActivityAction.CREATE_USER),
-                eq(ADMIN_ID),
+                eq(AUDIT_ADMIN),
                 isNull(),
-                eq("Usuario creado: 50"),
-                same(httpRequest));
+                eq("Usuario creado: 50"));
     }
 
     @Test
@@ -204,7 +201,7 @@ class UserServiceTest {
         CreateUserRequest request = TestFixtures.createUserRequest(
                 "Name", "name@docurural.edu.co", "password1", "password2", UserRole.EDITOR);
 
-        assertThatThrownBy(() -> userService.create(request, ADMIN_ID, httpRequest))
+        assertThatThrownBy(() -> userService.create(request, AUDIT_ADMIN))
                 .isInstanceOf(BusinessRuleException.class)
                 .satisfies(ex -> assertThat(((BusinessRuleException) ex).getCode())
                         .isEqualTo(BusinessErrorCode.INVALID_ARGUMENT));
@@ -218,7 +215,7 @@ class UserServiceTest {
                 "Existing", "existing@docurural.edu.co", "plainpass1", UserRole.EDITOR);
         when(userRepository.existsByEmail(request.email())).thenReturn(true);
 
-        assertThatThrownBy(() -> userService.create(request, ADMIN_ID, httpRequest))
+        assertThatThrownBy(() -> userService.create(request, AUDIT_ADMIN))
                 .isInstanceOf(ConflictException.class);
 
         verify(userRepository, never()).save(any());
@@ -238,7 +235,7 @@ class UserServiceTest {
         when(userRepository.findById(20L)).thenReturn(Optional.of(existing));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UpdateUserResponse response = userService.update(20L, request, ADMIN_ID, httpRequest);
+        UpdateUserResponse response = userService.update(20L, request, AUDIT_ADMIN);
 
         assertThat(response.id()).isEqualTo(20L);
         assertThat(response.message()).isEqualTo("user.updated.success");
@@ -248,10 +245,9 @@ class UserServiceTest {
 
         verify(activityLogService).record(
                 eq(ActivityAction.EDIT_USER),
-                eq(ADMIN_ID),
+                eq(AUDIT_ADMIN),
                 isNull(),
-                eq("Campos modificados: []"),
-                same(httpRequest));
+                eq("Campos modificados: []"));
     }
 
     @Test
@@ -264,7 +260,7 @@ class UserServiceTest {
         when(userRepository.existsByEmailAndIdNot("already.taken@docurural.edu.co", 20L))
                 .thenReturn(true);
 
-        assertThatThrownBy(() -> userService.update(20L, request, ADMIN_ID, httpRequest))
+        assertThatThrownBy(() -> userService.update(20L, request, AUDIT_ADMIN))
                 .isInstanceOf(ConflictException.class);
 
         verify(userRepository, never()).save(any());
@@ -277,7 +273,7 @@ class UserServiceTest {
                 "Name", "mail@docurural.edu.co", UserRole.READER);
         when(userRepository.findById(404L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> userService.update(404L, request, ADMIN_ID, httpRequest))
+        assertThatThrownBy(() -> userService.update(404L, request, AUDIT_ADMIN))
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(userRepository, never()).save(any());
@@ -292,7 +288,7 @@ class UserServiceTest {
 
         when(userRepository.findById(ADMIN_ID)).thenReturn(Optional.of(selfAdmin));
 
-        assertThatThrownBy(() -> userService.update(ADMIN_ID, request, ADMIN_ID, httpRequest))
+        assertThatThrownBy(() -> userService.update(ADMIN_ID, request, AUDIT_ADMIN))
                 .isInstanceOf(BusinessRuleException.class)
                 .satisfies(ex -> assertThat(((BusinessRuleException) ex).getCode())
                         .isEqualTo(BusinessErrorCode.FORBIDDEN));
@@ -310,7 +306,7 @@ class UserServiceTest {
 
         when(userRepository.findById(20L)).thenReturn(Optional.of(existing));
 
-        assertThatThrownBy(() -> userService.update(20L, request, ADMIN_ID, httpRequest))
+        assertThatThrownBy(() -> userService.update(20L, request, AUDIT_ADMIN))
                 .isInstanceOf(BusinessRuleException.class)
                 .satisfies(ex -> assertThat(((BusinessRuleException) ex).getCode())
                         .isEqualTo(BusinessErrorCode.INVALID_ARGUMENT));
@@ -331,7 +327,7 @@ class UserServiceTest {
         when(passwordEncoder.encode("newpass123")).thenReturn("$2a$10$newEncoded");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        userService.update(20L, request, ADMIN_ID, httpRequest);
+        userService.update(20L, request, AUDIT_ADMIN);
 
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(userCaptor.capture());
@@ -341,10 +337,9 @@ class UserServiceTest {
 
         verify(activityLogService).record(
                 eq(ActivityAction.EDIT_USER),
-                eq(ADMIN_ID),
+                eq(AUDIT_ADMIN),
                 isNull(),
-                eq("Campos modificados: [password]"),
-                same(httpRequest));
+                eq("Campos modificados: [password]"));
     }
 
     @Test
@@ -363,7 +358,7 @@ class UserServiceTest {
         when(passwordEncoder.encode("newpass123")).thenReturn("$2a$10$brandNew");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UpdateUserResponse response = userService.update(20L, request, ADMIN_ID, httpRequest);
+        UpdateUserResponse response = userService.update(20L, request, AUDIT_ADMIN);
 
         assertThat(response.fullName()).isEqualTo("Brand New Name");
         assertThat(response.email()).isEqualTo("new.mail@docurural.edu.co");
@@ -372,10 +367,9 @@ class UserServiceTest {
 
         verify(activityLogService).record(
                 eq(ActivityAction.EDIT_USER),
-                eq(ADMIN_ID),
+                eq(AUDIT_ADMIN),
                 isNull(),
-                eq("Campos modificados: [fullName, email, role, password]"),
-                same(httpRequest));
+                eq("Campos modificados: [fullName, email, role, password]"));
     }
 
     // ------------------------------------------------------------------
@@ -389,7 +383,7 @@ class UserServiceTest {
 
         when(userRepository.findById(30L)).thenReturn(Optional.of(existing));
 
-        assertThatThrownBy(() -> userService.changeStatus(30L, request, ADMIN_ID, httpRequest))
+        assertThatThrownBy(() -> userService.changeStatus(30L, request, AUDIT_ADMIN))
                 .isInstanceOf(BusinessRuleException.class)
                 .satisfies(ex -> assertThat(((BusinessRuleException) ex).getCode())
                         .isEqualTo(BusinessErrorCode.INVALID_ARGUMENT));
@@ -405,7 +399,7 @@ class UserServiceTest {
 
         when(userRepository.findById(ADMIN_ID)).thenReturn(Optional.of(selfAdmin));
 
-        assertThatThrownBy(() -> userService.changeStatus(ADMIN_ID, request, ADMIN_ID, httpRequest))
+        assertThatThrownBy(() -> userService.changeStatus(ADMIN_ID, request, AUDIT_ADMIN))
                 .isInstanceOf(BusinessRuleException.class)
                 .satisfies(ex -> assertThat(((BusinessRuleException) ex).getCode())
                         .isEqualTo(BusinessErrorCode.FORBIDDEN));
@@ -422,7 +416,7 @@ class UserServiceTest {
         when(userRepository.findById(40L)).thenReturn(Optional.of(inactive));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UpdateStatusResponse response = userService.changeStatus(40L, request, ADMIN_ID, httpRequest);
+        UpdateStatusResponse response = userService.changeStatus(40L, request, AUDIT_ADMIN);
 
         assertThat(response.id()).isEqualTo(40L);
         assertThat(response.status()).isEqualTo("ACTIVE");
@@ -434,10 +428,9 @@ class UserServiceTest {
 
         verify(activityLogService).record(
                 eq(ActivityAction.DEACTIVATE_USER),
-                eq(ADMIN_ID),
+                eq(AUDIT_ADMIN),
                 isNull(),
-                eq("Nuevo estado: ACTIVE"),
-                same(httpRequest));
+                eq("Nuevo estado: ACTIVE"));
     }
 
     @Test
@@ -448,17 +441,16 @@ class UserServiceTest {
         when(userRepository.findById(41L)).thenReturn(Optional.of(active));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UpdateStatusResponse response = userService.changeStatus(41L, request, ADMIN_ID, httpRequest);
+        UpdateStatusResponse response = userService.changeStatus(41L, request, AUDIT_ADMIN);
 
         assertThat(response.status()).isEqualTo("INACTIVE");
         assertThat(response.message()).isEqualTo("user.deactivated.success");
 
         verify(activityLogService).record(
                 eq(ActivityAction.DEACTIVATE_USER),
-                eq(ADMIN_ID),
+                eq(AUDIT_ADMIN),
                 isNull(),
-                eq("Nuevo estado: INACTIVE"),
-                same(httpRequest));
+                eq("Nuevo estado: INACTIVE"));
     }
 
     @Test
@@ -466,7 +458,7 @@ class UserServiceTest {
         UpdateStatusRequest request = TestFixtures.updateStatusRequest(UserStatus.INACTIVE);
         when(userRepository.findById(404L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> userService.changeStatus(404L, request, ADMIN_ID, httpRequest))
+        assertThatThrownBy(() -> userService.changeStatus(404L, request, AUDIT_ADMIN))
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(userRepository, never()).save(any());

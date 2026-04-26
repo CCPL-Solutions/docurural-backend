@@ -1,8 +1,8 @@
 package co.edu.docurural.auth.service;
 
-import co.edu.docurural.shared.security.CustomUserPrincipal;
 import co.edu.docurural.shared.security.JwtProperties;
 import co.edu.docurural.shared.security.JwtTokenProvider;
+import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.domain.entity.User;
 import co.edu.docurural.activitylog.enums.ActivityAction;
 import co.edu.docurural.shared.domain.repository.UserRepository;
@@ -13,7 +13,6 @@ import co.edu.docurural.auth.dto.UserSummary;
 import co.edu.docurural.shared.dto.MessageResponse;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.user.mapper.UserMapper;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -22,8 +21,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -80,11 +77,11 @@ public class AuthService {
      * </ol>
      *
      * @param request     credenciales del usuario (email + password) ya validadas por Bean Validation.
-     * @param httpRequest petición HTTP usada para resolver la IP de origen del registro de auditoría.
+     * @param audit       contexto de auditoría resuelto en la capa web.
      * @return {@link LoginResponse} listo para serializar como body del endpoint.
      */
     @Transactional
-    public LoginResponse login(LoginRequest request, HttpServletRequest httpRequest) {
+    public LoginResponse login(LoginRequest request, AuditContext audit) {
         // Deja que BadCredentialsException y DisabledException se propaguen;
         // el GlobalExceptionHandler (Fase 7) se encargará de traducirlas a 401 / 403.
         authenticationManager.authenticate(
@@ -102,10 +99,9 @@ public class AuthService {
 
         activityLogService.record(
                 ActivityAction.LOGIN,
-                savedUser.getId(),
+                requireAudit(audit).withActorUserId(savedUser.getId()),
                 null,
-                LOGIN_DETAIL,
-                httpRequest);
+                LOGIN_DETAIL);
 
         log.info("Login exitoso para userId={} email={}", savedUser.getId(), savedUser.getEmail());
 
@@ -122,40 +118,36 @@ public class AuthService {
      * este método solo persiste el evento {@link ActivityAction#LOGOUT} para fines
      * de auditoría.
      *
-     * @param httpRequest petición HTTP usada para resolver la IP de origen del registro.
+     * @param audit contexto de auditoría resuelto en la capa web.
      * @return {@link MessageResponse} con el mensaje "Sesión cerrada exitosamente".
-     * @throws IllegalStateException si no hay un usuario autenticado en el contexto
-     *                               (lo cual no debería ocurrir porque el endpoint
-     *                               exige autenticación).
      */
     @Transactional
-    public MessageResponse logout(HttpServletRequest httpRequest) {
-        CustomUserPrincipal principal = requireCurrentPrincipal();
+    public MessageResponse logout(AuditContext audit) {
+        AuditContext resolvedAudit = requireAuditWithActor(audit);
 
         activityLogService.record(
                 ActivityAction.LOGOUT,
-                principal.getId(),
+                resolvedAudit,
                 null,
-                LOGOUT_DETAIL,
-                httpRequest);
+                LOGOUT_DETAIL);
 
-        log.info("Logout registrado para userId={} email={}", principal.getId(), principal.getEmail());
+        log.info("Logout registrado para userId={}", resolvedAudit.actorUserId());
         return new MessageResponse(resolve("auth.logout.success"));
     }
 
-    private CustomUserPrincipal requireCurrentPrincipal() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new IllegalStateException(
-                    "No hay un usuario autenticado en el contexto de seguridad");
+    private AuditContext requireAudit(AuditContext audit) {
+        if (audit == null) {
+            throw new IllegalArgumentException("audit no puede ser null");
         }
-        Object principal = authentication.getPrincipal();
-        if (!(principal instanceof CustomUserPrincipal customPrincipal)) {
-            throw new IllegalStateException(
-                    "El principal no es una instancia de CustomUserPrincipal: "
-                            + (principal == null ? "null" : principal.getClass().getName()));
+        return audit;
+    }
+
+    private AuditContext requireAuditWithActor(AuditContext audit) {
+        AuditContext resolvedAudit = requireAudit(audit);
+        if (resolvedAudit.actorUserId() == null) {
+            throw new IllegalArgumentException("audit.actorUserId no puede ser null");
         }
-        return customPrincipal;
+        return resolvedAudit;
     }
 
     private String resolve(String key, Object... args) {

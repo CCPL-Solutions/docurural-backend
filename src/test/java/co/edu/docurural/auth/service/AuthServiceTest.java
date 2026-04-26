@@ -1,21 +1,17 @@
 package co.edu.docurural.auth.service;
 
 import co.edu.docurural.activitylog.service.ActivityLogService;
-import co.edu.docurural.shared.security.CustomUserPrincipal;
 import co.edu.docurural.shared.security.JwtProperties;
 import co.edu.docurural.shared.security.JwtTokenProvider;
+import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.domain.entity.User;
 import co.edu.docurural.activitylog.enums.ActivityAction;
-import co.edu.docurural.shared.domain.enums.UserRole;
-import co.edu.docurural.shared.domain.enums.UserStatus;
 import co.edu.docurural.shared.domain.repository.UserRepository;
 import co.edu.docurural.support.TestFixtures;
 import co.edu.docurural.auth.dto.LoginRequest;
 import co.edu.docurural.auth.dto.LoginResponse;
 import co.edu.docurural.shared.dto.MessageResponse;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
-import jakarta.servlet.http.HttpServletRequest;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,9 +24,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.util.Collections;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,7 +34,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -49,6 +42,9 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
+
+    private static final AuditContext LOGIN_AUDIT = new AuditContext(null, "203.0.113.10");
+    private static final AuditContext LOGOUT_AUDIT = new AuditContext(42L, "203.0.113.20");
 
     @Mock
     AuthenticationManager authenticationManager;
@@ -62,8 +58,6 @@ class AuthServiceTest {
     ActivityLogService activityLogService;
     @Mock
     MessageSource messageSource;
-    @Mock
-    HttpServletRequest httpRequest;
 
     @InjectMocks
     AuthService authService;
@@ -72,11 +66,6 @@ class AuthServiceTest {
     void stubMessageSource() {
         lenient().when(messageSource.getMessage(anyString(), any(), any()))
                 .thenAnswer(inv -> inv.getArgument(0));
-    }
-
-    @AfterEach
-    void clearSecurityContext() {
-        SecurityContextHolder.clearContext();
     }
 
     // ------------------------------------------------------------------
@@ -93,7 +82,7 @@ class AuthServiceTest {
         when(jwtTokenProvider.generateToken(any(User.class))).thenReturn("token-abc");
         when(jwtProperties.getExpirationMs()).thenReturn(1_800_000L);
 
-        LoginResponse response = authService.login(request, httpRequest);
+        LoginResponse response = authService.login(request, LOGIN_AUDIT);
 
         assertThat(response.token()).isEqualTo("token-abc");
         assertThat(response.tokenType()).isEqualTo("Bearer");
@@ -117,10 +106,9 @@ class AuthServiceTest {
 
         verify(activityLogService).record(
                 eq(ActivityAction.LOGIN),
-                eq(10L),
+                eq(new AuditContext(10L, "203.0.113.10")),
                 isNull(),
-                eq("Inicio de sesión exitoso"),
-                same(httpRequest));
+                eq("Inicio de sesión exitoso"));
     }
 
     @Test
@@ -129,7 +117,7 @@ class AuthServiceTest {
         when(authenticationManager.authenticate(any()))
                 .thenThrow(new BadCredentialsException("Bad credentials"));
 
-        assertThatThrownBy(() -> authService.login(request, httpRequest))
+        assertThatThrownBy(() -> authService.login(request, LOGIN_AUDIT))
                 .isInstanceOf(BadCredentialsException.class);
 
         verifyNoInteractions(userRepository, jwtTokenProvider, jwtProperties, activityLogService);
@@ -141,7 +129,7 @@ class AuthServiceTest {
         when(authenticationManager.authenticate(any()))
                 .thenThrow(new DisabledException("Account disabled"));
 
-        assertThatThrownBy(() -> authService.login(request, httpRequest))
+        assertThatThrownBy(() -> authService.login(request, LOGIN_AUDIT))
                 .isInstanceOf(DisabledException.class);
 
         verifyNoInteractions(userRepository, jwtTokenProvider, jwtProperties, activityLogService);
@@ -152,7 +140,7 @@ class AuthServiceTest {
         LoginRequest request = TestFixtures.loginRequest("ghost@docurural.edu.co", "any");
         when(userRepository.findByEmail("ghost@docurural.edu.co")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> authService.login(request, httpRequest))
+        assertThatThrownBy(() -> authService.login(request, LOGIN_AUDIT))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("ghost@docurural.edu.co");
 
@@ -165,47 +153,33 @@ class AuthServiceTest {
     // ------------------------------------------------------------------
 
     @Test
-    void logout_withAuthenticatedPrincipal_recordsLogout_returnsMessage() {
-        CustomUserPrincipal principal = new CustomUserPrincipal(
-                42L, "erik.editor@docurural.edu.co",
-                UserRole.EDITOR, UserStatus.ACTIVE, null);
-        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                principal, null, principal.getAuthorities());
-        SecurityContextHolder.getContext().setAuthentication(auth);
-
-        MessageResponse response = authService.logout(httpRequest);
+    void logout_withActorInAudit_recordsLogout_returnsMessage() {
+        MessageResponse response = authService.logout(LOGOUT_AUDIT);
 
         // MessageSource stub returns the key itself (see @BeforeEach).
         assertThat(response.message()).isEqualTo("auth.logout.success");
 
         verify(activityLogService).record(
                 eq(ActivityAction.LOGOUT),
-                eq(42L),
+                eq(LOGOUT_AUDIT),
                 isNull(),
-                eq("Cierre de sesión"),
-                same(httpRequest));
+                eq("Cierre de sesión"));
     }
 
     @Test
-    void logout_withoutAuthentication_throwsIllegalState() {
-        SecurityContextHolder.clearContext();
-
-        assertThatThrownBy(() -> authService.logout(httpRequest))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("No hay un usuario autenticado");
+    void logout_withoutActorInAudit_throwsIllegalArgument() {
+        assertThatThrownBy(() -> authService.logout(new AuditContext(null, "203.0.113.20")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("audit.actorUserId");
 
         verifyNoInteractions(activityLogService);
     }
 
     @Test
-    void logout_withUnexpectedPrincipalType_throwsIllegalState() {
-        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                "plain-string-principal", null, Collections.emptyList());
-        SecurityContextHolder.getContext().setAuthentication(auth);
-
-        assertThatThrownBy(() -> authService.logout(httpRequest))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("no es una instancia de CustomUserPrincipal");
+    void logout_withNullAudit_throwsIllegalArgument() {
+        assertThatThrownBy(() -> authService.logout(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("audit no puede ser null");
 
         verifyNoInteractions(activityLogService);
     }

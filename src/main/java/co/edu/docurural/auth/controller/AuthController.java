@@ -3,6 +3,7 @@ package co.edu.docurural.auth.controller;
 import co.edu.docurural.auth.service.AuthService;
 import co.edu.docurural.auth.dto.LoginRequest;
 import co.edu.docurural.auth.dto.LoginResponse;
+import co.edu.docurural.shared.audit.AuditContextResolver;
 import co.edu.docurural.shared.dto.ApiErrorResponse;
 import co.edu.docurural.shared.dto.MessageResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -43,6 +44,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final AuditContextResolver auditContextResolver;
 
     /**
      * AUTH-01: inicio de sesión público.
@@ -65,7 +67,7 @@ public class AuthController {
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest httpRequest) {
         log.debug("POST /auth/login email={}", request.email());
-        LoginResponse response = authService.login(request, httpRequest);
+        LoginResponse response = authService.login(request, auditContextResolver.resolve(httpRequest));
         return ResponseEntity.ok(response);
     }
 
@@ -91,7 +93,7 @@ public class AuthController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MessageResponse> logout(HttpServletRequest httpRequest) {
         log.debug("POST /auth/logout");
-        MessageResponse response = authService.logout(httpRequest);
+        MessageResponse response = authService.logout(auditContextResolver.resolve(httpRequest));
         return ResponseEntity.ok(response);
     }
 }

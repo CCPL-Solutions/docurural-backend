@@ -1,8 +1,9 @@
 package co.edu.docurural.user.controller;
 
-import co.edu.docurural.shared.security.CustomUserPrincipal;
 import co.edu.docurural.shared.security.JwtAuthenticationFilter;
 import co.edu.docurural.shared.security.SecurityConfig;
+import co.edu.docurural.shared.audit.AuditContext;
+import co.edu.docurural.shared.audit.AuditContextResolver;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.domain.enums.UserRole;
 import co.edu.docurural.shared.domain.enums.UserStatus;
@@ -20,8 +21,6 @@ import co.edu.docurural.shared.exception.ConflictException;
 import co.edu.docurural.shared.exception.GlobalExceptionHandler;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletRequest;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -29,9 +28,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -60,6 +56,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(GlobalExceptionHandler.class)
 class UserControllerWebMvcTest {
 
+    private static final AuditContext ADMIN_AUDIT = new AuditContext(10L, "127.0.0.1");
+
     @Autowired
     MockMvc mockMvc;
 
@@ -68,11 +66,8 @@ class UserControllerWebMvcTest {
 
     @MockitoBean
     UserService userService;
-
-    @AfterEach
-    void clearSecurityContext() {
-        SecurityContextHolder.clearContext();
-    }
+    @MockitoBean
+    AuditContextResolver auditContextResolver;
 
     @Test
     void list_returns200AndPayload() throws Exception {
@@ -160,7 +155,7 @@ class UserControllerWebMvcTest {
 
     @Test
     void create_asAdmin_returns201AndDelegatesWithAdminId() throws Exception {
-        setAdminAuthentication(10L);
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
         CreateUserRequest request = new CreateUserRequest(
                 "Nora Nueva",
@@ -178,7 +173,7 @@ class UserControllerWebMvcTest {
                 LocalDateTime.of(2026, 1, 2, 9, 0),
                 "Usuario creado exitosamente");
 
-        when(userService.create(any(CreateUserRequest.class), eq(10L), any(HttpServletRequest.class)))
+        when(userService.create(any(CreateUserRequest.class), eq(ADMIN_AUDIT)))
                 .thenReturn(response);
 
         mockMvc.perform(post("/users")
@@ -190,13 +185,12 @@ class UserControllerWebMvcTest {
 
         verify(userService).create(
                 argThat(req -> "Nora Nueva".equals(req.fullName())),
-                eq(10L),
-                any(HttpServletRequest.class));
+                eq(ADMIN_AUDIT));
     }
 
     @Test
     void create_withInvalidBody_returns400ValidationErrors() throws Exception {
-        setAdminAuthentication(10L);
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
         String body = """
                 {
@@ -222,7 +216,7 @@ class UserControllerWebMvcTest {
 
     @Test
     void update_asAdmin_returns200AndDelegates() throws Exception {
-        setAdminAuthentication(10L);
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
         UpdateUserRequest request = new UpdateUserRequest(
                 "Erik Editor Renombrado",
@@ -239,7 +233,7 @@ class UserControllerWebMvcTest {
                 "ACTIVE",
                 "Usuario actualizado exitosamente");
 
-        when(userService.update(eq(2L), any(UpdateUserRequest.class), eq(10L), any(HttpServletRequest.class)))
+        when(userService.update(eq(2L), any(UpdateUserRequest.class), eq(ADMIN_AUDIT)))
                 .thenReturn(response);
 
         mockMvc.perform(put("/users/2")
@@ -254,13 +248,12 @@ class UserControllerWebMvcTest {
                 eq(2L),
                 argThat(req -> "Erik Editor Renombrado".equals(req.fullName())
                         && UserRole.EDITOR == req.role()),
-                eq(10L),
-                any(HttpServletRequest.class));
+                eq(ADMIN_AUDIT));
     }
 
     @Test
     void update_withInvalidBody_returns400ValidationErrors() throws Exception {
-        setAdminAuthentication(10L);
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
         String body = """
                 {
@@ -286,7 +279,7 @@ class UserControllerWebMvcTest {
 
     @Test
     void update_whenEmailConflict_returns409MappedError() throws Exception {
-        setAdminAuthentication(10L);
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
         UpdateUserRequest request = new UpdateUserRequest(
                 "Erik Editor",
@@ -295,7 +288,7 @@ class UserControllerWebMvcTest {
                 null,
                 null);
 
-        when(userService.update(eq(2L), any(UpdateUserRequest.class), eq(10L), any(HttpServletRequest.class)))
+        when(userService.update(eq(2L), any(UpdateUserRequest.class), eq(ADMIN_AUDIT)))
                 .thenThrow(new ConflictException("Ya existe un usuario registrado con este correo electrónico"));
 
         mockMvc.perform(put("/users/2")
@@ -308,7 +301,7 @@ class UserControllerWebMvcTest {
 
     @Test
     void update_whenNotFound_returns404MappedError() throws Exception {
-        setAdminAuthentication(10L);
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
         UpdateUserRequest request = new UpdateUserRequest(
                 "Erik Editor",
@@ -317,7 +310,7 @@ class UserControllerWebMvcTest {
                 null,
                 null);
 
-        when(userService.update(eq(999L), any(UpdateUserRequest.class), eq(10L), any(HttpServletRequest.class)))
+        when(userService.update(eq(999L), any(UpdateUserRequest.class), eq(ADMIN_AUDIT)))
                 .thenThrow(new ResourceNotFoundException("Usuario no encontrado con id 999"));
 
         mockMvc.perform(put("/users/999")
@@ -330,7 +323,7 @@ class UserControllerWebMvcTest {
 
     @Test
     void changeStatus_asAdmin_returns200() throws Exception {
-        setAdminAuthentication(10L);
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
         UpdateStatusRequest request = new UpdateStatusRequest(UserStatus.INACTIVE);
         UpdateStatusResponse response = new UpdateStatusResponse(
@@ -339,7 +332,7 @@ class UserControllerWebMvcTest {
                 "INACTIVE",
                 "Usuario desactivado exitosamente");
 
-        when(userService.changeStatus(eq(2L), any(UpdateStatusRequest.class), eq(10L), any(HttpServletRequest.class)))
+        when(userService.changeStatus(eq(2L), any(UpdateStatusRequest.class), eq(ADMIN_AUDIT)))
                 .thenReturn(response);
 
         mockMvc.perform(patch("/users/2/status")
@@ -352,11 +345,11 @@ class UserControllerWebMvcTest {
 
     @Test
     void changeStatus_whenSelfDeactivation_returns403MappedError() throws Exception {
-        setAdminAuthentication(10L);
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
         UpdateStatusRequest request = new UpdateStatusRequest(UserStatus.INACTIVE);
 
-        when(userService.changeStatus(eq(10L), any(UpdateStatusRequest.class), eq(10L), any(HttpServletRequest.class)))
+        when(userService.changeStatus(eq(10L), any(UpdateStatusRequest.class), eq(ADMIN_AUDIT)))
                 .thenThrow(new BusinessRuleException(
                         BusinessErrorCode.FORBIDDEN,
                         "No puede desactivar su propia cuenta de administrador"));
@@ -371,7 +364,7 @@ class UserControllerWebMvcTest {
 
     @Test
     void changeStatus_withInvalidEnumValue_returns400MappedError() throws Exception {
-        setAdminAuthentication(10L);
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
         String body = """
                 {
@@ -390,7 +383,7 @@ class UserControllerWebMvcTest {
 
     @Test
     void changeStatus_withMissingStatus_returns400ValidationErrors() throws Exception {
-        setAdminAuthentication(10L);
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
         String body = """
                 {
@@ -407,17 +400,4 @@ class UserControllerWebMvcTest {
                 .andExpect(jsonPath("$.fieldErrors.status").exists());
     }
 
-    private static void setAdminAuthentication(Long id) {
-        CustomUserPrincipal principal = new CustomUserPrincipal(
-                id,
-                "ana.admin@docurural.edu.co",
-                UserRole.ADMIN,
-                UserStatus.ACTIVE,
-                null);
-        Authentication authentication = new UsernamePasswordAuthenticationToken(
-                principal,
-                null,
-                principal.getAuthorities());
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-    }
 }

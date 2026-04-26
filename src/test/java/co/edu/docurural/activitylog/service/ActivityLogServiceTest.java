@@ -1,6 +1,7 @@
 package co.edu.docurural.activitylog.service;
 
 import co.edu.docurural.activitylog.entity.ActivityLog;
+import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.domain.entity.User;
 import co.edu.docurural.activitylog.enums.ActivityAction;
 import co.edu.docurural.activitylog.repository.ActivityLogRepository;
@@ -8,7 +9,6 @@ import co.edu.docurural.document.repository.DocumentRepository;
 import co.edu.docurural.shared.domain.repository.UserRepository;
 import co.edu.docurural.support.TestFixtures;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
-import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,8 +41,6 @@ class ActivityLogServiceTest {
     DocumentRepository documentRepository;
     @Mock
     MessageSource messageSource;
-    @Mock
-    HttpServletRequest httpRequest;
 
     @InjectMocks
     ActivityLogService activityLogService;
@@ -60,7 +58,7 @@ class ActivityLogServiceTest {
     @Test
     void record_withNullAction_throwsIllegalArgument() {
         assertThatThrownBy(() -> activityLogService.record(
-                null, 1L, null, "detail", httpRequest))
+                null, new AuditContext(1L, "203.0.113.10"), null, "detail"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("action");
 
@@ -70,9 +68,19 @@ class ActivityLogServiceTest {
     @Test
     void record_withNullUserId_throwsIllegalArgument() {
         assertThatThrownBy(() -> activityLogService.record(
-                ActivityAction.LOGIN, null, null, "detail", httpRequest))
+                ActivityAction.LOGIN, new AuditContext(null, "203.0.113.10"), null, "detail"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("userId");
+                .hasMessageContaining("audit.actorUserId");
+
+        verifyNoInteractions(activityLogRepository, userRepository, documentRepository);
+    }
+
+    @Test
+    void record_withNullAudit_throwsIllegalArgument() {
+        assertThatThrownBy(() -> activityLogService.record(
+                ActivityAction.LOGIN, null, null, "detail"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("audit");
 
         verifyNoInteractions(activityLogRepository, userRepository, documentRepository);
     }
@@ -82,7 +90,7 @@ class ActivityLogServiceTest {
         when(userRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> activityLogService.record(
-                ActivityAction.LOGIN, 99L, null, "detail", httpRequest))
+                ActivityAction.LOGIN, new AuditContext(99L, "203.0.113.10"), null, "detail"))
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verifyNoInteractions(activityLogRepository, documentRepository);
@@ -95,24 +103,20 @@ class ActivityLogServiceTest {
         when(documentRepository.findById(77L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> activityLogService.record(
-                ActivityAction.DOWNLOAD, 5L, 77L, "detail", httpRequest))
+                ActivityAction.DOWNLOAD, new AuditContext(5L, "203.0.113.10"), 77L, "detail"))
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verifyNoInteractions(activityLogRepository);
     }
 
-    // ------------------------------------------------------------------
-    // IP resolution
-    // ------------------------------------------------------------------
-
     @Test
-    void record_withNullRequest_persistsEntryWithNullIp() {
+    void record_withNullClientIp_persistsEntryWithNullIp() {
         User user = TestFixtures.userEditor(5L);
         when(userRepository.findById(5L)).thenReturn(Optional.of(user));
         when(activityLogRepository.save(any(ActivityLog.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
-        activityLogService.record(ActivityAction.LOGIN, 5L, null, "Inicio sesión", null);
+        activityLogService.record(ActivityAction.LOGIN, new AuditContext(5L, null), null, "Inicio sesión");
 
         ArgumentCaptor<ActivityLog> captor = ArgumentCaptor.forClass(ActivityLog.class);
         verify(activityLogRepository).save(captor.capture());
@@ -120,70 +124,21 @@ class ActivityLogServiceTest {
     }
 
     @Test
-    void record_withXForwardedFor_singleIp_usesHeader() {
+    void record_withClientIp_persistsIpAsProvidedByAuditContext() {
         User user = TestFixtures.userEditor(5L);
         when(userRepository.findById(5L)).thenReturn(Optional.of(user));
-        when(httpRequest.getHeader("X-Forwarded-For")).thenReturn("203.0.113.42");
         when(activityLogRepository.save(any(ActivityLog.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
-        activityLogService.record(ActivityAction.LOGIN, 5L, null, "detail", httpRequest);
+        activityLogService.record(
+                ActivityAction.LOGIN,
+                new AuditContext(5L, "203.0.113.42"),
+                null,
+                "detail");
 
         ArgumentCaptor<ActivityLog> captor = ArgumentCaptor.forClass(ActivityLog.class);
         verify(activityLogRepository).save(captor.capture());
         assertThat(captor.getValue().getIpAddress()).isEqualTo("203.0.113.42");
-
-        verify(httpRequest, never()).getRemoteAddr();
-    }
-
-    @Test
-    void record_withXForwardedFor_commaSeparated_usesFirst() {
-        User user = TestFixtures.userEditor(5L);
-        when(userRepository.findById(5L)).thenReturn(Optional.of(user));
-        when(httpRequest.getHeader("X-Forwarded-For"))
-                .thenReturn("203.0.113.42, 10.0.0.1, 10.0.0.2");
-        when(activityLogRepository.save(any(ActivityLog.class)))
-                .thenAnswer(inv -> inv.getArgument(0));
-
-        activityLogService.record(ActivityAction.LOGIN, 5L, null, "detail", httpRequest);
-
-        ArgumentCaptor<ActivityLog> captor = ArgumentCaptor.forClass(ActivityLog.class);
-        verify(activityLogRepository).save(captor.capture());
-        assertThat(captor.getValue().getIpAddress()).isEqualTo("203.0.113.42");
-    }
-
-    @Test
-    void record_withXForwardedFor_blank_fallsBackToRemoteAddr() {
-        User user = TestFixtures.userEditor(5L);
-        when(userRepository.findById(5L)).thenReturn(Optional.of(user));
-        when(httpRequest.getHeader("X-Forwarded-For")).thenReturn("   ");
-        when(httpRequest.getRemoteAddr()).thenReturn("192.168.1.50");
-        when(activityLogRepository.save(any(ActivityLog.class)))
-                .thenAnswer(inv -> inv.getArgument(0));
-
-        activityLogService.record(ActivityAction.LOGIN, 5L, null, "detail", httpRequest);
-
-        ArgumentCaptor<ActivityLog> captor = ArgumentCaptor.forClass(ActivityLog.class);
-        verify(activityLogRepository).save(captor.capture());
-        assertThat(captor.getValue().getIpAddress()).isEqualTo("192.168.1.50");
-    }
-
-    @Test
-    void record_withIpLongerThan45chars_truncates() {
-        User user = TestFixtures.userEditor(5L);
-        String longIp = "a".repeat(60);
-        when(userRepository.findById(5L)).thenReturn(Optional.of(user));
-        when(httpRequest.getHeader("X-Forwarded-For")).thenReturn(longIp);
-        when(activityLogRepository.save(any(ActivityLog.class)))
-                .thenAnswer(inv -> inv.getArgument(0));
-
-        activityLogService.record(ActivityAction.LOGIN, 5L, null, "detail", httpRequest);
-
-        ArgumentCaptor<ActivityLog> captor = ArgumentCaptor.forClass(ActivityLog.class);
-        verify(activityLogRepository).save(captor.capture());
-        assertThat(captor.getValue().getIpAddress())
-                .hasSize(45)
-                .isEqualTo(longIp.substring(0, 45));
     }
 
     // ------------------------------------------------------------------
@@ -194,13 +149,14 @@ class ActivityLogServiceTest {
     void record_withoutDocumentAndValidUser_persistsAndReturnsSavedEntity() {
         User user = TestFixtures.userEditor(5L);
         when(userRepository.findById(5L)).thenReturn(Optional.of(user));
-        when(httpRequest.getHeader("X-Forwarded-For")).thenReturn(null);
-        when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
         when(activityLogRepository.save(any(ActivityLog.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
         ActivityLog result = activityLogService.record(
-                ActivityAction.CREATE_USER, 5L, null, "Usuario creado: 99", httpRequest);
+                ActivityAction.CREATE_USER,
+                new AuditContext(5L, "127.0.0.1"),
+                null,
+                "Usuario creado: 99");
 
         assertThat(result).isNotNull();
 

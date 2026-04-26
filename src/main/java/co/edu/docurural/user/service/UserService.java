@@ -3,6 +3,7 @@ package co.edu.docurural.user.service;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.domain.entity.User;
 import co.edu.docurural.activitylog.enums.ActivityAction;
+import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.domain.enums.UserStatus;
 import co.edu.docurural.shared.domain.repository.UserRepository;
 import co.edu.docurural.activitylog.service.ActivityLogService;
@@ -18,7 +19,6 @@ import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.exception.ConflictException;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.user.mapper.UserMapper;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -136,7 +136,9 @@ public class UserService {
      * @throws ConflictException     {@code 409} si el email ya está registrado.
      */
     @Transactional
-    public CreateUserResponse create(CreateUserRequest request, Long adminId, HttpServletRequest httpRequest) {
+    public CreateUserResponse create(CreateUserRequest request, AuditContext audit) {
+        Long adminId = requireActorUserId(audit);
+
         if (!request.password().equals(request.confirmPassword())) {
             throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, resolve("user.passwords.mismatch"));
         }
@@ -157,10 +159,9 @@ public class UserService {
 
         activityLogService.record(
                 ActivityAction.CREATE_USER,
-                adminId,
+                audit,
                 null,
-                "Usuario creado: " + savedUser.getId(),
-                httpRequest);
+                "Usuario creado: " + savedUser.getId());
 
         log.info("Usuario creado: id={} email={} role={} por adminId={}",
                 savedUser.getId(), savedUser.getEmail(), savedUser.getRole(), adminId);
@@ -190,7 +191,9 @@ public class UserService {
      */
     @Transactional
     public UpdateUserResponse update(
-            Long id, UpdateUserRequest request, Long adminId, HttpServletRequest httpRequest) {
+            Long id, UpdateUserRequest request, AuditContext audit) {
+
+        Long adminId = requireActorUserId(audit);
 
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -206,7 +209,7 @@ public class UserService {
 
         User updatedUser = userRepository.save(user);
 
-        recorderUpdateLog(adminId, httpRequest, modifiedFields);
+        recorderUpdateLog(audit, modifiedFields);
 
         log.info("Usuario actualizado: id={} modifiedFields={} por adminId={}",
                 updatedUser.getId(), modifiedFields, adminId);
@@ -284,15 +287,14 @@ public class UserService {
     /**
      * Registra la actualización del usuario en el log de actividades.
      */
-    private void recorderUpdateLog(Long adminId, HttpServletRequest httpRequest,
+    private void recorderUpdateLog(AuditContext audit,
                                    List<String> modifiedFields) {
         String detail = "Campos modificados: " + modifiedFields;
         activityLogService.record(
                 ActivityAction.EDIT_USER,
-                adminId,
+                audit,
                 null,
-                detail,
-                httpRequest);
+                detail);
     }
 
     /**
@@ -314,7 +316,9 @@ public class UserService {
      */
     @Transactional
     public UpdateStatusResponse changeStatus(
-            Long id, UpdateStatusRequest request, Long adminId, HttpServletRequest httpRequest) {
+            Long id, UpdateStatusRequest request, AuditContext audit) {
+
+        Long adminId = requireActorUserId(audit);
 
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -339,10 +343,9 @@ public class UserService {
 
         activityLogService.record(
                 ActivityAction.DEACTIVATE_USER,
-                adminId,
+                audit,
                 null,
-                "Nuevo estado: " + newStatus.name(),
-                httpRequest);
+                "Nuevo estado: " + newStatus.name());
 
         log.info("Estado de usuario actualizado: id={} newStatus={} por adminId={}",
                 updatedUser.getId(), newStatus, adminId);
@@ -352,5 +355,15 @@ public class UserService {
 
     private String resolve(String key, Object... args) {
         return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
+    }
+
+    private Long requireActorUserId(AuditContext audit) {
+        if (audit == null) {
+            throw new IllegalArgumentException("audit no puede ser null");
+        }
+        if (audit.actorUserId() == null) {
+            throw new IllegalArgumentException("audit.actorUserId no puede ser null");
+        }
+        return audit.actorUserId();
     }
 }

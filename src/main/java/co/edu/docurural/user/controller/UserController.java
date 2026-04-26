@@ -1,6 +1,6 @@
 package co.edu.docurural.user.controller;
 
-import co.edu.docurural.shared.security.CustomUserPrincipal;
+import co.edu.docurural.shared.audit.AuditContextResolver;
 import co.edu.docurural.user.service.UserService;
 import co.edu.docurural.shared.dto.ApiErrorResponse;
 import co.edu.docurural.user.dto.CreateUserRequest;
@@ -26,8 +26,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -48,8 +46,8 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>La lógica de negocio, validación de reglas (email único, auto-protección
  * de admin, cambio de estado, etc.) y el registro en {@code activity_log} vive
- * en {@link UserService}. El {@code adminId} se extrae del
- * {@link SecurityContextHolder} vía {@link CustomUserPrincipal}.
+ * en {@link UserService}. El contexto de auditoría (actor + IP) se resuelve
+ * en capa web vía {@link AuditContextResolver}.
  */
 @RestController
 @RequestMapping("/users")
@@ -61,6 +59,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
 
     private final UserService userService;
+    private final AuditContextResolver auditContextResolver;
 
     /**
      * USR-01: listado de usuarios ordenado por {@code sortBy}/{@code sortDir}
@@ -134,9 +133,8 @@ public class UserController {
     public ResponseEntity<CreateUserResponse> create(
             @Valid @RequestBody CreateUserRequest request,
             HttpServletRequest httpRequest) {
-        Long adminId = currentAdminId();
-        log.debug("POST /users adminId={} email={}", adminId, request.email());
-        CreateUserResponse response = userService.create(request, adminId, httpRequest);
+        log.debug("POST /users email={}", request.email());
+        CreateUserResponse response = userService.create(request, auditContextResolver.resolve(httpRequest));
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -166,9 +164,8 @@ public class UserController {
             @PathVariable Long id,
             @Valid @RequestBody UpdateUserRequest request,
             HttpServletRequest httpRequest) {
-        Long adminId = currentAdminId();
-        log.debug("PUT /users/{} adminId={}", id, adminId);
-        UpdateUserResponse response = userService.update(id, request, adminId, httpRequest);
+        log.debug("PUT /users/{}", id);
+        UpdateUserResponse response = userService.update(id, request, auditContextResolver.resolve(httpRequest));
         return ResponseEntity.ok(response);
     }
 
@@ -196,33 +193,8 @@ public class UserController {
             @PathVariable Long id,
             @Valid @RequestBody UpdateStatusRequest request,
             HttpServletRequest httpRequest) {
-        Long adminId = currentAdminId();
-        log.debug("PATCH /users/{}/status adminId={} newStatus={}",
-                id, adminId, request.status());
-        UpdateStatusResponse response = userService.changeStatus(id, request, adminId, httpRequest);
+        log.debug("PATCH /users/{}/status newStatus={}", id, request.status());
+        UpdateStatusResponse response = userService.changeStatus(id, request, auditContextResolver.resolve(httpRequest));
         return ResponseEntity.ok(response);
-    }
-
-    /**
-     * Obtiene el id del administrador autenticado desde el {@code SecurityContext}.
-     *
-     * <p>El filtro JWT siempre establece un {@link CustomUserPrincipal} como
-     * {@code principal}; si por alguna razón eso no ocurre se lanza
-     * {@link IllegalStateException} (síntoma de un bug en la cadena de
-     * seguridad, no un error de negocio).
-     */
-    private Long currentAdminId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new IllegalStateException(
-                    "No hay un usuario autenticado en el contexto de seguridad");
-        }
-        Object principal = authentication.getPrincipal();
-        if (!(principal instanceof CustomUserPrincipal customPrincipal)) {
-            throw new IllegalStateException(
-                    "El principal no es una instancia de CustomUserPrincipal: "
-                            + (principal == null ? "null" : principal.getClass().getName()));
-        }
-        return customPrincipal.getId();
     }
 }
