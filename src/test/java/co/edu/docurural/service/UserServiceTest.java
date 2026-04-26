@@ -1,6 +1,7 @@
 package co.edu.docurural.service;
 
 import co.edu.docurural.domain.entity.User;
+import co.edu.docurural.domain.exception.BusinessErrorCode;
 import co.edu.docurural.domain.enums.ActivityAction;
 import co.edu.docurural.domain.enums.UserRole;
 import co.edu.docurural.domain.enums.UserStatus;
@@ -27,7 +28,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
@@ -115,8 +115,8 @@ class UserServiceTest {
     void list_withUnsupportedSortField_throwsBusinessRule400() {
         assertThatThrownBy(() -> userService.list("password", "asc"))
                 .isInstanceOf(BusinessRuleException.class)
-                .satisfies(ex -> assertThat(((BusinessRuleException) ex).getStatus())
-                        .isEqualTo(HttpStatus.BAD_REQUEST));
+                .satisfies(ex -> assertThat(((BusinessRuleException) ex).getCode())
+                        .isEqualTo(BusinessErrorCode.INVALID_ARGUMENT));
 
         verifyNoInteractions(userRepository);
     }
@@ -125,8 +125,8 @@ class UserServiceTest {
     void list_withInvalidSortDirection_throwsBusinessRule400() {
         assertThatThrownBy(() -> userService.list("fullName", "sideways"))
                 .isInstanceOf(BusinessRuleException.class)
-                .satisfies(ex -> assertThat(((BusinessRuleException) ex).getStatus())
-                        .isEqualTo(HttpStatus.BAD_REQUEST));
+                .satisfies(ex -> assertThat(((BusinessRuleException) ex).getCode())
+                        .isEqualTo(BusinessErrorCode.INVALID_ARGUMENT));
 
         verifyNoInteractions(userRepository);
     }
@@ -205,8 +205,8 @@ class UserServiceTest {
 
         assertThatThrownBy(() -> userService.create(request, ADMIN_ID, httpRequest))
                 .isInstanceOf(BusinessRuleException.class)
-                .satisfies(ex -> assertThat(((BusinessRuleException) ex).getStatus())
-                        .isEqualTo(HttpStatus.BAD_REQUEST));
+                .satisfies(ex -> assertThat(((BusinessRuleException) ex).getCode())
+                        .isEqualTo(BusinessErrorCode.INVALID_ARGUMENT));
 
         verifyNoInteractions(userRepository, passwordEncoder, activityLogService);
     }
@@ -293,8 +293,8 @@ class UserServiceTest {
 
         assertThatThrownBy(() -> userService.update(ADMIN_ID, request, ADMIN_ID, httpRequest))
                 .isInstanceOf(BusinessRuleException.class)
-                .satisfies(ex -> assertThat(((BusinessRuleException) ex).getStatus())
-                        .isEqualTo(HttpStatus.FORBIDDEN));
+                .satisfies(ex -> assertThat(((BusinessRuleException) ex).getCode())
+                        .isEqualTo(BusinessErrorCode.FORBIDDEN));
 
         verify(userRepository, never()).save(any());
         verifyNoInteractions(passwordEncoder, activityLogService);
@@ -311,8 +311,8 @@ class UserServiceTest {
 
         assertThatThrownBy(() -> userService.update(20L, request, ADMIN_ID, httpRequest))
                 .isInstanceOf(BusinessRuleException.class)
-                .satisfies(ex -> assertThat(((BusinessRuleException) ex).getStatus())
-                        .isEqualTo(HttpStatus.BAD_REQUEST));
+                .satisfies(ex -> assertThat(((BusinessRuleException) ex).getCode())
+                        .isEqualTo(BusinessErrorCode.INVALID_ARGUMENT));
 
         verify(userRepository, never()).save(any());
         verifyNoInteractions(passwordEncoder, activityLogService);
@@ -390,8 +390,8 @@ class UserServiceTest {
 
         assertThatThrownBy(() -> userService.changeStatus(30L, request, ADMIN_ID, httpRequest))
                 .isInstanceOf(BusinessRuleException.class)
-                .satisfies(ex -> assertThat(((BusinessRuleException) ex).getStatus())
-                        .isEqualTo(HttpStatus.BAD_REQUEST));
+                .satisfies(ex -> assertThat(((BusinessRuleException) ex).getCode())
+                        .isEqualTo(BusinessErrorCode.INVALID_ARGUMENT));
 
         verify(userRepository, never()).save(any());
         verifyNoInteractions(activityLogService);
@@ -406,8 +406,8 @@ class UserServiceTest {
 
         assertThatThrownBy(() -> userService.changeStatus(ADMIN_ID, request, ADMIN_ID, httpRequest))
                 .isInstanceOf(BusinessRuleException.class)
-                .satisfies(ex -> assertThat(((BusinessRuleException) ex).getStatus())
-                        .isEqualTo(HttpStatus.FORBIDDEN));
+                .satisfies(ex -> assertThat(((BusinessRuleException) ex).getCode())
+                        .isEqualTo(BusinessErrorCode.FORBIDDEN));
 
         verify(userRepository, never()).save(any());
         verifyNoInteractions(activityLogService);

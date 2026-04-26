@@ -3,6 +3,7 @@ package co.edu.docurural.web.controller;
 import co.edu.docurural.config.security.CustomUserPrincipal;
 import co.edu.docurural.config.security.JwtAuthenticationFilter;
 import co.edu.docurural.config.security.SecurityConfig;
+import co.edu.docurural.domain.exception.BusinessErrorCode;
 import co.edu.docurural.domain.enums.UserRole;
 import co.edu.docurural.domain.enums.UserStatus;
 import co.edu.docurural.service.UserService;
@@ -28,7 +29,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -113,7 +113,7 @@ class UserControllerWebMvcTest {
     void list_withInvalidSortField_returns400MappedError() throws Exception {
         when(userService.list("invalido", "asc"))
                 .thenThrow(new BusinessRuleException(
-                        HttpStatus.BAD_REQUEST,
+                        BusinessErrorCode.INVALID_ARGUMENT,
                         "El campo de ordenamiento 'invalido' no es soportado"));
 
         mockMvc.perform(get("/users")
@@ -358,7 +358,7 @@ class UserControllerWebMvcTest {
 
         when(userService.changeStatus(eq(10L), any(UpdateStatusRequest.class), eq(10L), any(HttpServletRequest.class)))
                 .thenThrow(new BusinessRuleException(
-                        HttpStatus.FORBIDDEN,
+                        BusinessErrorCode.FORBIDDEN,
                         "No puede desactivar su propia cuenta de administrador"));
 
         mockMvc.perform(patch("/users/10/status")

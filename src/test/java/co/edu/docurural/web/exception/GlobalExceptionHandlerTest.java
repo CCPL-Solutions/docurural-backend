@@ -1,5 +1,6 @@
 package co.edu.docurural.web.exception;
 
+import co.edu.docurural.domain.exception.BusinessErrorCode;
 import co.edu.docurural.web.dto.common.ApiErrorResponse;
 import co.edu.docurural.web.dto.user.CreateUserRequest;
 import jakarta.servlet.http.HttpServletRequest;
@@ -124,12 +125,12 @@ class GlobalExceptionHandlerTest {
     @Test
     void handleBusinessRule_withCustomStatus_respectsStatus() {
         ResponseEntity<ApiErrorResponse> badRequest = handler.handleBusinessRule(
-                new BusinessRuleException(HttpStatus.BAD_REQUEST, "El usuario ya se encuentra en el estado solicitado"),
+                new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, "El usuario ya se encuentra en el estado solicitado"),
                 request
         );
 
         ResponseEntity<ApiErrorResponse> forbidden = handler.handleBusinessRule(
-                new BusinessRuleException(HttpStatus.FORBIDDEN, "No puede desactivar su propia cuenta"),
+                new BusinessRuleException(BusinessErrorCode.FORBIDDEN, "No puede desactivar su propia cuenta"),
                 request
         );
 

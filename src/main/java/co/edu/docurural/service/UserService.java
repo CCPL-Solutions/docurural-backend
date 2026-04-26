@@ -1,5 +1,6 @@
 package co.edu.docurural.service;
 
+import co.edu.docurural.domain.exception.BusinessErrorCode;
 import co.edu.docurural.domain.entity.User;
 import co.edu.docurural.domain.enums.ActivityAction;
 import co.edu.docurural.domain.enums.UserStatus;
@@ -22,7 +23,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -86,7 +86,7 @@ public class UserService {
 
         if (!ALLOWED_SORT_FIELDS.contains(resolvedSortBy)) {
             throw new BusinessRuleException(
-                    HttpStatus.BAD_REQUEST,
+                    BusinessErrorCode.INVALID_ARGUMENT,
                     resolve("user.sort.unsupported-field", resolvedSortBy));
         }
 
@@ -95,7 +95,7 @@ public class UserService {
             direction = Sort.Direction.fromString(resolvedSortDir.toLowerCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
             throw new BusinessRuleException(
-                    HttpStatus.BAD_REQUEST,
+                    BusinessErrorCode.INVALID_ARGUMENT,
                     resolve("user.sort.unsupported-direction", resolvedSortDir));
         }
 
@@ -137,7 +137,7 @@ public class UserService {
     @Transactional
     public CreateUserResponse create(CreateUserRequest request, Long adminId, HttpServletRequest httpRequest) {
         if (!request.password().equals(request.confirmPassword())) {
-            throw new BusinessRuleException(HttpStatus.BAD_REQUEST, resolve("user.passwords.mismatch"));
+            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, resolve("user.passwords.mismatch"));
         }
 
         if (userRepository.existsByEmail(request.email())) {
@@ -195,42 +195,96 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         resolve("user.not-found", id)));
 
-        boolean emailChanged = !request.email().equalsIgnoreCase(user.getEmail());
-        if (emailChanged && userRepository.existsByEmailAndIdNot(request.email(), id)) {
+        // Realizar validaciones
+        validateEmailUniqueness(request.email(), id, user);
+        validateRoleChange(request.role(), user, id, adminId);
+        validatePasswordConsistency(request.password(), request.confirmPassword());
+
+        // Actualizar campos y registrar cambios
+        List<String> modifiedFields = applyUpdates(user, request);
+
+        User updatedUser = userRepository.save(user);
+
+        recorderUpdateLog(adminId, httpRequest, modifiedFields);
+
+        log.info("Usuario actualizado: id={} modifiedFields={} por adminId={}",
+                updatedUser.getId(), modifiedFields, adminId);
+
+        return UserMapper.toUpdateResponse(updatedUser, resolve("user.updated.success"));
+    }
+
+    /**
+     * Valida que el email sea único si ha cambiado.
+     *
+     * @throws ConflictException si el email ya existe en otro usuario.
+     */
+    private void validateEmailUniqueness(String newEmail, Long userId, User currentUser) {
+        boolean emailChanged = !newEmail.equalsIgnoreCase(currentUser.getEmail());
+        if (emailChanged && userRepository.existsByEmailAndIdNot(newEmail, userId)) {
             throw new ConflictException(resolve("user.email.already-registered"));
         }
+    }
 
-        boolean roleChanged = request.role() != user.getRole();
-        if (roleChanged && id.equals(adminId)) {
-            throw new BusinessRuleException(HttpStatus.FORBIDDEN, resolve("user.self-role-change.forbidden"));
+    /**
+     * Valida que el administrador no intente cambiar su propio rol.
+     *
+     * @throws BusinessRuleException si el admin intenta cambiar su propio rol.
+     */
+    private void validateRoleChange(Object newRole, User currentUser, Long userId, Long adminId) {
+        boolean roleChanged = newRole != currentUser.getRole();
+        if (roleChanged && userId.equals(adminId)) {
+            throw new BusinessRuleException(BusinessErrorCode.FORBIDDEN, resolve("user.self-role-change.forbidden"));
         }
+    }
 
-        boolean passwordProvided = request.password() != null && !request.password().isBlank();
-        if (passwordProvided && !request.password().equals(request.confirmPassword())) {
-            throw new BusinessRuleException(HttpStatus.BAD_REQUEST, resolve("user.passwords.mismatch"));
+    /**
+     * Valida que la contraseña y su confirmación coincidan.
+     *
+     * @throws BusinessRuleException si las contraseñas no coinciden.
+     */
+    private void validatePasswordConsistency(String password, String confirmPassword) {
+        boolean passwordProvided = password != null && !password.isBlank();
+        if (passwordProvided && !password.equals(confirmPassword)) {
+            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, resolve("user.passwords.mismatch"));
         }
+    }
 
+    /**
+     * Aplica los cambios al usuario y retorna la lista de campos modificados.
+     *
+     * @return Lista con los nombres de los campos que fueron actualizados.
+     */
+    private List<String> applyUpdates(User user, UpdateUserRequest request) {
         List<String> modifiedFields = new ArrayList<>();
 
         if (!request.fullName().equals(user.getFullName())) {
             user.setFullName(request.fullName());
             modifiedFields.add("fullName");
         }
-        if (emailChanged) {
+
+        if (!request.email().equalsIgnoreCase(user.getEmail())) {
             user.setEmail(request.email());
             modifiedFields.add("email");
         }
-        if (roleChanged) {
+
+        if (request.role() != user.getRole()) {
             user.setRole(request.role());
             modifiedFields.add("role");
         }
-        if (passwordProvided) {
+
+        if (request.password() != null && !request.password().isBlank()) {
             user.setPasswordHash(passwordEncoder.encode(request.password()));
             modifiedFields.add("password");
         }
 
-        User updatedUser = userRepository.save(user);
+        return modifiedFields;
+    }
 
+    /**
+     * Registra la actualización del usuario en el log de actividades.
+     */
+    private void recorderUpdateLog(Long adminId, HttpServletRequest httpRequest,
+                                   List<String> modifiedFields) {
         String detail = "Campos modificados: " + modifiedFields;
         activityLogService.record(
                 ActivityAction.EDIT_USER,
@@ -238,11 +292,6 @@ public class UserService {
                 null,
                 detail,
                 httpRequest);
-
-        log.info("Usuario actualizado: id={} modifiedFields={} por adminId={}",
-                updatedUser.getId(), modifiedFields, adminId);
-
-        return UserMapper.toUpdateResponse(updatedUser, resolve("user.updated.success"));
     }
 
     /**
@@ -273,11 +322,11 @@ public class UserService {
         UserStatus newStatus = request.status();
 
         if (user.getStatus() == newStatus) {
-            throw new BusinessRuleException(HttpStatus.BAD_REQUEST, resolve("user.status.duplicate"));
+            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, resolve("user.status.duplicate"));
         }
 
         if (id.equals(adminId) && newStatus == UserStatus.INACTIVE) {
-            throw new BusinessRuleException(HttpStatus.FORBIDDEN, resolve("user.self-deactivation.forbidden"));
+            throw new BusinessRuleException(BusinessErrorCode.FORBIDDEN, resolve("user.self-deactivation.forbidden"));
         }
 
         user.setStatus(newStatus);

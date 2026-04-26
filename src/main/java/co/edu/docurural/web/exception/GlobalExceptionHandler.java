@@ -1,5 +1,6 @@
 package co.edu.docurural.web.exception;
 
+import co.edu.docurural.domain.exception.BusinessErrorCode;
 import co.edu.docurural.web.dto.common.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -130,14 +131,12 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Violación de regla de negocio. El status HTTP viaja como campo de la propia
-     * excepción (400 o 403 según el caso: auto-rol, auto-desactivación, estado
-     * duplicado, ordenamiento inválido, etc.).
+     * Violación de regla de negocio. Solo aquí se mapea código de dominio a HTTP.
      */
     @ExceptionHandler(BusinessRuleException.class)
     public ResponseEntity<ApiErrorResponse> handleBusinessRule(
             BusinessRuleException ex, HttpServletRequest request) {
-        HttpStatus status = ex.getStatus();
+        HttpStatus status = mapBusinessErrorCode(ex.getCode());
         log.warn("Regla de negocio violada en {} {} [{}]: {}",
                 request.getMethod(), request.getRequestURI(), status.value(), ex.getMessage());
         return buildResponse(status, ex.getMessage());
@@ -209,6 +208,16 @@ public class GlobalExceptionHandler {
                 status.getReasonPhrase(),
                 message);
         return ResponseEntity.status(status).body(body);
+    }
+
+    private HttpStatus mapBusinessErrorCode(BusinessErrorCode code) {
+        if (code == null) {
+            return HttpStatus.BAD_REQUEST;
+        }
+        return switch (code) {
+            case INVALID_ARGUMENT -> HttpStatus.BAD_REQUEST;
+            case FORBIDDEN -> HttpStatus.FORBIDDEN;
+        };
     }
 
     private String resolve(String key, Object... args) {

@@ -1,40 +1,35 @@
 package co.edu.docurural.web.exception;
 
-import org.springframework.http.HttpStatus;
+import co.edu.docurural.domain.exception.BusinessErrorCode;
 
 /**
  * Se lanza cuando una regla de negocio del dominio se viola.
  *
- * <p>El status HTTP asociado se transporta como campo de la propia excepción
- * para que la misma clase sirva tanto a {@code 400 Bad Request} (ej. estado
- * duplicado) como a {@code 403 Forbidden} (ej. cambio de rol propio o
- * auto-desactivación). Esto simplifica el mapeo posterior en el
- * {@code GlobalExceptionHandler} (Fase 7).
- *
- * <p>Solo se aceptan valores 4xx distintos de 404 y 409, que ya tienen sus
- * propias excepciones ({@link ResourceNotFoundException} y {@link ConflictException}).
+ * <p>Transporta un {@link BusinessErrorCode} de dominio independiente de
+ * framework. El mapeo a HTTP se realiza exclusivamente en
+ * {@code GlobalExceptionHandler}.
  */
 public class BusinessRuleException extends RuntimeException {
 
-    private final HttpStatus status;
+    private final BusinessErrorCode code;
 
-    public BusinessRuleException(HttpStatus status, String message) {
+    public BusinessRuleException(BusinessErrorCode code, String message) {
         super(message);
-        if (status == null) {
-            throw new IllegalArgumentException("status no puede ser null");
+        if (code == null) {
+            throw new IllegalArgumentException("code no puede ser null");
         }
-        this.status = status;
+        this.code = code;
     }
 
-    public BusinessRuleException(HttpStatus status, String message, Throwable cause) {
+    public BusinessRuleException(BusinessErrorCode code, String message, Throwable cause) {
         super(message, cause);
-        if (status == null) {
-            throw new IllegalArgumentException("status no puede ser null");
+        if (code == null) {
+            throw new IllegalArgumentException("code no puede ser null");
         }
-        this.status = status;
+        this.code = code;
     }
 
-    public HttpStatus getStatus() {
-        return status;
+    public BusinessErrorCode getCode() {
+        return code;
     }
 }
