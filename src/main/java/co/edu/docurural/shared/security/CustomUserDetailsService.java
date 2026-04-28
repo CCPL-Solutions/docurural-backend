@@ -3,10 +3,9 @@ package co.edu.docurural.shared.security;
 import co.edu.docurural.shared.domain.entity.User;
 import co.edu.docurural.shared.domain.enums.UserStatus;
 import co.edu.docurural.shared.domain.repository.UserRepository;
+import co.edu.docurural.shared.util.MessageResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.MessageSource;
-import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -34,18 +33,18 @@ import org.springframework.stereotype.Service;
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
-    private final MessageSource messageSource;
+    private final MessageResolver messageResolver;
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {
                     log.debug("Intento de login con email inexistente: {}", email);
-                    return new UsernameNotFoundException(resolve("auth.login.invalid-credentials"));
+                    return new UsernameNotFoundException("User not found");
                 });
 
         if (user.getStatus() == UserStatus.INACTIVE) {
-            throw new DisabledException(resolve("auth.login.account-disabled"));
+            throw new DisabledException(messageResolver.get("auth.login.account-disabled"));
         }
 
         return new CustomUserPrincipal(
@@ -54,9 +53,5 @@ public class CustomUserDetailsService implements UserDetailsService {
                 user.getRole(),
                 user.getStatus(),
                 user.getPasswordHash());
-    }
-
-    private String resolve(String key) {
-        return messageSource.getMessage(key, null, LocaleContextHolder.getLocale());
     }
 }

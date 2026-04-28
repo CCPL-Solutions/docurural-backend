@@ -1,13 +1,17 @@
 package co.edu.docurural.user.service;
 
+import co.edu.docurural.activitylog.enums.ActivityAction;
 import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.domain.entity.User;
-import co.edu.docurural.shared.exception.BusinessErrorCode;
-import co.edu.docurural.activitylog.enums.ActivityAction;
 import co.edu.docurural.shared.domain.enums.UserRole;
 import co.edu.docurural.shared.domain.enums.UserStatus;
 import co.edu.docurural.shared.domain.repository.UserRepository;
+import co.edu.docurural.shared.exception.BusinessErrorCode;
+import co.edu.docurural.shared.exception.BusinessRuleException;
+import co.edu.docurural.shared.exception.ConflictException;
+import co.edu.docurural.shared.exception.ResourceNotFoundException;
+import co.edu.docurural.shared.util.MessageResolver;
 import co.edu.docurural.support.TestFixtures;
 import co.edu.docurural.user.dto.CreateUserRequest;
 import co.edu.docurural.user.dto.CreateUserResponse;
@@ -17,9 +21,6 @@ import co.edu.docurural.user.dto.UpdateUserRequest;
 import co.edu.docurural.user.dto.UpdateUserResponse;
 import co.edu.docurural.user.dto.UserListResponse;
 import co.edu.docurural.user.dto.UserResponse;
-import co.edu.docurural.shared.exception.BusinessRuleException;
-import co.edu.docurural.shared.exception.ConflictException;
-import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,7 +28,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -59,14 +59,14 @@ class UserServiceTest {
     @Mock
     ActivityLogService activityLogService;
     @Mock
-    MessageSource messageSource;
+    MessageResolver messageResolver;
 
     @InjectMocks
     UserService userService;
 
     @BeforeEach
-    void stubMessageSource() {
-        lenient().when(messageSource.getMessage(anyString(), any(), any()))
+    void stubMessageResolver() {
+        lenient().when(messageResolver.get(anyString()))
                 .thenAnswer(inv -> inv.getArgument(0));
     }
 

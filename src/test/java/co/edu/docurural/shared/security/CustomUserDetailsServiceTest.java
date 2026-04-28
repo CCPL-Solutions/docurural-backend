@@ -2,8 +2,7 @@ package co.edu.docurural.shared.security;
 
 import co.edu.docurural.shared.domain.entity.User;
 import co.edu.docurural.shared.domain.repository.UserRepository;
-import co.edu.docurural.shared.security.CustomUserDetailsService;
-import co.edu.docurural.shared.security.CustomUserPrincipal;
+import co.edu.docurural.shared.util.MessageResolver;
 import co.edu.docurural.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,7 +10,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.MessageSource;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -21,10 +19,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -36,14 +31,14 @@ class CustomUserDetailsServiceTest {
     @Mock
     UserRepository userRepository;
     @Mock
-    MessageSource messageSource;
+    MessageResolver messageResolver;
 
     @InjectMocks
     CustomUserDetailsService customUserDetailsService;
 
     @BeforeEach
-    void stubMessageSource() {
-        lenient().when(messageSource.getMessage(anyString(), any(), any()))
+    void stubMessageResolver() {
+        lenient().when(messageResolver.get(anyString()))
                 .thenAnswer(inv -> inv.getArgument(0));
     }
 
@@ -61,7 +56,7 @@ class CustomUserDetailsServiceTest {
                 .containsExactly("ROLE_EDITOR");
 
         verify(userRepository).findByEmail(editor.getEmail());
-        verifyNoInteractions(messageSource);
+        verifyNoInteractions(messageResolver);
     }
 
     @Test
@@ -71,10 +66,10 @@ class CustomUserDetailsServiceTest {
 
         assertThatThrownBy(() -> customUserDetailsService.loadUserByUsername(missingEmail))
                 .isInstanceOf(UsernameNotFoundException.class)
-                .hasMessageContaining("auth.login.invalid-credentials");
+                .hasMessageContaining("User not found");
 
         verify(userRepository).findByEmail(missingEmail);
-        verify(messageSource).getMessage(eq("auth.login.invalid-credentials"), isNull(), any());
+        verifyNoInteractions(messageResolver);
     }
 
     @Test
@@ -88,7 +83,7 @@ class CustomUserDetailsServiceTest {
                 .hasMessageContaining("auth.login.account-disabled");
 
         verify(userRepository).findByEmail(inactive.getEmail());
-        verify(messageSource).getMessage(eq("auth.login.account-disabled"), isNull(), any());
+        verify(messageResolver).get("auth.login.account-disabled");
     }
 }
 

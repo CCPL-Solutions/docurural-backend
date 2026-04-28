@@ -1,12 +1,16 @@
 package co.edu.docurural.user.service;
 
-import co.edu.docurural.shared.exception.BusinessErrorCode;
-import co.edu.docurural.shared.domain.entity.User;
 import co.edu.docurural.activitylog.enums.ActivityAction;
+import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.shared.audit.AuditContext;
+import co.edu.docurural.shared.domain.entity.User;
 import co.edu.docurural.shared.domain.enums.UserStatus;
 import co.edu.docurural.shared.domain.repository.UserRepository;
-import co.edu.docurural.activitylog.service.ActivityLogService;
+import co.edu.docurural.shared.exception.BusinessErrorCode;
+import co.edu.docurural.shared.exception.BusinessRuleException;
+import co.edu.docurural.shared.exception.ConflictException;
+import co.edu.docurural.shared.exception.ResourceNotFoundException;
+import co.edu.docurural.shared.util.MessageResolver;
 import co.edu.docurural.user.dto.CreateUserRequest;
 import co.edu.docurural.user.dto.CreateUserResponse;
 import co.edu.docurural.user.dto.UpdateStatusRequest;
@@ -15,14 +19,9 @@ import co.edu.docurural.user.dto.UpdateUserRequest;
 import co.edu.docurural.user.dto.UpdateUserResponse;
 import co.edu.docurural.user.dto.UserListResponse;
 import co.edu.docurural.user.dto.UserResponse;
-import co.edu.docurural.shared.exception.BusinessRuleException;
-import co.edu.docurural.shared.exception.ConflictException;
-import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.user.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.MessageSource;
-import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -67,7 +66,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final ActivityLogService activityLogService;
-    private final MessageSource messageSource;
+    private final MessageResolver messageResolver;
 
     /**
      * Retorna el listado completo de usuarios ordenado según los parámetros.
@@ -88,7 +87,7 @@ public class UserService {
         if (!ALLOWED_SORT_FIELDS.contains(resolvedSortBy)) {
             throw new BusinessRuleException(
                     BusinessErrorCode.INVALID_ARGUMENT,
-                    resolve("user.sort.unsupported-field", resolvedSortBy));
+                    messageResolver.get("user.sort.unsupported-field", resolvedSortBy));
         }
 
         Sort.Direction direction;
@@ -97,7 +96,7 @@ public class UserService {
         } catch (IllegalArgumentException ex) {
             throw new BusinessRuleException(
                     BusinessErrorCode.INVALID_ARGUMENT,
-                    resolve("user.sort.unsupported-direction", resolvedSortDir));
+                    messageResolver.get("user.sort.unsupported-direction", resolvedSortDir));
         }
 
         List<User> users = userRepository.findAll(Sort.by(direction, resolvedSortBy));
@@ -115,7 +114,7 @@ public class UserService {
     public UserResponse findById(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        resolve("user.not-found", id)));
+                        messageResolver.get("user.not-found", id)));
         return UserMapper.toResponse(user);
     }
 
@@ -140,11 +139,11 @@ public class UserService {
         Long adminId = requireActorUserId(audit);
 
         if (!request.password().equals(request.confirmPassword())) {
-            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, resolve("user.passwords.mismatch"));
+            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, messageResolver.get("user.passwords.mismatch"));
         }
 
         if (userRepository.existsByEmail(request.email())) {
-            throw new ConflictException(resolve("user.email.already-registered"));
+            throw new ConflictException(messageResolver.get("user.email.already-registered"));
         }
 
         User newUser = User.builder()
@@ -166,7 +165,7 @@ public class UserService {
         log.info("Usuario creado: id={} email={} role={} por adminId={}",
                 savedUser.getId(), savedUser.getEmail(), savedUser.getRole(), adminId);
 
-        return UserMapper.toCreateResponse(savedUser, resolve("user.created.success"));
+        return UserMapper.toCreateResponse(savedUser, messageResolver.get("user.created.success"));
     }
 
     /**
@@ -197,7 +196,7 @@ public class UserService {
 
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        resolve("user.not-found", id)));
+                        messageResolver.get("user.not-found", id)));
 
         // Realizar validaciones
         validateEmailUniqueness(request.email(), id, user);
@@ -214,7 +213,7 @@ public class UserService {
         log.info("Usuario actualizado: id={} modifiedFields={} por adminId={}",
                 updatedUser.getId(), modifiedFields, adminId);
 
-        return UserMapper.toUpdateResponse(updatedUser, resolve("user.updated.success"));
+        return UserMapper.toUpdateResponse(updatedUser, messageResolver.get("user.updated.success"));
     }
 
     /**
@@ -225,7 +224,7 @@ public class UserService {
     private void validateEmailUniqueness(String newEmail, Long userId, User currentUser) {
         boolean emailChanged = !newEmail.equalsIgnoreCase(currentUser.getEmail());
         if (emailChanged && userRepository.existsByEmailAndIdNot(newEmail, userId)) {
-            throw new ConflictException(resolve("user.email.already-registered"));
+            throw new ConflictException(messageResolver.get("user.email.already-registered"));
         }
     }
 
@@ -237,7 +236,7 @@ public class UserService {
     private void validateRoleChange(Object newRole, User currentUser, Long userId, Long adminId) {
         boolean roleChanged = newRole != currentUser.getRole();
         if (roleChanged && userId.equals(adminId)) {
-            throw new BusinessRuleException(BusinessErrorCode.FORBIDDEN, resolve("user.self-role-change.forbidden"));
+            throw new BusinessRuleException(BusinessErrorCode.FORBIDDEN, messageResolver.get("user.self-role-change.forbidden"));
         }
     }
 
@@ -249,7 +248,7 @@ public class UserService {
     private void validatePasswordConsistency(String password, String confirmPassword) {
         boolean passwordProvided = password != null && !password.isBlank();
         if (passwordProvided && !password.equals(confirmPassword)) {
-            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, resolve("user.passwords.mismatch"));
+            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, messageResolver.get("user.passwords.mismatch"));
         }
     }
 
@@ -322,24 +321,24 @@ public class UserService {
 
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        resolve("user.not-found", id)));
+                        messageResolver.get("user.not-found", id)));
 
         UserStatus newStatus = request.status();
 
         if (user.getStatus() == newStatus) {
-            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, resolve("user.status.duplicate"));
+            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, messageResolver.get("user.status.duplicate"));
         }
 
         if (id.equals(adminId) && newStatus == UserStatus.INACTIVE) {
-            throw new BusinessRuleException(BusinessErrorCode.FORBIDDEN, resolve("user.self-deactivation.forbidden"));
+            throw new BusinessRuleException(BusinessErrorCode.FORBIDDEN, messageResolver.get("user.self-deactivation.forbidden"));
         }
 
         user.setStatus(newStatus);
         User updatedUser = userRepository.save(user);
 
         String message = newStatus == UserStatus.ACTIVE
-                ? resolve("user.activated.success")
-                : resolve("user.deactivated.success");
+                ? messageResolver.get("user.activated.success")
+                : messageResolver.get("user.deactivated.success");
 
         activityLogService.record(
                 ActivityAction.DEACTIVATE_USER,
@@ -353,9 +352,6 @@ public class UserService {
         return UserMapper.toStatusResponse(updatedUser, message);
     }
 
-    private String resolve(String key, Object... args) {
-        return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
-    }
 
     private Long requireActorUserId(AuditContext audit) {
         if (audit == null) {

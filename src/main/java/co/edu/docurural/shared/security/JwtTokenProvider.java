@@ -2,6 +2,7 @@ package co.edu.docurural.shared.security;
 
 import co.edu.docurural.shared.domain.entity.User;
 import co.edu.docurural.shared.domain.enums.UserRole;
+import co.edu.docurural.shared.util.MessageResolver;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
@@ -11,8 +12,6 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.MessageSource;
-import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.CredentialsExpiredException;
 import org.springframework.stereotype.Component;
@@ -47,7 +46,7 @@ public class JwtTokenProvider {
     private static final String CLAIM_ROLE = "role";
 
     private final JwtProperties jwtProperties;
-    private final MessageSource messageSource;
+    private final MessageResolver messageResolver;
 
     /**
      * Genera un token firmado HS256 a partir del usuario autenticado.
@@ -90,15 +89,11 @@ public class JwtTokenProvider {
             return new ParsedJwt(userId, email, role);
         } catch (TokenExpiredException ex) {
             log.debug("JWT expirado: {}", ex.getMessage());
-            throw new CredentialsExpiredException(resolve("auth.session.expired"), ex);
+            throw new CredentialsExpiredException(messageResolver.get("auth.session.expired"), ex);
         } catch (JWTVerificationException | IllegalArgumentException ex) {
             log.debug("JWT inválido: {}", ex.getMessage());
-            throw new BadCredentialsException(resolve("auth.token.invalid"), ex);
+            throw new BadCredentialsException(messageResolver.get("auth.token.invalid"), ex);
         }
-    }
-
-    private String resolve(String key) {
-        return messageSource.getMessage(key, null, LocaleContextHolder.getLocale());
     }
 
     private Algorithm buildAlgorithm() {

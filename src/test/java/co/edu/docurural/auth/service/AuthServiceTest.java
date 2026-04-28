@@ -1,17 +1,18 @@
 package co.edu.docurural.auth.service;
 
-import co.edu.docurural.activitylog.service.ActivityLogService;
-import co.edu.docurural.shared.security.JwtProperties;
-import co.edu.docurural.shared.security.JwtTokenProvider;
-import co.edu.docurural.shared.audit.AuditContext;
-import co.edu.docurural.shared.domain.entity.User;
 import co.edu.docurural.activitylog.enums.ActivityAction;
-import co.edu.docurural.shared.domain.repository.UserRepository;
-import co.edu.docurural.support.TestFixtures;
+import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.auth.dto.LoginRequest;
 import co.edu.docurural.auth.dto.LoginResponse;
+import co.edu.docurural.shared.audit.AuditContext;
+import co.edu.docurural.shared.domain.entity.User;
+import co.edu.docurural.shared.domain.repository.UserRepository;
 import co.edu.docurural.shared.dto.MessageResponse;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
+import co.edu.docurural.shared.security.JwtProperties;
+import co.edu.docurural.shared.security.JwtTokenProvider;
+import co.edu.docurural.shared.util.MessageResolver;
+import co.edu.docurural.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,7 +20,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.MessageSource;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -57,14 +57,14 @@ class AuthServiceTest {
     @Mock
     ActivityLogService activityLogService;
     @Mock
-    MessageSource messageSource;
+    MessageResolver messageResolver;
 
     @InjectMocks
     AuthService authService;
 
     @BeforeEach
-    void stubMessageSource() {
-        lenient().when(messageSource.getMessage(anyString(), any(), any()))
+    void stubMessageResolver() {
+        lenient().when(messageResolver.get(anyString()))
                 .thenAnswer(inv -> inv.getArgument(0));
     }
 

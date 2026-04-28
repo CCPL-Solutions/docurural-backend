@@ -1,22 +1,21 @@
 package co.edu.docurural.auth.service;
 
-import co.edu.docurural.shared.security.JwtProperties;
-import co.edu.docurural.shared.security.JwtTokenProvider;
-import co.edu.docurural.shared.audit.AuditContext;
-import co.edu.docurural.shared.domain.entity.User;
 import co.edu.docurural.activitylog.enums.ActivityAction;
-import co.edu.docurural.shared.domain.repository.UserRepository;
 import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.auth.dto.LoginRequest;
 import co.edu.docurural.auth.dto.LoginResponse;
 import co.edu.docurural.auth.dto.UserSummary;
+import co.edu.docurural.shared.audit.AuditContext;
+import co.edu.docurural.shared.domain.entity.User;
+import co.edu.docurural.shared.domain.repository.UserRepository;
 import co.edu.docurural.shared.dto.MessageResponse;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
+import co.edu.docurural.shared.security.JwtProperties;
+import co.edu.docurural.shared.security.JwtTokenProvider;
+import co.edu.docurural.shared.util.MessageResolver;
 import co.edu.docurural.user.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.MessageSource;
-import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -55,7 +54,7 @@ public class AuthService {
     private final JwtProperties jwtProperties;
     private final UserRepository userRepository;
     private final ActivityLogService activityLogService;
-    private final MessageSource messageSource;
+    private final MessageResolver messageResolver;
 
     /**
      * Autentica al usuario con email + password y emite un token JWT.
@@ -76,8 +75,8 @@ public class AuthService {
      *       ({@code "Bearer"}), la duración en segundos y el resumen del usuario.</li>
      * </ol>
      *
-     * @param request     credenciales del usuario (email + password) ya validadas por Bean Validation.
-     * @param audit       contexto de auditoría resuelto en la capa web.
+     * @param request credenciales del usuario (email + password) ya validadas por Bean Validation.
+     * @param audit   contexto de auditoría resuelto en la capa web.
      * @return {@link LoginResponse} listo para serializar como body del endpoint.
      */
     @Transactional
@@ -132,7 +131,7 @@ public class AuthService {
                 LOGOUT_DETAIL);
 
         log.info("Logout registrado para userId={}", resolvedAudit.actorUserId());
-        return new MessageResponse(resolve("auth.logout.success"));
+        return new MessageResponse(messageResolver.get("auth.logout.success"));
     }
 
     private AuditContext requireAudit(AuditContext audit) {
@@ -148,9 +147,5 @@ public class AuthService {
             throw new IllegalArgumentException("audit.actorUserId no puede ser null");
         }
         return resolvedAudit;
-    }
-
-    private String resolve(String key, Object... args) {
-        return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
     }
 }

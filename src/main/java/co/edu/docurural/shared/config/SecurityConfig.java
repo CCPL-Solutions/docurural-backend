@@ -5,16 +5,15 @@ import co.edu.docurural.shared.security.CustomUserDetailsService;
 import co.edu.docurural.shared.security.JwtAuthenticationFilter;
 import co.edu.docurural.shared.security.JwtProperties;
 import co.edu.docurural.shared.security.SecurityConstants;
+import co.edu.docurural.shared.util.MessageResolver;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -70,7 +69,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomUserDetailsService customUserDetailsService;
     private final ObjectMapper objectMapper;
-    private final MessageSource messageSource;
+    private final MessageResolver messageResolver;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -136,7 +135,7 @@ public class SecurityConfig {
     @Bean
     public AccessDeniedHandler accessDeniedHandler() {
         return (request, response, accessDeniedException) ->
-                writeJsonError(response, HttpStatus.FORBIDDEN, resolve("auth.access-denied"));
+                writeJsonError(response, HttpStatus.FORBIDDEN, messageResolver.get("auth.access-denied"));
     }
 
     private AuthenticationException resolveCause(HttpServletRequest request, AuthenticationException fallback) {
@@ -149,16 +148,12 @@ public class SecurityConfig {
 
     private String resolveUnauthorizedMessage(AuthenticationException cause) {
         if (cause instanceof CredentialsExpiredException) {
-            return resolve("auth.session.expired");
+            return messageResolver.get("auth.session.expired");
         }
         if (cause instanceof BadCredentialsException) {
-            return resolve("auth.token.invalid");
+            return messageResolver.get("auth.token.invalid");
         }
-        return resolve("auth.session.expired");
-    }
-
-    private String resolve(String key) {
-        return messageSource.getMessage(key, null, LocaleContextHolder.getLocale());
+        return messageResolver.get("auth.session.expired");
     }
 
     private void writeJsonError(

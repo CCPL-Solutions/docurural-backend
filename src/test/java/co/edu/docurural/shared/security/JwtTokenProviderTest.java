@@ -2,8 +2,7 @@ package co.edu.docurural.shared.security;
 
 import co.edu.docurural.shared.domain.entity.User;
 import co.edu.docurural.shared.domain.enums.UserRole;
-import co.edu.docurural.shared.security.JwtProperties;
-import co.edu.docurural.shared.security.JwtTokenProvider;
+import co.edu.docurural.shared.util.MessageResolver;
 import co.edu.docurural.support.TestFixtures;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
@@ -14,7 +13,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.MessageSource;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.CredentialsExpiredException;
 
@@ -23,7 +21,6 @@ import java.util.Date;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.lenient;
@@ -41,14 +38,14 @@ class JwtTokenProviderTest {
     @Mock
     JwtProperties jwtProperties;
     @Mock
-    MessageSource messageSource;
+    MessageResolver messageResolver;
 
     @InjectMocks
     JwtTokenProvider jwtTokenProvider;
 
     @BeforeEach
-    void stubMessageSource() {
-        lenient().when(messageSource.getMessage(anyString(), any(), any()))
+    void stubMessageResolver() {
+        lenient().when(messageResolver.get(anyString()))
                 .thenAnswer(inv -> inv.getArgument(0));
     }
 
@@ -74,7 +71,7 @@ class JwtTokenProviderTest {
         verify(jwtProperties, atLeastOnce()).getExpirationMs();
         verify(jwtProperties, atLeastOnce()).getIssuer();
         verify(jwtProperties, atLeastOnce()).getSecret();
-        verifyNoInteractions(messageSource);
+        verifyNoInteractions(messageResolver);
     }
 
     @Test
@@ -95,7 +92,7 @@ class JwtTokenProviderTest {
         verify(jwtProperties, atLeastOnce()).getExpirationMs();
         verify(jwtProperties, atLeastOnce()).getIssuer();
         verify(jwtProperties, atLeastOnce()).getSecret();
-        verifyNoInteractions(messageSource);
+        verifyNoInteractions(messageResolver);
     }
 
     @Test
@@ -113,7 +110,7 @@ class JwtTokenProviderTest {
         verify(jwtProperties, atLeastOnce()).getExpirationMs();
         verify(jwtProperties, atLeastOnce()).getIssuer();
         verify(jwtProperties, atLeastOnce()).getSecret();
-        verify(messageSource).getMessage(anyString(), any(), any());
+        verify(messageResolver).get(anyString());
     }
 
     @Test
@@ -139,7 +136,7 @@ class JwtTokenProviderTest {
 
         verify(jwtProperties, atLeastOnce()).getIssuer();
         verify(jwtProperties, atLeastOnce()).getSecret();
-        verify(messageSource).getMessage(anyString(), any(), any());
+        verify(messageResolver).get(anyString());
     }
 
     @Test
@@ -162,7 +159,7 @@ class JwtTokenProviderTest {
 
         verify(jwtProperties, atLeastOnce()).getIssuer();
         verify(jwtProperties, atLeastOnce()).getSecret();
-        verify(messageSource).getMessage(anyString(), any(), any());
+        verify(messageResolver).get(anyString());
     }
 
     @Test
@@ -175,7 +172,7 @@ class JwtTokenProviderTest {
 
         verify(jwtProperties, atLeastOnce()).getIssuer();
         verify(jwtProperties, atLeastOnce()).getSecret();
-        verify(messageSource).getMessage(anyString(), any(), any());
+        verify(messageResolver).get(anyString());
     }
 
     @Test
@@ -198,7 +195,7 @@ class JwtTokenProviderTest {
 
         verify(jwtProperties, atLeastOnce()).getIssuer();
         verify(jwtProperties, atLeastOnce()).getSecret();
-        verify(messageSource).getMessage(anyString(), any(), any());
+        verify(messageResolver).get(anyString());
     }
 
     @Test
@@ -211,6 +208,6 @@ class JwtTokenProviderTest {
                 .isInstanceOf(IllegalStateException.class);
 
         verify(jwtProperties, atLeastOnce()).getSecret();
-        verifyNoInteractions(messageSource);
+        verifyNoInteractions(messageResolver);
     }
 }
