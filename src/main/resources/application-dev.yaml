@@ -7,7 +7,7 @@ spring:
 
 docurural:
   cors:
-    allowed-origins: http://localhost:4200
+    allowed-origins:  ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
 
 logging:
   level:
