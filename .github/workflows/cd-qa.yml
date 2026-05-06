@@ -58,7 +58,7 @@ jobs:
           sleep 15  # Dar tiempo a Spring Boot para inicializar
           sudo systemctl status docurural --no-pager
           # Fallar el pipeline si el servicio no está running
-          systemctl is-active docurural
+          sudo systemctl is-active docurural
 
       - name: Health check del backend
         run: |
