@@ -51,7 +51,7 @@ public class AuthController {
      *
      * @param request     credenciales validadas con Bean Validation.
      * @param httpRequest petición HTTP (para resolver la IP del registro de auditoría).
-     * @return 200 {@link LoginResponse} con token, tipo, expiración y resumen del usuario. Test
+     * @return 200 {@link LoginResponse} con token, tipo, expiración y resumen del usuario.
      */
     @Operation(summary = "Iniciar sesión", description = "Autentica con email y contraseña. Devuelve token JWT.")
     @ApiResponses(value = {

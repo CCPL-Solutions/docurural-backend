@@ -34,7 +34,7 @@ public final class UserMapper {
         Objects.requireNonNull(user, "user no puede ser null");
         return new UserResponse(
                 user.getId(),
-                user.getFullName(),
+                user.getFullName().toUpperCase(),
                 user.getEmail(),
                 user.getRole() != null ? user.getRole().name() : null,
                 user.getStatus() != null ? user.getStatus().name() : null,
