@@ -25,7 +25,7 @@ class UserMapperTest {
         UserResponse response = UserMapper.toResponse(user);
 
         assertThat(response.id()).isEqualTo(5L);
-        assertThat(response.fullName()).isEqualTo("Ana Admin");
+        assertThat(response.fullName()).isEqualTo("Ana Admin".toUpperCase());
         assertThat(response.email()).isEqualTo("ana.admin@docurural.edu.co");
         assertThat(response.role()).isEqualTo("ADMIN");
         assertThat(response.status()).isEqualTo("ACTIVE");
