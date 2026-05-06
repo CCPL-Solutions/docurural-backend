@@ -47,7 +47,6 @@ jobs:
       - name: Reemplazar el JAR en el servidor
         run: |
           cp target/docurural-backend-*.jar /opt/docurural/backend/docurural-api.jar
-          chown ubuntu:ubuntu /opt/docurural/backend/docurural-api.jar
 
       - name: Arrancar el servicio
         run: |
