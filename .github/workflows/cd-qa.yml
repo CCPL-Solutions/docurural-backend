@@ -5,6 +5,10 @@ on:
     branches:
       - develop   # Solo se dispara al hacer merge de un PR a develop
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   deploy-qa:
     name: Construir y desplegar en entorno QA
