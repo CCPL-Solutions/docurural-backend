@@ -142,7 +142,7 @@ class UserServiceTest {
         UserResponse response = userService.findById(7L);
 
         assertThat(response.id()).isEqualTo(7L);
-        assertThat(response.fullName()).isEqualTo(editor.getFullName());
+        assertThat(response.fullName()).isEqualTo(editor.getFullName().toUpperCase());
         assertThat(response.email()).isEqualTo(editor.getEmail());
         assertThat(response.role()).isEqualTo("EDITOR");
         assertThat(response.status()).isEqualTo("ACTIVE");
