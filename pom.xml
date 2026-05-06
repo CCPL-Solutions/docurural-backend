@@ -144,19 +144,19 @@
 				<configuration>
 					<excludes>
 						<exclude>**/DocururalBackendApplication.class</exclude>
-						<exclude>**/config/CorsConfig.class</exclude>
-						<exclude>**/config/InitialAdminSeeder.class</exclude>
-						<exclude>**/config/security/SecurityConfig.class</exclude>
-						<exclude>**/config/security/SecurityConstants.class</exclude>
-						<exclude>**/config/security/JwtProperties.class</exclude>
-						<exclude>**/config/security/CustomUserPrincipal.class</exclude>
-						<exclude>**/web/dto/**</exclude>
-						<exclude>**/domain/entity/**</exclude>
-						<exclude>**/domain/enums/**</exclude>
-						<exclude>**/domain/repository/**</exclude>
-						<exclude>**/web/exception/BusinessRuleException.class</exclude>
-						<exclude>**/web/exception/ConflictException.class</exclude>
-						<exclude>**/web/exception/ResourceNotFoundException.class</exclude>
+						<exclude>**/shared/config/**</exclude>
+						<exclude>**/shared/security/SecurityConstants.class</exclude>
+						<exclude>**/shared/security/JwtProperties.class</exclude>
+						<exclude>**/shared/security/CustomUserPrincipal.class</exclude>
+						<exclude>**/audit/**</exclude>
+						<exclude>**/util/**</exclude>
+						<exclude>**/dto/**</exclude>
+						<exclude>**/entity/**</exclude>
+						<exclude>**/enums/**</exclude>
+						<exclude>**/repository/**</exclude>
+						<exclude>**/exception/BusinessRuleException.class</exclude>
+						<exclude>**/exception/ConflictException.class</exclude>
+						<exclude>**/exception/ResourceNotFoundException.class</exclude>
 					</excludes>
 				</configuration>
 				<executions>
@@ -197,5 +197,11 @@
 			</plugin>
 		</plugins>
 	</build>
-
+	<distributionManagement>
+		<repository>
+			<id>github</id>
+			<name>DocuRural Backend — GitHub Packages</name>
+			<url>https://maven.pkg.github.com/${env.GITHUB_REPOSITORY}</url>
+		</repository>
+	</distributionManagement>
 </project>
