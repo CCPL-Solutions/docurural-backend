@@ -1,5 +1,7 @@
 package co.edu.docurural.category.controller;
 
+import co.edu.docurural.category.dto.CategoryDetailResponse;
+import co.edu.docurural.category.dto.CategoryListResponse;
 import co.edu.docurural.category.dto.CreateCategoryRequest;
 import co.edu.docurural.category.dto.CreateCategoryResponse;
 import co.edu.docurural.category.dto.UpdateCategoryRequest;
@@ -31,12 +33,14 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -459,5 +463,113 @@ class CategoryControllerWebMvcTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.message").value("La categoría ya se encuentra en el estado solicitado"));
+    }
+
+    // ------------------------------------------------------------------
+    // GET /categories
+    // ------------------------------------------------------------------
+
+    @Test
+    void list_returns200WithListResponse() throws Exception {
+        CategoryDetailResponse item = new CategoryDetailResponse(
+                1L, "Actas", "Actas de reuniones, consejos directivos",
+                "ACTIVE", 23, LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema");
+
+        CategoryListResponse response = new CategoryListResponse(1, 1, 0, List.of(item));
+
+        when(categoryService.list(any(), any())).thenReturn(response);
+
+        mockMvc.perform(get("/categories"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCategories").value(1))
+                .andExpect(jsonPath("$.activeCategories").value(1))
+                .andExpect(jsonPath("$.inactiveCategories").value(0))
+                .andExpect(jsonPath("$.categories[0].id").value(1))
+                .andExpect(jsonPath("$.categories[0].name").value("Actas"))
+                .andExpect(jsonPath("$.categories[0].documentCount").value(23))
+                .andExpect(jsonPath("$.categories[0].createdBy").value("Sistema"));
+    }
+
+    @Test
+    void list_withSortParams_passesParamsToService() throws Exception {
+        when(categoryService.list("createdAt", "desc"))
+                .thenReturn(new CategoryListResponse(0, 0, 0, List.of()));
+
+        mockMvc.perform(get("/categories")
+                        .param("sortBy", "createdAt")
+                        .param("sortDir", "desc"))
+                .andExpect(status().isOk());
+
+        verify(categoryService).list("createdAt", "desc");
+    }
+
+    @Test
+    void list_withInvalidSortBy_returns400() throws Exception {
+        when(categoryService.list("foo", null))
+                .thenThrow(new BusinessRuleException(
+                        BusinessErrorCode.INVALID_ARGUMENT, "Campo de ordenamiento no soportado: foo"));
+
+        mockMvc.perform(get("/categories").param("sortBy", "foo"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value("Campo de ordenamiento no soportado: foo"));
+    }
+
+    @Test
+    void list_withInvalidSortDir_returns400() throws Exception {
+        when(categoryService.list(null, "ascending"))
+                .thenThrow(new BusinessRuleException(
+                        BusinessErrorCode.INVALID_ARGUMENT, "Dirección de ordenamiento no soportada: ascending"));
+
+        mockMvc.perform(get("/categories").param("sortDir", "ascending"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value("Dirección de ordenamiento no soportada: ascending"));
+    }
+
+    // ------------------------------------------------------------------
+    // GET /categories/{id}
+    // ------------------------------------------------------------------
+
+    @Test
+    void getById_returns200WithDetailResponse() throws Exception {
+        CategoryDetailResponse response = new CategoryDetailResponse(
+                1L, "Actas", "Actas de reuniones, consejos directivos",
+                "ACTIVE", 23, LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema");
+
+        when(categoryService.findById(1L)).thenReturn(response);
+
+        mockMvc.perform(get("/categories/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.name").value("Actas"))
+                .andExpect(jsonPath("$.description").value("Actas de reuniones, consejos directivos"))
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.documentCount").value(23))
+                .andExpect(jsonPath("$.createdBy").value("Sistema"));
+    }
+
+    @Test
+    void getById_whenNotFound_returns404() throws Exception {
+        when(categoryService.findById(99L))
+                .thenThrow(new ResourceNotFoundException("Categoría no encontrada con id 99"));
+
+        mockMvc.perform(get("/categories/99"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.message").value("Categoría no encontrada con id 99"));
+    }
+
+    @Test
+    void getById_returnsCreatedBySistema_whenCreatorMissing() throws Exception {
+        CategoryDetailResponse response = new CategoryDetailResponse(
+                2L, "Resoluciones", null, "ACTIVE", 0,
+                LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema");
+
+        when(categoryService.findById(2L)).thenReturn(response);
+
+        mockMvc.perform(get("/categories/2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.createdBy").value("Sistema"));
     }
 }

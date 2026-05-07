@@ -2,6 +2,8 @@ package co.edu.docurural.category.service;
 
 import co.edu.docurural.activitylog.enums.ActivityAction;
 import co.edu.docurural.activitylog.service.ActivityLogService;
+import co.edu.docurural.category.dto.CategoryDetailResponse;
+import co.edu.docurural.category.dto.CategoryListResponse;
 import co.edu.docurural.category.dto.CreateCategoryRequest;
 import co.edu.docurural.category.dto.CreateCategoryResponse;
 import co.edu.docurural.category.dto.UpdateCategoryRequest;
@@ -11,6 +13,9 @@ import co.edu.docurural.category.dto.UpdateCategoryStatusResponse;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.repository.CategoryRepository;
+import co.edu.docurural.document.enums.DocumentStatus;
+import co.edu.docurural.document.repository.DocumentRepository;
+import co.edu.docurural.document.repository.projection.CategoryDocumentCount;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.domain.repository.UserRepository;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
@@ -26,7 +31,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,6 +58,8 @@ class CategoryServiceTest {
     @Mock
     CategoryRepository categoryRepository;
     @Mock
+    DocumentRepository documentRepository;
+    @Mock
     UserRepository userRepository;
     @Mock
     ActivityLogService activityLogService;
@@ -64,6 +73,15 @@ class CategoryServiceTest {
     void stubMessageResolver() {
         lenient().when(messageResolver.get(anyString()))
                 .thenAnswer(inv -> inv.getArgument(0));
+        lenient().when(messageResolver.get(anyString(), any()))
+                .thenAnswer(inv -> inv.getArgument(0));
+    }
+
+    private static CategoryDocumentCount countProjection(Long categoryId, Long count) {
+        return new CategoryDocumentCount() {
+            @Override public Long getCategoryId() { return categoryId; }
+            @Override public Long getCount() { return count; }
+        };
     }
 
     // ------------------------------------------------------------------
@@ -429,5 +447,141 @@ class CategoryServiceTest {
                 .hasMessageContaining("audit.actorUserId no puede ser null");
 
         verifyNoInteractions(categoryRepository, activityLogService);
+    }
+
+    // ------------------------------------------------------------------
+    // list()
+    // ------------------------------------------------------------------
+
+    @Test
+    void list_returnsAllCategoriesWithCounts_andSummary() {
+        Category cat1 = TestFixtures.categoryActive(1L, "Actas", "Actas de reuniones");
+        Category cat2 = TestFixtures.categoryActive(3L, "Informes", null);
+        Category cat3 = TestFixtures.categoryInactive(5L, "Resoluciones");
+
+        when(categoryRepository.findAll(any(Sort.class))).thenReturn(List.of(cat1, cat2, cat3));
+        when(documentRepository.countActiveByCategoryId(DocumentStatus.ACTIVE))
+                .thenReturn(List.of(countProjection(1L, 23L), countProjection(5L, 7L)));
+
+        CategoryListResponse response = categoryService.list(null, null);
+
+        assertThat(response.totalCategories()).isEqualTo(3);
+        assertThat(response.activeCategories()).isEqualTo(2);
+        assertThat(response.inactiveCategories()).isEqualTo(1);
+        assertThat(response.categories()).hasSize(3);
+        assertThat(response.categories().get(0).documentCount()).isEqualTo(23);
+        assertThat(response.categories().get(1).documentCount()).isEqualTo(0);
+        assertThat(response.categories().get(2).documentCount()).isEqualTo(7);
+    }
+
+    @Test
+    void list_withDefaultParams_sortsByNameAsc() {
+        when(categoryRepository.findAll(any(Sort.class))).thenReturn(List.of());
+        when(documentRepository.countActiveByCategoryId(DocumentStatus.ACTIVE)).thenReturn(List.of());
+
+        categoryService.list(null, null);
+
+        ArgumentCaptor<Sort> sortCaptor = ArgumentCaptor.forClass(Sort.class);
+        verify(categoryRepository).findAll(sortCaptor.capture());
+        Sort.Order order = sortCaptor.getValue().getOrderFor("name");
+        assertThat(order).isNotNull();
+        assertThat(order.getDirection()).isEqualTo(Sort.Direction.ASC);
+    }
+
+    @Test
+    void list_withCreatedAtDesc_passesSortToRepo() {
+        when(categoryRepository.findAll(any(Sort.class))).thenReturn(List.of());
+        when(documentRepository.countActiveByCategoryId(DocumentStatus.ACTIVE)).thenReturn(List.of());
+
+        categoryService.list("createdAt", "desc");
+
+        ArgumentCaptor<Sort> sortCaptor = ArgumentCaptor.forClass(Sort.class);
+        verify(categoryRepository).findAll(sortCaptor.capture());
+        Sort.Order order = sortCaptor.getValue().getOrderFor("createdAt");
+        assertThat(order).isNotNull();
+        assertThat(order.getDirection()).isEqualTo(Sort.Direction.DESC);
+    }
+
+    @Test
+    void list_withInvalidSortBy_throwsBusinessRule() {
+        assertThatThrownBy(() -> categoryService.list("invalid", null))
+                .isInstanceOf(BusinessRuleException.class)
+                .extracting(ex -> ((BusinessRuleException) ex).getCode())
+                .isEqualTo(BusinessErrorCode.INVALID_ARGUMENT);
+
+        verifyNoInteractions(categoryRepository, documentRepository);
+    }
+
+    @Test
+    void list_withInvalidSortDir_throwsBusinessRule() {
+        assertThatThrownBy(() -> categoryService.list("name", "sideways"))
+                .isInstanceOf(BusinessRuleException.class)
+                .extracting(ex -> ((BusinessRuleException) ex).getCode())
+                .isEqualTo(BusinessErrorCode.INVALID_ARGUMENT);
+
+        verify(categoryRepository, never()).findAll(any(Sort.class));
+    }
+
+    @Test
+    void list_returnsEmptyResponse_whenNoCategories() {
+        when(categoryRepository.findAll(any(Sort.class))).thenReturn(List.of());
+        when(documentRepository.countActiveByCategoryId(DocumentStatus.ACTIVE)).thenReturn(List.of());
+
+        CategoryListResponse response = categoryService.list(null, null);
+
+        assertThat(response.totalCategories()).isEqualTo(0);
+        assertThat(response.activeCategories()).isEqualTo(0);
+        assertThat(response.inactiveCategories()).isEqualTo(0);
+        assertThat(response.categories()).isEmpty();
+    }
+
+    @Test
+    void list_categoriesWithoutActiveDocuments_haveCountZero() {
+        when(categoryRepository.findAll(any(Sort.class)))
+                .thenReturn(List.of(TestFixtures.categoryActive(1L, "Actas")));
+        when(documentRepository.countActiveByCategoryId(DocumentStatus.ACTIVE)).thenReturn(List.of());
+
+        CategoryListResponse response = categoryService.list(null, null);
+
+        assertThat(response.categories().get(0).documentCount()).isEqualTo(0);
+    }
+
+    // ------------------------------------------------------------------
+    // findById()
+    // ------------------------------------------------------------------
+
+    @Test
+    void findById_returnsDetail_withDocumentCount() {
+        Category category = TestFixtures.categoryActive(1L, "Actas", "Actas de reuniones");
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(documentRepository.countActiveByCategoryId(DocumentStatus.ACTIVE))
+                .thenReturn(List.of(countProjection(1L, 15L)));
+
+        CategoryDetailResponse response = categoryService.findById(1L);
+
+        assertThat(response.id()).isEqualTo(1L);
+        assertThat(response.name()).isEqualTo("Actas");
+        assertThat(response.description()).isEqualTo("Actas de reuniones");
+        assertThat(response.status()).isEqualTo("ACTIVE");
+        assertThat(response.documentCount()).isEqualTo(15);
+    }
+
+    @Test
+    void findById_returnsZeroCount_whenCategoryHasNoActiveDocuments() {
+        when(categoryRepository.findById(2L))
+                .thenReturn(Optional.of(TestFixtures.categoryActive(2L, "Resoluciones")));
+        when(documentRepository.countActiveByCategoryId(DocumentStatus.ACTIVE)).thenReturn(List.of());
+
+        CategoryDetailResponse response = categoryService.findById(2L);
+
+        assertThat(response.documentCount()).isEqualTo(0);
+    }
+
+    @Test
+    void findById_throwsNotFound_whenIdMissing() {
+        when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> categoryService.findById(99L))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 }

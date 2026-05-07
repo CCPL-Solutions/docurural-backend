@@ -106,6 +106,17 @@ public final class TestFixtures {
                 .build();
     }
 
+    public static Category categoryActive(Long id, String name, String description, User createdBy) {
+        return Category.builder()
+                .id(id)
+                .name(name)
+                .description(description)
+                .status(CategoryStatus.ACTIVE)
+                .createdAt(FIXED_CREATED_AT)
+                .createdBy(createdBy)
+                .build();
+    }
+
     public static CreateCategoryRequest createCategoryRequest(String name, String description) {
         return new CreateCategoryRequest(name, description);
     }
