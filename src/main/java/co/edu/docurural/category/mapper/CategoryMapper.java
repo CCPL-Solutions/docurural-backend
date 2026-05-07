@@ -1,6 +1,7 @@
 package co.edu.docurural.category.mapper;
 
 import co.edu.docurural.category.dto.CreateCategoryResponse;
+import co.edu.docurural.category.dto.UpdateCategoryResponse;
 import co.edu.docurural.category.entity.Category;
 
 import java.util.Objects;
@@ -24,6 +25,20 @@ public final class CategoryMapper {
                 category.getDescription(),
                 category.getStatus() != null ? category.getStatus().name() : null,
                 category.getCreatedAt(),
+                message
+        );
+    }
+
+    /**
+     * Construye la respuesta de edición de categoría (CAT-04 / HU-17).
+     */
+    public static UpdateCategoryResponse toUpdateResponse(Category category, String message) {
+        Objects.requireNonNull(category, "category no puede ser null");
+        return new UpdateCategoryResponse(
+                category.getId(),
+                category.getName(),
+                category.getDescription(),
+                category.getStatus() != null ? category.getStatus().name() : null,
                 message
         );
     }

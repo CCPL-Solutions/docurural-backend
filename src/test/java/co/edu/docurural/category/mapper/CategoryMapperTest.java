@@ -1,6 +1,7 @@
 package co.edu.docurural.category.mapper;
 
 import co.edu.docurural.category.dto.CreateCategoryResponse;
+import co.edu.docurural.category.dto.UpdateCategoryResponse;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.support.TestFixtures;
@@ -60,5 +61,37 @@ class CategoryMapperTest {
         CreateCategoryResponse response = CategoryMapper.toCreateResponse(category, "msg");
 
         assertThat(response.status()).isEqualTo(CategoryStatus.ACTIVE.name());
+    }
+
+    // ------------------------------------------------------------------
+    // toUpdateResponse()
+    // ------------------------------------------------------------------
+
+    @Test
+    void toUpdateResponse_mapsAllFields() {
+        Category category = TestFixtures.categoryActive(9L, "Proyectos e Informes Biotecnología", "Descripción detallada");
+
+        UpdateCategoryResponse response = CategoryMapper.toUpdateResponse(category, "Categoría actualizada exitosamente");
+
+        assertThat(response.id()).isEqualTo(9L);
+        assertThat(response.name()).isEqualTo("Proyectos e Informes Biotecnología");
+        assertThat(response.description()).isEqualTo("Descripción detallada");
+        assertThat(response.status()).isEqualTo("ACTIVE");
+        assertThat(response.message()).isEqualTo("Categoría actualizada exitosamente");
+    }
+
+    @Test
+    void toUpdateResponse_withNullDescription_mapsDescriptionAsNull() {
+        Category category = TestFixtures.categoryActive(3L, "Circulares");
+
+        UpdateCategoryResponse response = CategoryMapper.toUpdateResponse(category, "ok");
+
+        assertThat(response.description()).isNull();
+    }
+
+    @Test
+    void toUpdateResponse_withNullCategory_throwsNullPointerException() {
+        assertThatThrownBy(() -> CategoryMapper.toUpdateResponse(null, "msg"))
+                .isInstanceOf(NullPointerException.class);
     }
 }

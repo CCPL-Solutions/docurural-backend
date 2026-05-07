@@ -4,12 +4,17 @@ import co.edu.docurural.activitylog.enums.ActivityAction;
 import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.category.dto.CreateCategoryRequest;
 import co.edu.docurural.category.dto.CreateCategoryResponse;
+import co.edu.docurural.category.dto.UpdateCategoryRequest;
+import co.edu.docurural.category.dto.UpdateCategoryResponse;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.repository.CategoryRepository;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.domain.repository.UserRepository;
+import co.edu.docurural.shared.exception.BusinessErrorCode;
+import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.exception.ConflictException;
+import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.shared.util.MessageResolver;
 import co.edu.docurural.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,9 +25,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Optional;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -150,6 +158,168 @@ class CategoryServiceTest {
         AuditContext auditWithNullActor = new AuditContext(null, "127.0.0.1");
 
         assertThatThrownBy(() -> categoryService.create(request, auditWithNullActor))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("audit.actorUserId no puede ser null");
+
+        verifyNoInteractions(categoryRepository, activityLogService);
+    }
+
+    // ------------------------------------------------------------------
+    // update()
+    // ------------------------------------------------------------------
+
+    @Test
+    void update_persistsAndLogs_whenNameAndDescriptionChange() {
+        Long categoryId = 9L;
+        Category existing = TestFixtures.categoryActive(categoryId, "Proyectos Biotecnología", "Descripción anterior");
+        UpdateCategoryRequest request = TestFixtures.updateCategoryRequest(
+                "Proyectos e Informes Biotecnología",
+                "Descripción nueva");
+
+        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(existing));
+        when(categoryRepository.existsByNameAndIdNot(request.name(), categoryId)).thenReturn(false);
+        when(categoryRepository.save(any(Category.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateCategoryResponse response = categoryService.update(categoryId, request, AUDIT_ADMIN);
+
+        assertThat(response.id()).isEqualTo(categoryId);
+        assertThat(response.name()).isEqualTo("Proyectos e Informes Biotecnología");
+        assertThat(response.description()).isEqualTo("Descripción nueva");
+        assertThat(response.status()).isEqualTo("ACTIVE");
+        assertThat(response.message()).isEqualTo("category.updated.success");
+
+        ArgumentCaptor<Category> captor = ArgumentCaptor.forClass(Category.class);
+        verify(categoryRepository).save(captor.capture());
+        assertThat(captor.getValue().getName()).isEqualTo("Proyectos e Informes Biotecnología");
+        assertThat(captor.getValue().getDescription()).isEqualTo("Descripción nueva");
+
+        verify(activityLogService).record(
+                eq(ActivityAction.EDIT_CATEGORY),
+                eq(AUDIT_ADMIN),
+                isNull(),
+                eq("Campos modificados: [name, description]"));
+    }
+
+    @Test
+    void update_onlyName_logsModifiedFieldsName() {
+        Long categoryId = 9L;
+        Category existing = TestFixtures.categoryActive(categoryId, "Proyectos Biotecnología", "Descripción actual");
+        UpdateCategoryRequest request = TestFixtures.updateCategoryRequest(
+                "Proyectos e Informes Biotecnología",
+                "Descripción actual");
+
+        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(existing));
+        when(categoryRepository.existsByNameAndIdNot(request.name(), categoryId)).thenReturn(false);
+        when(categoryRepository.save(any(Category.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        categoryService.update(categoryId, request, AUDIT_ADMIN);
+
+        verify(activityLogService).record(
+                eq(ActivityAction.EDIT_CATEGORY),
+                eq(AUDIT_ADMIN),
+                isNull(),
+                eq("Campos modificados: [name]"));
+    }
+
+    @Test
+    void update_descriptionNull_preservesCurrentDescription() {
+        Long categoryId = 9L;
+        Category existing = TestFixtures.categoryActive(categoryId, "Actas", "Descripción actual");
+        UpdateCategoryRequest request = TestFixtures.updateCategoryRequest("Actas Actualizadas", null);
+
+        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(existing));
+        when(categoryRepository.existsByNameAndIdNot(request.name(), categoryId)).thenReturn(false);
+        when(categoryRepository.save(any(Category.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateCategoryResponse response = categoryService.update(categoryId, request, AUDIT_ADMIN);
+
+        assertThat(response.description()).isEqualTo("Descripción actual");
+
+        ArgumentCaptor<Category> captor = ArgumentCaptor.forClass(Category.class);
+        verify(categoryRepository).save(captor.capture());
+        assertThat(captor.getValue().getDescription()).isEqualTo("Descripción actual");
+
+        verify(activityLogService).record(
+                eq(ActivityAction.EDIT_CATEGORY),
+                eq(AUDIT_ADMIN),
+                isNull(),
+                eq("Campos modificados: [name]"));
+    }
+
+    @Test
+    void update_nameUnchanged_skipsUniquenessCheck() {
+        Long categoryId = 9L;
+        Category existing = TestFixtures.categoryActive(categoryId, "Actas", "Descripción");
+        UpdateCategoryRequest request = TestFixtures.updateCategoryRequest("Actas", "Nueva descripción");
+
+        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(existing));
+        when(categoryRepository.save(any(Category.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        categoryService.update(categoryId, request, AUDIT_ADMIN);
+
+        verify(categoryRepository, never()).existsByNameAndIdNot(anyString(), anyLong());
+    }
+
+    @Test
+    void update_throwsNotFound_whenIdMissing() {
+        when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> categoryService.update(99L,
+                TestFixtures.updateCategoryRequest("Nombre", null), AUDIT_ADMIN))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(categoryRepository, never()).save(any());
+        verifyNoInteractions(activityLogService);
+    }
+
+    @Test
+    void update_throwsForbidden_whenCategoryInactive() {
+        Long categoryId = 5L;
+        Category inactive = TestFixtures.categoryInactive(categoryId, "Actas");
+        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(inactive));
+
+        assertThatThrownBy(() -> categoryService.update(categoryId,
+                TestFixtures.updateCategoryRequest("Actas Nuevo", null), AUDIT_ADMIN))
+                .isInstanceOf(BusinessRuleException.class)
+                .extracting(ex -> ((BusinessRuleException) ex).getCode())
+                .isEqualTo(BusinessErrorCode.FORBIDDEN);
+
+        verify(categoryRepository, never()).save(any());
+        verifyNoInteractions(activityLogService);
+    }
+
+    @Test
+    void update_throwsConflict_whenNewNameUsedByAnother() {
+        Long categoryId = 9L;
+        Category existing = TestFixtures.categoryActive(categoryId, "Proyectos Biotecnología", null);
+        UpdateCategoryRequest request = TestFixtures.updateCategoryRequest("Actas", null);
+
+        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(existing));
+        when(categoryRepository.existsByNameAndIdNot("Actas", categoryId)).thenReturn(true);
+
+        assertThatThrownBy(() -> categoryService.update(categoryId, request, AUDIT_ADMIN))
+                .isInstanceOf(ConflictException.class);
+
+        verify(categoryRepository, never()).save(any());
+        verifyNoInteractions(activityLogService);
+    }
+
+    @Test
+    void update_throwsIllegalArgument_whenAuditIsNull() {
+        assertThatThrownBy(() -> categoryService.update(1L,
+                TestFixtures.updateCategoryRequest("Nombre", null), null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("audit no puede ser null");
+
+        verifyNoInteractions(categoryRepository, activityLogService);
+    }
+
+    @Test
+    void update_throwsIllegalArgument_whenActorUserIdIsNull() {
+        AuditContext auditWithNullActor = new AuditContext(null, "127.0.0.1");
+
+        assertThatThrownBy(() -> categoryService.update(1L,
+                TestFixtures.updateCategoryRequest("Nombre", null), auditWithNullActor))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("audit.actorUserId no puede ser null");
 
