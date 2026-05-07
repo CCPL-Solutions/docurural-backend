@@ -1,0 +1,23 @@
+package co.edu.docurural.category.dto;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+/**
+ * Request body de {@code PUT /api/categories/{id}} (CAT-04 / HU-17).
+ */
+@Schema(description = "Campos editables de una categoría documental")
+public record UpdateCategoryRequest(
+
+        @NotBlank(message = "{validation.category.name.required}")
+        @Size(min = 3, max = 100, message = "{validation.category.name.size}")
+        @Schema(description = "Nuevo nombre único de la categoría", example = "Proyectos e Informes Biotecnología")
+        String name,
+
+        @Size(max = 500, message = "{validation.category.description.size}")
+        @Schema(description = "Nueva descripción (null para conservar la actual)",
+                example = "Proyectos e informes detallados del programa de Biotecnología en Tejido Vegetal")
+        String description
+) {
+}
