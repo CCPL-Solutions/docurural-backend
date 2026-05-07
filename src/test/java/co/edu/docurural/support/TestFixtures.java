@@ -3,6 +3,7 @@ package co.edu.docurural.support;
 import co.edu.docurural.auth.dto.LoginRequest;
 import co.edu.docurural.category.dto.CreateCategoryRequest;
 import co.edu.docurural.category.dto.UpdateCategoryRequest;
+import co.edu.docurural.category.dto.UpdateCategoryStatusRequest;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.shared.domain.entity.User;
@@ -120,5 +121,9 @@ public final class TestFixtures {
                 .status(CategoryStatus.INACTIVE)
                 .createdAt(FIXED_CREATED_AT)
                 .build();
+    }
+
+    public static UpdateCategoryStatusRequest updateCategoryStatusRequest(CategoryStatus status) {
+        return new UpdateCategoryStatusRequest(status);
     }
 }

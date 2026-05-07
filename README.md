@@ -196,10 +196,11 @@ Todos los endpoints de usuarios requieren rol **`ADMIN`**.
 
 Todos los endpoints de categorías requieren rol **`ADMIN`**.
 
-| Método  | Ruta                 | HU     | Descripción                                        |
-|---------|----------------------|--------|----------------------------------------------------|
-| `POST`  | `/categories`        | HU-16  | Crea una nueva categoría documental.               |
-| `PUT`   | `/categories/{id}`   | HU-17  | Edita el nombre y descripción de una categoría.    |
+| Método    | Ruta                        | HU     | Descripción                                           |
+|-----------|-----------------------------|--------|-------------------------------------------------------|
+| `POST`    | `/categories`               | HU-16  | Crea una nueva categoría documental.                  |
+| `PUT`     | `/categories/{id}`          | HU-17  | Edita el nombre y descripción de una categoría.       |
+| `PATCH`   | `/categories/{id}/status`   | HU-18  | Activa o desactiva una categoría (soft delete).       |
 
 ### Formato de errores
 

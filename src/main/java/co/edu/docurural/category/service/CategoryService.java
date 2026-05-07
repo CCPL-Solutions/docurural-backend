@@ -6,6 +6,8 @@ import co.edu.docurural.category.dto.CreateCategoryRequest;
 import co.edu.docurural.category.dto.CreateCategoryResponse;
 import co.edu.docurural.category.dto.UpdateCategoryRequest;
 import co.edu.docurural.category.dto.UpdateCategoryResponse;
+import co.edu.docurural.category.dto.UpdateCategoryStatusRequest;
+import co.edu.docurural.category.dto.UpdateCategoryStatusResponse;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.mapper.CategoryMapper;
@@ -124,6 +126,53 @@ public class CategoryService {
         log.info("Categoria actualizada: id={} modifiedFields={} por adminId={}", updated.getId(), modifiedFields, audit.actorUserId());
 
         return CategoryMapper.toUpdateResponse(updated, messageResolver.get("category.updated.success"));
+    }
+
+    /**
+     * Activa o desactiva una categoría existente.
+     *
+     * <p>Reglas:
+     * <ul>
+     *   <li>La categoría debe existir (404).</li>
+     *   <li>Si ya tiene el estado solicitado, se lanza 400.</li>
+     *   <li>Al finalizar se registra la acción {@code DEACTIVATE_CATEGORY} con detalle
+     *       {@code "Estado cambiado a {ACTIVE|INACTIVE}"} (contrato CAT-05).</li>
+     * </ul>
+     *
+     * @throws ResourceNotFoundException {@code 404} si el id no existe.
+     * @throws BusinessRuleException     {@code 400} si la categoría ya tiene el estado solicitado.
+     */
+    @Transactional
+    public UpdateCategoryStatusResponse changeStatus(Long id, UpdateCategoryStatusRequest request, AuditContext audit) {
+        Long adminId = requireActorUserId(audit);
+
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        messageResolver.get("category.not-found", id)));
+
+        CategoryStatus newStatus = request.status();
+
+        if (category.getStatus() == newStatus) {
+            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
+                    messageResolver.get("category.status.duplicate"));
+        }
+
+        category.setStatus(newStatus);
+        Category updated = categoryRepository.save(category);
+
+        String message = newStatus == CategoryStatus.ACTIVE
+                ? messageResolver.get("category.activated.success")
+                : messageResolver.get("category.deactivated.success");
+
+        activityLogService.record(
+                ActivityAction.DEACTIVATE_CATEGORY,
+                audit,
+                null,
+                "Estado cambiado a " + newStatus.name());
+
+        log.info("Estado de categoría actualizado: id={} newStatus={} por adminId={}", updated.getId(), newStatus, adminId);
+
+        return CategoryMapper.toStatusResponse(updated, message);
     }
 
     private List<String> applyUpdates(Category category, UpdateCategoryRequest request, boolean nameChanged) {

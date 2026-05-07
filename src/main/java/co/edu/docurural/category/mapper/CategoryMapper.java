@@ -2,6 +2,7 @@ package co.edu.docurural.category.mapper;
 
 import co.edu.docurural.category.dto.CreateCategoryResponse;
 import co.edu.docurural.category.dto.UpdateCategoryResponse;
+import co.edu.docurural.category.dto.UpdateCategoryStatusResponse;
 import co.edu.docurural.category.entity.Category;
 
 import java.util.Objects;
@@ -38,6 +39,19 @@ public final class CategoryMapper {
                 category.getId(),
                 category.getName(),
                 category.getDescription(),
+                category.getStatus() != null ? category.getStatus().name() : null,
+                message
+        );
+    }
+
+    /**
+     * Construye la respuesta de cambio de estado de categoría (CAT-05 / HU-18).
+     */
+    public static UpdateCategoryStatusResponse toStatusResponse(Category category, String message) {
+        Objects.requireNonNull(category, "category no puede ser null");
+        return new UpdateCategoryStatusResponse(
+                category.getId(),
+                category.getName(),
                 category.getStatus() != null ? category.getStatus().name() : null,
                 message
         );

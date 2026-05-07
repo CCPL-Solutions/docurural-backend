@@ -4,6 +4,9 @@ import co.edu.docurural.category.dto.CreateCategoryRequest;
 import co.edu.docurural.category.dto.CreateCategoryResponse;
 import co.edu.docurural.category.dto.UpdateCategoryRequest;
 import co.edu.docurural.category.dto.UpdateCategoryResponse;
+import co.edu.docurural.category.dto.UpdateCategoryStatusRequest;
+import co.edu.docurural.category.dto.UpdateCategoryStatusResponse;
+import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.service.CategoryService;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.audit.AuditContextResolver;
@@ -34,6 +37,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -347,5 +351,113 @@ class CategoryControllerWebMvcTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.message").value("Ya existe una categoría con este nombre"));
+    }
+
+    // ------------------------------------------------------------------
+    // PATCH /categories/{id}/status
+    // ------------------------------------------------------------------
+
+    @Test
+    void changeStatus_returns200AndPayload_whenDeactivating() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
+
+        UpdateCategoryStatusRequest request = TestFixtures.updateCategoryStatusRequest(CategoryStatus.INACTIVE);
+
+        UpdateCategoryStatusResponse response = new UpdateCategoryStatusResponse(
+                9L, "Proyectos e Informes Biotecnología", "INACTIVE", "Categoría desactivada exitosamente");
+
+        when(categoryService.changeStatus(eq(9L), any(UpdateCategoryStatusRequest.class), eq(ADMIN_AUDIT)))
+                .thenReturn(response);
+
+        mockMvc.perform(patch("/categories/9/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(9))
+                .andExpect(jsonPath("$.name").value("Proyectos e Informes Biotecnología"))
+                .andExpect(jsonPath("$.status").value("INACTIVE"))
+                .andExpect(jsonPath("$.message").value("Categoría desactivada exitosamente"))
+                .andExpect(jsonPath("$.description").doesNotExist())
+                .andExpect(jsonPath("$.createdAt").doesNotExist());
+
+        verify(categoryService).changeStatus(
+                eq(9L),
+                argThat(req -> CategoryStatus.INACTIVE.equals(req.status())),
+                eq(ADMIN_AUDIT));
+    }
+
+    @Test
+    void changeStatus_returns200AndPayload_whenReactivating() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
+
+        UpdateCategoryStatusRequest request = TestFixtures.updateCategoryStatusRequest(CategoryStatus.ACTIVE);
+
+        UpdateCategoryStatusResponse response = new UpdateCategoryStatusResponse(
+                9L, "Proyectos e Informes Biotecnología", "ACTIVE", "Categoría activada exitosamente");
+
+        when(categoryService.changeStatus(eq(9L), any(UpdateCategoryStatusRequest.class), eq(ADMIN_AUDIT)))
+                .thenReturn(response);
+
+        mockMvc.perform(patch("/categories/9/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.message").value("Categoría activada exitosamente"));
+    }
+
+    @Test
+    void changeStatus_withNullStatus_returns400WithFieldError() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
+
+        mockMvc.perform(patch("/categories/9/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value("Errores de validación"))
+                .andExpect(jsonPath("$.fieldErrors.status").exists());
+    }
+
+    @Test
+    void changeStatus_withInvalidStatus_returns400() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
+
+        mockMvc.perform(patch("/categories/9/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"FOO\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void changeStatus_whenCategoryNotFound_returns404() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
+
+        when(categoryService.changeStatus(eq(99L), any(UpdateCategoryStatusRequest.class), eq(ADMIN_AUDIT)))
+                .thenThrow(new ResourceNotFoundException("Categoría no encontrada con id 99"));
+
+        mockMvc.perform(patch("/categories/99/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"INACTIVE\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.message").value("Categoría no encontrada con id 99"));
+    }
+
+    @Test
+    void changeStatus_whenAlreadyInStatus_returns400() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
+
+        when(categoryService.changeStatus(eq(9L), any(UpdateCategoryStatusRequest.class), eq(ADMIN_AUDIT)))
+                .thenThrow(new BusinessRuleException(
+                        BusinessErrorCode.INVALID_ARGUMENT, "La categoría ya se encuentra en el estado solicitado"));
+
+        mockMvc.perform(patch("/categories/9/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"ACTIVE\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value("La categoría ya se encuentra en el estado solicitado"));
     }
 }

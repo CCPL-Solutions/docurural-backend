@@ -6,6 +6,8 @@ import co.edu.docurural.category.dto.CreateCategoryRequest;
 import co.edu.docurural.category.dto.CreateCategoryResponse;
 import co.edu.docurural.category.dto.UpdateCategoryRequest;
 import co.edu.docurural.category.dto.UpdateCategoryResponse;
+import co.edu.docurural.category.dto.UpdateCategoryStatusRequest;
+import co.edu.docurural.category.dto.UpdateCategoryStatusResponse;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.repository.CategoryRepository;
@@ -320,6 +322,109 @@ class CategoryServiceTest {
 
         assertThatThrownBy(() -> categoryService.update(1L,
                 TestFixtures.updateCategoryRequest("Nombre", null), auditWithNullActor))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("audit.actorUserId no puede ser null");
+
+        verifyNoInteractions(categoryRepository, activityLogService);
+    }
+
+    // ------------------------------------------------------------------
+    // changeStatus()
+    // ------------------------------------------------------------------
+
+    @Test
+    void changeStatus_deactivates_persistsAndLogs() {
+        Long categoryId = 9L;
+        Category existing = TestFixtures.categoryActive(categoryId, "Proyectos e Informes Biotecnología");
+        UpdateCategoryStatusRequest request = TestFixtures.updateCategoryStatusRequest(CategoryStatus.INACTIVE);
+
+        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(existing));
+        when(categoryRepository.save(any(Category.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateCategoryStatusResponse response = categoryService.changeStatus(categoryId, request, AUDIT_ADMIN);
+
+        assertThat(response.id()).isEqualTo(categoryId);
+        assertThat(response.name()).isEqualTo("Proyectos e Informes Biotecnología");
+        assertThat(response.status()).isEqualTo("INACTIVE");
+        assertThat(response.message()).isEqualTo("category.deactivated.success");
+
+        ArgumentCaptor<Category> captor = ArgumentCaptor.forClass(Category.class);
+        verify(categoryRepository).save(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(CategoryStatus.INACTIVE);
+
+        verify(activityLogService).record(
+                eq(ActivityAction.DEACTIVATE_CATEGORY),
+                eq(AUDIT_ADMIN),
+                isNull(),
+                eq("Estado cambiado a INACTIVE"));
+    }
+
+    @Test
+    void changeStatus_reactivates_persistsAndLogs() {
+        Long categoryId = 5L;
+        Category existing = TestFixtures.categoryInactive(categoryId, "Actas");
+        UpdateCategoryStatusRequest request = TestFixtures.updateCategoryStatusRequest(CategoryStatus.ACTIVE);
+
+        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(existing));
+        when(categoryRepository.save(any(Category.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateCategoryStatusResponse response = categoryService.changeStatus(categoryId, request, AUDIT_ADMIN);
+
+        assertThat(response.status()).isEqualTo("ACTIVE");
+        assertThat(response.message()).isEqualTo("category.activated.success");
+
+        verify(activityLogService).record(
+                eq(ActivityAction.DEACTIVATE_CATEGORY),
+                eq(AUDIT_ADMIN),
+                isNull(),
+                eq("Estado cambiado a ACTIVE"));
+    }
+
+    @Test
+    void changeStatus_throwsNotFound_whenIdMissing() {
+        when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> categoryService.changeStatus(99L,
+                TestFixtures.updateCategoryStatusRequest(CategoryStatus.INACTIVE), AUDIT_ADMIN))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(categoryRepository, never()).save(any());
+        verifyNoInteractions(activityLogService);
+    }
+
+    @Test
+    void changeStatus_throwsBadRequest_whenAlreadyInRequestedStatus() {
+        Long categoryId = 9L;
+        Category existing = TestFixtures.categoryActive(categoryId, "Actas");
+
+        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> categoryService.changeStatus(categoryId,
+                TestFixtures.updateCategoryStatusRequest(CategoryStatus.ACTIVE), AUDIT_ADMIN))
+                .isInstanceOf(BusinessRuleException.class)
+                .extracting(ex -> ((BusinessRuleException) ex).getCode())
+                .isEqualTo(BusinessErrorCode.INVALID_ARGUMENT);
+
+        verify(categoryRepository, never()).save(any());
+        verifyNoInteractions(activityLogService);
+    }
+
+    @Test
+    void changeStatus_throwsIllegalArgument_whenAuditIsNull() {
+        assertThatThrownBy(() -> categoryService.changeStatus(1L,
+                TestFixtures.updateCategoryStatusRequest(CategoryStatus.INACTIVE), null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("audit no puede ser null");
+
+        verifyNoInteractions(categoryRepository, activityLogService);
+    }
+
+    @Test
+    void changeStatus_throwsIllegalArgument_whenActorUserIdIsNull() {
+        AuditContext auditWithNullActor = new AuditContext(null, "127.0.0.1");
+
+        assertThatThrownBy(() -> categoryService.changeStatus(1L,
+                TestFixtures.updateCategoryStatusRequest(CategoryStatus.INACTIVE), auditWithNullActor))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("audit.actorUserId no puede ser null");
 

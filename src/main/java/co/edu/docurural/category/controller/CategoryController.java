@@ -4,6 +4,8 @@ import co.edu.docurural.category.dto.CreateCategoryRequest;
 import co.edu.docurural.category.dto.CreateCategoryResponse;
 import co.edu.docurural.category.dto.UpdateCategoryRequest;
 import co.edu.docurural.category.dto.UpdateCategoryResponse;
+import co.edu.docurural.category.dto.UpdateCategoryStatusRequest;
+import co.edu.docurural.category.dto.UpdateCategoryStatusResponse;
 import co.edu.docurural.category.service.CategoryService;
 import co.edu.docurural.shared.audit.AuditContextResolver;
 import co.edu.docurural.shared.dto.ApiErrorResponse;
@@ -22,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -81,6 +84,44 @@ public class CategoryController {
         log.debug("POST /categories name='{}'", request.name());
         CreateCategoryResponse response = categoryService.create(request, auditContextResolver.resolve(httpRequest));
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * CAT-05 / HU-18: activa o desactiva una categoría (200).
+     */
+    @Operation(
+            summary = "Activar/Desactivar categoría",
+            description = "Cambia el estado de una categoría a ACTIVE o INACTIVE. Solo accesible para el rol ADMIN.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Estado actualizado exitosamente",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = UpdateCategoryStatusResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Estado inválido o categoría ya en ese estado",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Acceso denegado (no ADMIN)",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Categoría no encontrada",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<UpdateCategoryStatusResponse> changeStatus(
+            @Parameter(name = "id", description = "ID de la categoría", example = "9")
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateCategoryStatusRequest request,
+            HttpServletRequest httpRequest) {
+        log.debug("PATCH /categories/{}/status newStatus={}", id, request.status());
+        UpdateCategoryStatusResponse response = categoryService.changeStatus(
+                id, request, auditContextResolver.resolve(httpRequest));
+        return ResponseEntity.ok(response);
     }
 
     /**

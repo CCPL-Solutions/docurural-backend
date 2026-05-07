@@ -2,6 +2,7 @@ package co.edu.docurural.category.mapper;
 
 import co.edu.docurural.category.dto.CreateCategoryResponse;
 import co.edu.docurural.category.dto.UpdateCategoryResponse;
+import co.edu.docurural.category.dto.UpdateCategoryStatusResponse;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.support.TestFixtures;
@@ -92,6 +93,50 @@ class CategoryMapperTest {
     @Test
     void toUpdateResponse_withNullCategory_throwsNullPointerException() {
         assertThatThrownBy(() -> CategoryMapper.toUpdateResponse(null, "msg"))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    // ------------------------------------------------------------------
+    // toStatusResponse()
+    // ------------------------------------------------------------------
+
+    @Test
+    void toStatusResponse_mapsAllFields_whenCategoryActive() {
+        Category category = TestFixtures.categoryActive(9L, "Proyectos e Informes Biotecnología");
+
+        UpdateCategoryStatusResponse response = CategoryMapper.toStatusResponse(category, "Categoría desactivada exitosamente");
+
+        assertThat(response.id()).isEqualTo(9L);
+        assertThat(response.name()).isEqualTo("Proyectos e Informes Biotecnología");
+        assertThat(response.status()).isEqualTo("ACTIVE");
+        assertThat(response.message()).isEqualTo("Categoría desactivada exitosamente");
+    }
+
+    @Test
+    void toStatusResponse_withInactiveCategory_mapsStatusAsInactive() {
+        Category category = TestFixtures.categoryInactive(5L, "Actas");
+
+        UpdateCategoryStatusResponse response = CategoryMapper.toStatusResponse(category, "Categoría desactivada exitosamente");
+
+        assertThat(response.status()).isEqualTo("INACTIVE");
+    }
+
+    @Test
+    void toStatusResponse_withNullStatus_mapsStatusAsNull() {
+        Category category = Category.builder()
+                .id(2L)
+                .name("Sin estado")
+                .createdAt(TestFixtures.FIXED_CREATED_AT)
+                .build();
+
+        UpdateCategoryStatusResponse response = CategoryMapper.toStatusResponse(category, "ok");
+
+        assertThat(response.status()).isNull();
+    }
+
+    @Test
+    void toStatusResponse_withNullCategory_throwsNullPointerException() {
+        assertThatThrownBy(() -> CategoryMapper.toStatusResponse(null, "msg"))
                 .isInstanceOf(NullPointerException.class);
     }
 }
