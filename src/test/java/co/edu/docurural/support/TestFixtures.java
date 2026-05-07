@@ -1,9 +1,12 @@
 package co.edu.docurural.support;
 
+import co.edu.docurural.auth.dto.LoginRequest;
+import co.edu.docurural.category.dto.CreateCategoryRequest;
+import co.edu.docurural.category.entity.Category;
+import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.shared.domain.entity.User;
 import co.edu.docurural.shared.domain.enums.UserRole;
 import co.edu.docurural.shared.domain.enums.UserStatus;
-import co.edu.docurural.auth.dto.LoginRequest;
 import co.edu.docurural.user.dto.CreateUserRequest;
 import co.edu.docurural.user.dto.UpdateStatusRequest;
 import co.edu.docurural.user.dto.UpdateUserRequest;
@@ -79,5 +82,29 @@ public final class TestFixtures {
 
     public static UpdateStatusRequest updateStatusRequest(UserStatus status) {
         return new UpdateStatusRequest(status);
+    }
+
+    public static Category categoryActive(Long id, String name) {
+        return Category.builder()
+                .id(id)
+                .name(name)
+                .description(null)
+                .status(CategoryStatus.ACTIVE)
+                .createdAt(FIXED_CREATED_AT)
+                .build();
+    }
+
+    public static Category categoryActive(Long id, String name, String description) {
+        return Category.builder()
+                .id(id)
+                .name(name)
+                .description(description)
+                .status(CategoryStatus.ACTIVE)
+                .createdAt(FIXED_CREATED_AT)
+                .build();
+    }
+
+    public static CreateCategoryRequest createCategoryRequest(String name, String description) {
+        return new CreateCategoryRequest(name, description);
     }
 }
