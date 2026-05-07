@@ -131,10 +131,14 @@ src/main/java/co/edu/docurural/
 │   ├── enums/             → DocumentFormat, DocumentStatus
 │   └── repository/        → DocumentRepository
 │
-├── category/              # Categorías documentales
+├── category/              # Categorías documentales (CAT-03 / HU-16)
+│   ├── controller/        → CategoryController
+│   ├── dto/               → CreateCategoryRequest, CreateCategoryResponse
 │   ├── entity/            → Category
 │   ├── enums/             → CategoryStatus
-│   └── repository/        → CategoryRepository
+│   ├── mapper/            → CategoryMapper
+│   ├── repository/        → CategoryRepository
+│   └── service/           → CategoryService
 │
 ├── activitylog/           # Auditoría de acciones
 │   ├── entity/            → ActivityLog
@@ -187,6 +191,14 @@ Todos los endpoints de usuarios requieren rol **`ADMIN`**.
 | `POST`  | `/users`             | Crea un nuevo usuario.                                |
 | `PUT`   | `/users/{id}`        | Actualiza los datos de un usuario existente.          |
 | `PATCH` | `/users/{id}/status` | Activa o desactiva un usuario.                        |
+
+### Categorías
+
+Todos los endpoints de categorías requieren rol **`ADMIN`**.
+
+| Método | Ruta            | HU     | Descripción                                        |
+|--------|-----------------|--------|----------------------------------------------------|
+| `POST` | `/categories`   | HU-16  | Crea una nueva categoría documental.               |
 
 ### Formato de errores
 
