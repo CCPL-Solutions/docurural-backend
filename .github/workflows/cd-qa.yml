@@ -3,7 +3,7 @@ name: CD — Despliegue a QA
 on:
   push:
     branches:
-      - develop   # Solo se dispara al hacer merge de un PR a develop
+      - develop
 
 permissions:
   contents: read
@@ -28,8 +28,6 @@ jobs:
           server-username: MAVEN_USERNAME
           server-password: MAVEN_PASSWORD
 
-      # Las pruebas ya corrieron en el CI (en el PR).
-      # Aquí solo empaquetamos para no duplicar tiempo de ejecución.
       - name: Construir el JAR
         run: mvn package --batch-mode --no-transfer-progress -DskipTests
 
