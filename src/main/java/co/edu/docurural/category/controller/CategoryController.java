@@ -2,10 +2,13 @@ package co.edu.docurural.category.controller;
 
 import co.edu.docurural.category.dto.CreateCategoryRequest;
 import co.edu.docurural.category.dto.CreateCategoryResponse;
+import co.edu.docurural.category.dto.UpdateCategoryRequest;
+import co.edu.docurural.category.dto.UpdateCategoryResponse;
 import co.edu.docurural.category.service.CategoryService;
 import co.edu.docurural.shared.audit.AuditContextResolver;
 import co.edu.docurural.shared.dto.ApiErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -19,7 +22,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -76,5 +81,45 @@ public class CategoryController {
         log.debug("POST /categories name='{}'", request.name());
         CreateCategoryResponse response = categoryService.create(request, auditContextResolver.resolve(httpRequest));
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * CAT-04 / HU-17: edita una categoría existente (200).
+     */
+    @Operation(
+            summary = "Actualizar categoría",
+            description = "Actualiza el nombre y/o descripción de una categoría existente. Solo accesible para el rol ADMIN.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Categoría actualizada exitosamente",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = UpdateCategoryResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Campos inválidos",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Acceso denegado (no ADMIN) o categoría INACTIVE",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Categoría no encontrada",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "Ya existe una categoría con ese nombre",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
+    @PutMapping("/{id}")
+    public ResponseEntity<UpdateCategoryResponse> update(
+            @Parameter(name = "id", description = "ID de la categoría a editar", example = "9")
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateCategoryRequest request,
+            HttpServletRequest httpRequest) {
+        log.debug("PUT /categories/{}", id);
+        UpdateCategoryResponse response = categoryService.update(id, request, auditContextResolver.resolve(httpRequest));
+        return ResponseEntity.ok(response);
     }
 }
