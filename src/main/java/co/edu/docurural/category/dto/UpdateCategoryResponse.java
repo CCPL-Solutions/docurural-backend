@@ -11,7 +11,7 @@ public record UpdateCategoryResponse(
         Long id,
         @Schema(description = "Nombre actualizado de la categoría", example = "Proyectos e Informes Biotecnología")
         String name,
-        @Schema(description = "Descripción actualizada", example = "Proyectos e informes detallados del programa de Biotecnología")
+        @Schema(description = "Descripción actualizada", example = "Proyectos e informes detallados del programa de Biotecnología", nullable = true)
         String description,
         @Schema(description = "Estado actual de la categoría", example = "ACTIVE")
         String status,
