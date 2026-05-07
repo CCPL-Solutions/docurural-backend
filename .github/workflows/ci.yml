@@ -1,0 +1,37 @@
+name: CI — Integración Continua
+
+on:
+  push:
+    branches-ignore:
+      - main      # main solo recibe merges desde develop, no pushes directos
+  pull_request:
+    branches:
+      - develop
+      - main
+
+jobs:
+  build-and-test:
+    name: Compilar y ejecutar pruebas
+    runs-on: ubuntu-latest  # Runner hosteado por GitHub — no necesita el EC2
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Compilar y ejecutar pruebas
+        run: mvn verify --batch-mode --no-transfer-progress
+
+      - name: Publicar reporte de pruebas
+        uses: actions/upload-artifact@v4
+        if: always()   # Subir el reporte aunque las pruebas fallen
+        with:
+          name: reporte-pruebas
+          path: target/surefire-reports/
+          retention-days: 7
