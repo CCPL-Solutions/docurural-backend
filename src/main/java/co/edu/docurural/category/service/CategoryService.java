@@ -2,6 +2,8 @@ package co.edu.docurural.category.service;
 
 import co.edu.docurural.activitylog.enums.ActivityAction;
 import co.edu.docurural.activitylog.service.ActivityLogService;
+import co.edu.docurural.category.dto.CategoryDetailResponse;
+import co.edu.docurural.category.dto.CategoryListResponse;
 import co.edu.docurural.category.dto.CreateCategoryRequest;
 import co.edu.docurural.category.dto.CreateCategoryResponse;
 import co.edu.docurural.category.dto.UpdateCategoryRequest;
@@ -12,6 +14,9 @@ import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.mapper.CategoryMapper;
 import co.edu.docurural.category.repository.CategoryRepository;
+import co.edu.docurural.document.enums.DocumentStatus;
+import co.edu.docurural.document.repository.DocumentRepository;
+import co.edu.docurural.document.repository.projection.CategoryDocumentCount;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.domain.repository.UserRepository;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
@@ -19,26 +24,92 @@ import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.exception.ConflictException;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.shared.util.MessageResolver;
-
-import java.util.ArrayList;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 /**
- * Servicio de gestión de categorías documentales (CAT-03 / HU-16).
+ * Servicio de gestión de categorías documentales (CAT-01..CAT-05 / HU-16..HU-19).
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class CategoryService {
 
+    private static final String DEFAULT_SORT_BY = "name";
+    private static final String DEFAULT_SORT_DIR = "asc";
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("name", "createdAt");
+
     private final CategoryRepository categoryRepository;
+    private final DocumentRepository documentRepository;
     private final UserRepository userRepository;
     private final ActivityLogService activityLogService;
     private final MessageResolver messageResolver;
+
+    /**
+     * Retorna el listado completo de categorías (ACTIVE + INACTIVE) ordenado según los parámetros.
+     *
+     * @param sortBy  campo de ordenamiento: {@code name} o {@code createdAt} (default {@code name}).
+     * @param sortDir dirección {@code asc} o {@code desc} (default {@code asc}, case-insensitive).
+     * @throws BusinessRuleException {@code 400} si {@code sortBy} o {@code sortDir} son inválidos.
+     */
+    @Transactional(readOnly = true)
+    public CategoryListResponse list(String sortBy, String sortDir) {
+        String resolvedSortBy = (sortBy == null || sortBy.isBlank()) ? DEFAULT_SORT_BY : sortBy;
+        String resolvedSortDir = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir;
+
+        if (!ALLOWED_SORT_FIELDS.contains(resolvedSortBy)) {
+            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
+                    messageResolver.get("category.sort.unsupported-field", resolvedSortBy));
+        }
+
+        Sort.Direction direction;
+        try {
+            direction = Sort.Direction.fromString(resolvedSortDir.toLowerCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
+                    messageResolver.get("category.sort.unsupported-direction", resolvedSortDir));
+        }
+
+        List<Category> categories = categoryRepository.findAll(Sort.by(direction, resolvedSortBy));
+        Map<Long, Long> counts = documentRepository.countActiveByCategoryId(DocumentStatus.ACTIVE).stream()
+                .collect(Collectors.toMap(CategoryDocumentCount::getCategoryId, CategoryDocumentCount::getCount));
+
+        log.debug("Listado de categorías: total={} sortBy={} sortDir={}",
+                categories.size(), resolvedSortBy, direction);
+        return CategoryMapper.toListResponse(categories, counts);
+    }
+
+    /**
+     * Recupera el detalle de una categoría por id con su conteo de documentos ACTIVE.
+     *
+     * @throws ResourceNotFoundException {@code 404} si el id no existe.
+     */
+    @Transactional(readOnly = true)
+    public CategoryDetailResponse findById(Long id) {
+
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        messageResolver.get("category.not-found", id)));
+
+        long count = documentRepository.countActiveByCategoryId(DocumentStatus.ACTIVE)
+                .stream()
+                .filter(p -> id.equals(p.getCategoryId()))
+                .map(CategoryDocumentCount::getCount)
+                .findFirst()
+                .orElse(0L);
+
+        return CategoryMapper.toDetailResponse(category, count);
+    }
 
     /**
      * Crea una nueva categoría documental con {@code status = ACTIVE}.

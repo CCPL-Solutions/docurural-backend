@@ -1,5 +1,7 @@
 package co.edu.docurural.category.controller;
 
+import co.edu.docurural.category.dto.CategoryDetailResponse;
+import co.edu.docurural.category.dto.CategoryListResponse;
 import co.edu.docurural.category.dto.CreateCategoryRequest;
 import co.edu.docurural.category.dto.CreateCategoryResponse;
 import co.edu.docurural.category.dto.UpdateCategoryRequest;
@@ -24,12 +26,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -44,12 +48,76 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "Categorías", description = "Gestión de categorías documentales (solo ADMIN) — CAT-03..CAT-05")
+@Tag(name = "Categorías", description = "Gestión de categorías documentales (solo ADMIN) — CAT-01..CAT-05")
 @SecurityRequirement(name = "bearerAuth")
 public class CategoryController {
 
     private final CategoryService categoryService;
     private final AuditContextResolver auditContextResolver;
+
+    /**
+     * CAT-01 / HU-19: listado completo de categorías (200).
+     */
+    @Operation(
+            summary = "Listar categorías",
+            description = "Devuelve todas las categorías (ACTIVE e INACTIVE) con conteo de documentos activos y resumen de estados. Solo accesible para el rol ADMIN.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Listado retornado exitosamente",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = CategoryListResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Parámetros de ordenamiento inválidos",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Acceso denegado (no ADMIN)",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
+    @GetMapping
+    public ResponseEntity<CategoryListResponse> list(
+            @Parameter(name = "sortBy", description = "Campo de ordenamiento: name | createdAt", example = "name")
+            @RequestParam(value = "sortBy", required = false) String sortBy,
+            @Parameter(name = "sortDir", description = "Dirección: asc | desc", example = "asc")
+            @RequestParam(value = "sortDir", required = false) String sortDir) {
+        log.debug("GET /categories sortBy={} sortDir={}", sortBy, sortDir);
+        return ResponseEntity.ok(categoryService.list(sortBy, sortDir));
+    }
+
+    /**
+     * CAT-02 / HU-19: detalle de una categoría por id (200).
+     */
+    @Operation(
+            summary = "Obtener categoría por ID",
+            description = "Devuelve el detalle de una categoría con su conteo de documentos activos. Solo accesible para el rol ADMIN.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Datos de la categoría retornados exitosamente",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = CategoryDetailResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Acceso denegado (no ADMIN)",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Categoría no encontrada",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
+    @GetMapping("/{id}")
+    public ResponseEntity<CategoryDetailResponse> getById(
+            @Parameter(name = "id", description = "ID de la categoría a consultar", example = "1")
+            @PathVariable Long id) {
+        log.debug("GET /categories/{}", id);
+        return ResponseEntity.ok(categoryService.findById(id));
+    }
 
     /**
      * CAT-03 / HU-16: crea una nueva categoría documental (201).

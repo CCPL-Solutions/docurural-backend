@@ -129,11 +129,13 @@ src/main/java/co/edu/docurural/
 ├── document/              # Metadatos de documentos (Sprint 2)
 │   ├── entity/            → Document
 │   ├── enums/             → DocumentFormat, DocumentStatus
-│   └── repository/        → DocumentRepository
+│   └── repository/        → DocumentRepository, projection/CategoryDocumentCount
 │
-├── category/              # Categorías documentales (CAT-03 / HU-16)
+├── category/              # Categorías documentales (CAT-01..CAT-05 / HU-16..HU-19)
 │   ├── controller/        → CategoryController
-│   ├── dto/               → CreateCategoryRequest, CreateCategoryResponse
+│   ├── dto/               → CategoryDetailResponse, CategoryListResponse,
+│   │                           CreateCategoryRequest/Response, UpdateCategoryRequest/Response,
+│   │                           UpdateCategoryStatusRequest/Response
 │   ├── entity/            → Category
 │   ├── enums/             → CategoryStatus
 │   ├── mapper/            → CategoryMapper
@@ -196,11 +198,13 @@ Todos los endpoints de usuarios requieren rol **`ADMIN`**.
 
 Todos los endpoints de categorías requieren rol **`ADMIN`**.
 
-| Método    | Ruta                        | HU     | Descripción                                           |
-|-----------|-----------------------------|--------|-------------------------------------------------------|
-| `POST`    | `/categories`               | HU-16  | Crea una nueva categoría documental.                  |
-| `PUT`     | `/categories/{id}`          | HU-17  | Edita el nombre y descripción de una categoría.       |
-| `PATCH`   | `/categories/{id}/status`   | HU-18  | Activa o desactiva una categoría (soft delete).       |
+| Método    | Ruta                        | HU     | Descripción                                                         |
+|-----------|-----------------------------|--------|---------------------------------------------------------------------|
+| `GET`     | `/categories`               | HU-19  | Lista todas las categorías con conteo de documentos activos.        |
+| `GET`     | `/categories/{id}`          | HU-19  | Obtiene el detalle de una categoría por ID.                         |
+| `POST`    | `/categories`               | HU-16  | Crea una nueva categoría documental.                                |
+| `PUT`     | `/categories/{id}`          | HU-17  | Edita el nombre y descripción de una categoría.                     |
+| `PATCH`   | `/categories/{id}/status`   | HU-18  | Activa o desactiva una categoría (soft delete).                     |
 
 ### Formato de errores
 
