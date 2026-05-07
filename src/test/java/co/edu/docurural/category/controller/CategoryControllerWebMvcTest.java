@@ -473,7 +473,7 @@ class CategoryControllerWebMvcTest {
     void list_returns200WithListResponse() throws Exception {
         CategoryDetailResponse item = new CategoryDetailResponse(
                 1L, "Actas", "Actas de reuniones, consejos directivos",
-                "ACTIVE", 23, LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema");
+                "ACTIVE", 23L, LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema");
 
         CategoryListResponse response = new CategoryListResponse(1, 1, 0, List.of(item));
 
@@ -535,7 +535,7 @@ class CategoryControllerWebMvcTest {
     void getById_returns200WithDetailResponse() throws Exception {
         CategoryDetailResponse response = new CategoryDetailResponse(
                 1L, "Actas", "Actas de reuniones, consejos directivos",
-                "ACTIVE", 23, LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema");
+                "ACTIVE", 23L, LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema");
 
         when(categoryService.findById(1L)).thenReturn(response);
 
@@ -563,7 +563,7 @@ class CategoryControllerWebMvcTest {
     @Test
     void getById_returnsCreatedBySistema_whenCreatorMissing() throws Exception {
         CategoryDetailResponse response = new CategoryDetailResponse(
-                2L, "Resoluciones", null, "ACTIVE", 0,
+                2L, "Resoluciones", null, "ACTIVE", 0L,
                 LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema");
 
         when(categoryService.findById(2L)).thenReturn(response);

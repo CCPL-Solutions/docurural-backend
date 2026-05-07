@@ -35,7 +35,7 @@ public final class CategoryMapper {
                 category.getName(),
                 category.getDescription(),
                 category.getStatus() != null ? category.getStatus().name() : null,
-                Math.toIntExact(documentCount),
+                documentCount,
                 category.getCreatedAt(),
                 category.getCreatedBy() != null ? category.getCreatedBy().getFullName() : CREATED_BY_FALLBACK);
     }

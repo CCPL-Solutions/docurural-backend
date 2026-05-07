@@ -11,7 +11,7 @@ public record CategoryDetailResponse(
         @Schema(description = "Descripción", example = "Actas de reuniones, consejos directivos, comités")
         String description,
         @Schema(description = "Estado", example = "ACTIVE") String status,
-        @Schema(description = "Cantidad de documentos ACTIVE asociados", example = "23") Integer documentCount,
+        @Schema(description = "Cantidad de documentos ACTIVE asociados", example = "23") Long documentCount,
         @Schema(description = "Fecha de creación") LocalDateTime createdAt,
         @Schema(description = "Nombre completo del creador (\"Sistema\" si fue sembrada)", example = "Carlos Ramírez Pinzón")
         String createdBy

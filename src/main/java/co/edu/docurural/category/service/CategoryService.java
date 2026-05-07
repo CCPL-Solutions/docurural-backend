@@ -24,6 +24,11 @@ import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.exception.ConflictException;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.shared.util.MessageResolver;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,11 +36,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Servicio de gestión de categorías documentales (CAT-01..CAT-05 / HU-16..HU-19).
@@ -96,14 +96,18 @@ public class CategoryService {
      */
     @Transactional(readOnly = true)
     public CategoryDetailResponse findById(Long id) {
+
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         messageResolver.get("category.not-found", id)));
-        long count = documentRepository.countActiveByCategoryId(DocumentStatus.ACTIVE).stream()
+
+        long count = documentRepository.countActiveByCategoryId(DocumentStatus.ACTIVE)
+                .stream()
                 .filter(p -> id.equals(p.getCategoryId()))
                 .map(CategoryDocumentCount::getCount)
                 .findFirst()
                 .orElse(0L);
+
         return CategoryMapper.toDetailResponse(category, count);
     }
 
