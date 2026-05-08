@@ -1,6 +1,7 @@
 package co.edu.docurural.document.service;
 
 import co.edu.docurural.document.enums.DocumentFormat;
+import co.edu.docurural.document.storage.StorageProperties;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.util.MessageResolver;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.util.unit.DataSize;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -27,7 +29,8 @@ class FileValidationServiceTest {
     // JPEG magic bytes: \xFF\xD8\xFF
     private static final byte[] JPG_MAGIC = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0x00, 0x10};
 
-    @Mock MessageResolver messageResolver;
+    @Mock
+    MessageResolver messageResolver;
 
     FileValidationService fileValidationService;
 
@@ -35,7 +38,9 @@ class FileValidationServiceTest {
     void setup() {
         lenient().when(messageResolver.get(anyString())).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(messageResolver.get(anyString(), any())).thenAnswer(inv -> inv.getArgument(0));
-        fileValidationService = new FileValidationService(messageResolver);
+        StorageProperties props = new StorageProperties();
+        props.setMaxFileSize(DataSize.ofMegabytes(10));
+        fileValidationService = new FileValidationService(props, messageResolver);
     }
 
     @Test
@@ -83,6 +88,20 @@ class FileValidationServiceTest {
         MockMultipartFile file = new MockMultipartFile("file", "big.pdf", "application/pdf", bigContent);
 
         assertThatThrownBy(() -> fileValidationService.validate(file))
+                .isInstanceOf(BusinessRuleException.class)
+                .extracting(e -> ((BusinessRuleException) e).getCode())
+                .isEqualTo(BusinessErrorCode.PAYLOAD_TOO_LARGE);
+    }
+
+    @Test
+    void validate_respectsConfiguredLimit_whenLimitIsSmall() {
+        StorageProperties smallLimitProps = new StorageProperties();
+        smallLimitProps.setMaxFileSize(DataSize.ofBytes(10));
+        FileValidationService smallLimitService = new FileValidationService(smallLimitProps, messageResolver);
+
+        MockMultipartFile file = new MockMultipartFile("file", "doc.pdf", "application/pdf", new byte[11]);
+
+        assertThatThrownBy(() -> smallLimitService.validate(file))
                 .isInstanceOf(BusinessRuleException.class)
                 .extracting(e -> ((BusinessRuleException) e).getCode())
                 .isEqualTo(BusinessErrorCode.PAYLOAD_TOO_LARGE);

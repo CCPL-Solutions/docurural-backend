@@ -24,8 +24,8 @@ spring:
   servlet:
     multipart:
       enabled: true
-      max-file-size: 10MB
-      max-request-size: 11MB
+      max-file-size: ${docurural.storage.max-file-size:10MB}
+      max-request-size: 11MB  # ligeramente mayor para dejar espacio a los campos del form
   messages:
     basename: messages
     encoding: UTF-8
@@ -46,6 +46,7 @@ docurural:
       issuer: ${JWT_ISSUER:docurural}
   storage:
     base-path: ${DOCURURAL_STORAGE_BASE_PATH:./uploads/documents}
+    max-file-size: ${DOCURURAL_STORAGE_MAX_FILE_SIZE:10MB}
   seed:
     admin:
       email: ${ADMIN_SEED_EMAIL:}

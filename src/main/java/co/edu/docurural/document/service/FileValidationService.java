@@ -1,6 +1,7 @@
 package co.edu.docurural.document.service;
 
 import co.edu.docurural.document.enums.DocumentFormat;
+import co.edu.docurural.document.storage.StorageProperties;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.util.MessageResolver;
@@ -15,13 +16,12 @@ import java.util.Map;
 /**
  * Valida archivos subidos por los usuarios antes de persistirlos.
  *
- * <p>Verifica tamaño (≤ 10 MB) y tipo MIME real (magic bytes via Apache Tika).
+ * <p>Verifica tamaño (≤ {@code docurural.storage.max-file-size}) y tipo MIME real
+ * (magic bytes via Apache Tika).
  */
 @Service
 @RequiredArgsConstructor
 public class FileValidationService {
-
-    private static final long MAX_SIZE_BYTES = 10L * 1024 * 1024;
 
     private static final Map<String, DocumentFormat> ALLOWED_MIME_TYPES = Map.of(
             "application/pdf", DocumentFormat.PDF,
@@ -32,17 +32,18 @@ public class FileValidationService {
     );
 
     private final Tika tika = new Tika();
+    private final StorageProperties storageProperties;
     private final MessageResolver messageResolver;
 
     /**
      * Valida el archivo y resuelve su {@link DocumentFormat}.
      *
      * @return el formato detectado
-     * @throws BusinessRuleException {@code PAYLOAD_TOO_LARGE} si supera 10 MB.
+     * @throws BusinessRuleException {@code PAYLOAD_TOO_LARGE} si supera el límite configurado.
      * @throws BusinessRuleException {@code UNSUPPORTED_MEDIA_TYPE} si el tipo MIME no está permitido.
      */
     public DocumentFormat validate(MultipartFile file) {
-        if (file.getSize() > MAX_SIZE_BYTES) {
+        if (file.getSize() > storageProperties.getMaxFileSize().toBytes()) {
             throw new BusinessRuleException(BusinessErrorCode.PAYLOAD_TOO_LARGE,
                     messageResolver.get("document.file.too-large"));
         }
