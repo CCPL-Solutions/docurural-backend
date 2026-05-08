@@ -7,6 +7,7 @@ import co.edu.docurural.shared.audit.AuditContextResolver;
 import co.edu.docurural.shared.config.SecurityConfig;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
+import co.edu.docurural.shared.exception.FileStorageException;
 import co.edu.docurural.shared.exception.GlobalExceptionHandler;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.shared.security.JwtAuthenticationFilter;
@@ -42,10 +43,13 @@ class DocumentControllerWebMvcTest {
 
     private static final AuditContext EDITOR_AUDIT = new AuditContext(5L, "127.0.0.1");
 
-    @Autowired MockMvc mockMvc;
+    @Autowired
+    MockMvc mockMvc;
 
-    @MockitoBean DocumentService documentService;
-    @MockitoBean AuditContextResolver auditContextResolver;
+    @MockitoBean
+    DocumentService documentService;
+    @MockitoBean
+    AuditContextResolver auditContextResolver;
 
     @Test
     void upload_returns201AndPayload_whenValid() throws Exception {
@@ -162,5 +166,23 @@ class DocumentControllerWebMvcTest {
                         .param("responsibleArea", "Rectoría")
                         .param("documentDate", "2026-03-15"))
                 .andExpect(status().isUnsupportedMediaType());
+    }
+
+    @Test
+    void upload_returns500WithContractualMessage_whenStorageFails() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        when(documentService.upload(any(), any(), any()))
+                .thenThrow(new FileStorageException("No se pudo almacenar el archivo en el servidor"));
+
+        MockMultipartFile file = new MockMultipartFile("file", "acta.pdf", "application/pdf", new byte[100]);
+
+        mockMvc.perform(multipart("/documents")
+                        .file(file)
+                        .param("title", "Acta")
+                        .param("categoryId", "1")
+                        .param("responsibleArea", "Rectoría")
+                        .param("documentDate", "2026-03-15"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").value("No se pudo almacenar el archivo en el servidor"));
     }
 }

@@ -1,8 +1,8 @@
 package co.edu.docurural.document.storage;
 
 import co.edu.docurural.document.enums.DocumentFormat;
-import co.edu.docurural.shared.exception.BusinessErrorCode;
-import co.edu.docurural.shared.exception.BusinessRuleException;
+import co.edu.docurural.shared.exception.FileStorageException;
+import co.edu.docurural.shared.util.MessageResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,6 +26,7 @@ import java.util.UUID;
 public class FileStorageService {
 
     private final StorageProperties storageProperties;
+    private final MessageResolver messageResolver;
 
     public StoredFile store(MultipartFile file, DocumentFormat format) {
         LocalDate now = LocalDate.now();
@@ -44,7 +45,7 @@ public class FileStorageService {
             return new StoredFile(destination.toAbsolutePath().toString());
         } catch (IOException ex) {
             log.error("Error al almacenar archivo: {}", ex.getMessage(), ex);
-            throw new RuntimeException("No se pudo almacenar el archivo en el servidor", ex);
+            throw new FileStorageException(messageResolver.get("document.file.storage-failed"), ex);
         }
     }
 }

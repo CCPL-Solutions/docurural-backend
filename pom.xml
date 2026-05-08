@@ -162,6 +162,7 @@
 						<exclude>**/exception/BusinessRuleException.class</exclude>
 						<exclude>**/exception/ConflictException.class</exclude>
 						<exclude>**/exception/ResourceNotFoundException.class</exclude>
+						<exclude>**/exception/FileStorageException.class</exclude>
 					</excludes>
 				</configuration>
 				<executions>
