@@ -5,6 +5,8 @@ package co.edu.docurural.shared.exception;
  */
 public enum BusinessErrorCode {
     INVALID_ARGUMENT,
-    FORBIDDEN
+    FORBIDDEN,
+    PAYLOAD_TOO_LARGE,
+    UNSUPPORTED_MEDIA_TYPE
 }
 

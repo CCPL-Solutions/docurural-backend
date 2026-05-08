@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.AuthenticationException;
@@ -105,6 +106,16 @@ public class GlobalExceptionHandler {
         log.warn("Cuerpo de petición inválido en {} {}: {}",
                 request.getMethod(), request.getRequestURI(), ex.getMostSpecificCause().getMessage());
         return buildResponse(HttpStatus.BAD_REQUEST, resolve("error.bad-request-body"));
+    }
+
+    /**
+     * Archivo multipart supera el límite configurado en {@code spring.servlet.multipart.max-file-size} -> 413.
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiErrorResponse> handleMaxUploadSize(
+            MaxUploadSizeExceededException ex, HttpServletRequest request) {
+        log.warn("Archivo demasiado grande en {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
+        return buildResponse(HttpStatus.PAYLOAD_TOO_LARGE, resolve("document.file.too-large"));
     }
 
     /**
@@ -216,6 +227,8 @@ public class GlobalExceptionHandler {
         return switch (code) {
             case INVALID_ARGUMENT -> HttpStatus.BAD_REQUEST;
             case FORBIDDEN -> HttpStatus.FORBIDDEN;
+            case PAYLOAD_TOO_LARGE -> HttpStatus.PAYLOAD_TOO_LARGE;
+            case UNSUPPORTED_MEDIA_TYPE -> HttpStatus.UNSUPPORTED_MEDIA_TYPE;
         };
     }
 
