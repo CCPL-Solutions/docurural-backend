@@ -45,7 +45,6 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/categories")
-@PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Categorías", description = "Gestión de categorías documentales (solo ADMIN) — CAT-01..CAT-05")
@@ -145,6 +144,7 @@ public class CategoryController {
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(implementation = ApiErrorResponse.class)))
     })
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<CreateCategoryResponse> create(
             @Valid @RequestBody CreateCategoryRequest request,
@@ -180,6 +180,7 @@ public class CategoryController {
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(implementation = ApiErrorResponse.class)))
     })
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{id}/status")
     public ResponseEntity<UpdateCategoryStatusResponse> changeStatus(
             @Parameter(name = "id", description = "ID de la categoría", example = "9")
@@ -221,6 +222,7 @@ public class CategoryController {
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(implementation = ApiErrorResponse.class)))
     })
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<UpdateCategoryResponse> update(
             @Parameter(name = "id", description = "ID de la categoría a editar", example = "9")
