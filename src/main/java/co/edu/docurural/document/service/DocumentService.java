@@ -27,8 +27,10 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
+
 /**
- * Servicio del módulo de documentos (DOC-03 / HU-09).
+ * Servicio del módulo de documentos (DOC-03 / HU-09, DOC-04 / HU-10).
  */
 @Service
 @RequiredArgsConstructor
@@ -45,17 +47,6 @@ public class DocumentService {
 
     /**
      * Carga un documento individual al repositorio (DOC-03 / HU-09).
-     *
-     * <p>Pasos:
-     * <ol>
-     *   <li>Valida que el actor esté autenticado.</li>
-     *   <li>Verifica que el archivo no sea nulo ni vacío.</li>
-     *   <li>Valida que la categoría exista y esté {@code ACTIVE}.</li>
-     *   <li>Delega la validación de tamaño y MIME a {@link FileValidationService}.</li>
-     *   <li>Persiste el archivo en disco vía {@link FileStorageService}.</li>
-     *   <li>Guarda los metadatos en la tabla {@code documents}.</li>
-     *   <li>Registra la acción {@code UPLOAD} en {@code activity_log}.</li>
-     * </ol>
      *
      * @throws BusinessRuleException     {@code INVALID_ARGUMENT (400)} si el archivo está vacío.
      * @throws ResourceNotFoundException {@code 404} si la categoría no existe o está INACTIVE.
@@ -76,14 +67,87 @@ public class DocumentService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         messageResolver.get("document.category.not-found")));
 
+        Document saved = processSingleFile(
+                file,
+                request.title(),
+                category,
+                request.responsibleArea(),
+                request.documentDate(),
+                request.description(),
+                "Archivo: ",
+                actorId,
+                audit);
+
+        log.info("Documento cargado: id={} title='{}' format={} uploadedBy={}",
+                saved.getId(), saved.getTitle(), saved.getFileFormat(), actorId);
+
+        return DocumentMapper.toUploadResponse(saved, messageResolver.get("document.uploaded.success"));
+    }
+
+    /**
+     * Carga un archivo individual dentro de un lote (DOC-04 / HU-10).
+     *
+     * <p>Invocado desde {@link DocumentBatchService} — al cruzar el límite del bean, el proxy de
+     * Spring aplica la transacción aislada por archivo, lo que permite el comportamiento best-effort.
+     *
+     * @param categoryId ya fue validado como ACTIVE por el orquestador; se vuelve a leer aquí
+     *                   para tenerlo en el contexto transaccional propio.
+     * @return la entidad {@link Document} persistida.
+     * @throws BusinessRuleException     si el archivo está vacío, supera el tamaño o el MIME no está permitido.
+     * @throws ResourceNotFoundException si la categoría dejó de estar ACTIVE entre la validación del orquestador y esta TX.
+     */
+    @Transactional
+    public Document uploadSingleForBatch(MultipartFile file,
+                                         String title,
+                                         Long categoryId,
+                                         String responsibleArea,
+                                         LocalDate documentDate,
+                                         AuditContext audit) {
+        Long actorId = requireActorUserId(audit);
+
+        Category category = categoryRepository.findById(categoryId)
+                .filter(c -> c.getStatus() == CategoryStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        messageResolver.get("document.category.not-found")));
+
+        Document saved = processSingleFile(
+                file,
+                title,
+                category,
+                responsibleArea,
+                documentDate,
+                null,
+                "Carga múltiple — Archivo: ",
+                actorId,
+                audit);
+
+        log.info("Documento cargado (lote): id={} title='{}' format={} uploadedBy={}",
+                saved.getId(), saved.getTitle(), saved.getFileFormat(), actorId);
+
+        return saved;
+    }
+
+    private Document processSingleFile(MultipartFile file,
+                                       String title,
+                                       Category category,
+                                       String responsibleArea,
+                                       LocalDate documentDate,
+                                       String description,
+                                       String activityDetailPrefix,
+                                       Long actorId,
+                                       AuditContext audit) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
+                    messageResolver.get("document.file.empty"));
+        }
+
         DocumentFormat format = fileValidationService.validate(file);
 
         StoredFile stored = fileStorageService.store(file, format);
 
         // Limpieza compensatoria: si la transacción hace rollback, el archivo en
-        // disco quedaría huérfano. Se registra aquí para eliminarlo ante ese caso.
-        // La comprobación previa evita el IllegalStateException en tests sin contexto
-        // transaccional activo.
+        // disco quedaría huérfano. La comprobación previa evita el
+        // IllegalStateException en tests sin contexto transaccional activo.
         String storedRelativePath = stored.relativePath();
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -97,11 +161,11 @@ public class DocumentService {
         }
 
         Document document = Document.builder()
-                .title(request.title())
-                .description(request.description())
+                .title(title)
+                .description(description)
                 .category(category)
-                .responsibleArea(request.responsibleArea())
-                .documentDate(request.documentDate())
+                .responsibleArea(responsibleArea)
+                .documentDate(documentDate)
                 .filePath(storedRelativePath)
                 .originalFileName(file.getOriginalFilename())
                 .fileFormat(format)
@@ -115,15 +179,12 @@ public class DocumentService {
                 ActivityAction.UPLOAD,
                 audit,
                 saved.getId(),
-                "Archivo: " + saved.getOriginalFileName());
+                activityDetailPrefix + saved.getOriginalFileName());
 
-        log.info("Documento cargado: id={} title='{}' format={} uploadedBy={}",
-                saved.getId(), saved.getTitle(), saved.getFileFormat(), actorId);
-
-        return DocumentMapper.toUploadResponse(saved, messageResolver.get("document.uploaded.success"));
+        return saved;
     }
 
-    private Long requireActorUserId(AuditContext audit) {
+    Long requireActorUserId(AuditContext audit) {
         if (audit == null) {
             throw new IllegalArgumentException("audit no puede ser null");
         }

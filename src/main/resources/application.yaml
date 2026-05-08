@@ -25,7 +25,7 @@ spring:
     multipart:
       enabled: true
       max-file-size: ${docurural.storage.max-file-size:10MB}
-      max-request-size: 11MB  # ligeramente mayor para dejar espacio a los campos del form
+      max-request-size: ${DOCURURAL_STORAGE_MAX_REQUEST_SIZE:55MB}
   messages:
     basename: messages
     encoding: UTF-8

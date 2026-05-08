@@ -1,7 +1,10 @@
 package co.edu.docurural.document.controller;
 
+import co.edu.docurural.document.dto.BatchUploadDocumentRequest;
+import co.edu.docurural.document.dto.BatchUploadDocumentResponse;
 import co.edu.docurural.document.dto.UploadDocumentRequest;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
+import co.edu.docurural.document.service.DocumentBatchService;
 import co.edu.docurural.document.service.DocumentService;
 import co.edu.docurural.shared.audit.AuditContextResolver;
 import co.edu.docurural.shared.dto.ApiErrorResponse;
@@ -28,7 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * Controlador REST del módulo de Documentos (DOC-03 / HU-09).
+ * Controlador REST del módulo de Documentos (DOC-01..DOC-08).
  *
  * <p>El {@code context-path} {@code /api} se configura globalmente; el mapping incluye {@code /documents}.
  */
@@ -41,6 +44,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class DocumentController {
 
     private final DocumentService documentService;
+    private final DocumentBatchService documentBatchService;
     private final AuditContextResolver auditContextResolver;
 
     /**
@@ -85,5 +89,53 @@ public class DocumentController {
         UploadDocumentResponse response = documentService.upload(
                 request, file, auditContextResolver.resolve(httpRequest));
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * DOC-04 / HU-10: carga hasta {@value DocumentBatchService#MAX_FILES_PER_BATCH} documentos en un lote (200).
+     *
+     * <p>Cada archivo se procesa de forma independiente. Si un archivo falla, los demás se persisten
+     * normalmente. La respuesta siempre retorna HTTP 200; los errores individuales se reportan en
+     * {@code results[].errorMessage}.
+     */
+    @Operation(
+            summary = "Cargar documentos (lote)",
+            description = "Carga hasta 5 documentos simultáneamente con metadatos comunes. "
+                    + "Si un archivo falla (tamaño, formato), los demás se persisten. "
+                    + "Solo accesible para roles ADMIN y EDITOR.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Lote procesado. Revisar results[] para el estado individual de cada archivo.",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = BatchUploadDocumentResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Más de 5 archivos, lote vacío, títulos inválidos o campos comunes faltantes",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Acceso denegado (rol READER)",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "La categoría indicada no existe o está inactiva",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "413", description = "El tamaño total del lote supera el límite del servidor",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR')")
+    @PostMapping(value = "/batch", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<BatchUploadDocumentResponse> uploadBatch(
+            @Valid @ModelAttribute BatchUploadDocumentRequest request,
+            @RequestPart("files") MultipartFile[] files,
+            HttpServletRequest httpRequest) {
+        log.debug("POST /documents/batch totalFiles={} categoryId={}",
+                files != null ? files.length : 0, request.categoryId());
+        BatchUploadDocumentResponse response = documentBatchService.uploadBatch(
+                request, files, auditContextResolver.resolve(httpRequest));
+        return ResponseEntity.ok(response);
     }
 }

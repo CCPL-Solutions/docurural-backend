@@ -1,6 +1,7 @@
 package co.edu.docurural.document.controller;
 
 import co.edu.docurural.document.dto.UploadDocumentResponse;
+import co.edu.docurural.document.service.DocumentBatchService;
 import co.edu.docurural.document.service.DocumentService;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.audit.AuditContextResolver;
@@ -48,6 +49,8 @@ class DocumentControllerWebMvcTest {
 
     @MockitoBean
     DocumentService documentService;
+    @MockitoBean
+    DocumentBatchService documentBatchService;
     @MockitoBean
     AuditContextResolver auditContextResolver;
 
