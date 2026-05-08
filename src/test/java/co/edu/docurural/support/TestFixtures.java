@@ -6,6 +6,10 @@ import co.edu.docurural.category.dto.UpdateCategoryRequest;
 import co.edu.docurural.category.dto.UpdateCategoryStatusRequest;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
+import co.edu.docurural.document.dto.UploadDocumentRequest;
+import co.edu.docurural.document.entity.Document;
+import co.edu.docurural.document.enums.DocumentFormat;
+import co.edu.docurural.document.enums.DocumentStatus;
 import co.edu.docurural.shared.domain.entity.User;
 import co.edu.docurural.shared.domain.enums.UserRole;
 import co.edu.docurural.shared.domain.enums.UserStatus;
@@ -13,6 +17,7 @@ import co.edu.docurural.user.dto.CreateUserRequest;
 import co.edu.docurural.user.dto.UpdateStatusRequest;
 import co.edu.docurural.user.dto.UpdateUserRequest;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public final class TestFixtures {
@@ -136,5 +141,32 @@ public final class TestFixtures {
 
     public static UpdateCategoryStatusRequest updateCategoryStatusRequest(CategoryStatus status) {
         return new UpdateCategoryStatusRequest(status);
+    }
+
+    public static UploadDocumentRequest uploadDocumentRequest(Long categoryId) {
+        return new UploadDocumentRequest(
+                "Acta Consejo Directivo Marzo 2026",
+                categoryId,
+                "Rectoría",
+                LocalDate.of(2026, 3, 15),
+                "Acta de reunión");
+    }
+
+    public static Document documentActive(Long id, Category category, User uploadedBy) {
+        return Document.builder()
+                .id(id)
+                .title("Acta Consejo Directivo Marzo 2026")
+                .description("Acta de reunión")
+                .category(category)
+                .responsibleArea("Rectoría")
+                .documentDate(LocalDate.of(2026, 3, 15))
+                .filePath("/uploads/documents/2026/05/uuid.pdf")
+                .originalFileName("acta.pdf")
+                .fileFormat(DocumentFormat.PDF)
+                .fileSizeBytes(524288L)
+                .uploadedBy(uploadedBy)
+                .status(DocumentStatus.ACTIVE)
+                .createdAt(FIXED_CREATED_AT)
+                .build();
     }
 }

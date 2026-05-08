@@ -34,6 +34,7 @@ documentos con trazabilidad completa de cada acción realizada en el sistema.
 | Utilidades        | Lombok                                 |
 | Pruebas           | JUnit 5, Mockito, Spring Security Test |
 | Cobertura         | JaCoCo (mínimo 80% de líneas)          |
+| Validación MIME   | Apache Tika 2.9                        |
 | Build             | Maven Wrapper (`mvnw`)                 |
 
 ---
@@ -54,20 +55,21 @@ Copia el archivo de ejemplo y completa las variables:
 cp .env.example .env
 ```
 
-| Variable                 | Descripción                                             | Valor por defecto       |
-|--------------------------|---------------------------------------------------------|-------------------------|
-| `DB_HOST`                | Host de PostgreSQL                                      | `localhost`             |
-| `DB_PORT`                | Puerto de PostgreSQL                                    | `5432`                  |
-| `DB_NAME`                | Nombre de la base de datos                              | `docurural_db`          |
-| `DB_USER`                | Usuario de la base de datos                             | `docurural`             |
-| `DB_PASSWORD`            | Contraseña del usuario de BD                            | —                       |
-| `JWT_SECRET`             | Clave secreta para firmar tokens JWT (mínimo 32 bytes)  | —                       |
-| `JWT_EXPIRATION_MS`      | Tiempo de vida del token en milisegundos                | `1800000` (30 min)      |
-| `JWT_ISSUER`             | Emisor incluido en el claim `iss` del JWT               | `docurural`             |
-| `SPRING_PROFILES_ACTIVE` | Perfil activo (`dev` o `prod`)                          | `dev`                   |
-| `CORS_ALLOWED_ORIGINS`   | Orígenes permitidos en CORS                             | `http://localhost:4200` |
-| `ADMIN_SEED_EMAIL`       | Email del administrador inicial (opcional, idempotente) | —                       |
-| `ADMIN_SEED_PASSWORD`    | Contraseña del administrador inicial (opcional)         | —                       |
+| Variable                      | Descripción                                             | Valor por defecto       |
+|-------------------------------|---------------------------------------------------------|-------------------------|
+| `DB_HOST`                     | Host de PostgreSQL                                      | `localhost`             |
+| `DB_PORT`                     | Puerto de PostgreSQL                                    | `5432`                  |
+| `DB_NAME`                     | Nombre de la base de datos                              | `docurural_db`          |
+| `DB_USER`                     | Usuario de la base de datos                             | `docurural`             |
+| `DB_PASSWORD`                 | Contraseña del usuario de BD                            | —                       |
+| `JWT_SECRET`                  | Clave secreta para firmar tokens JWT (mínimo 32 bytes)  | —                       |
+| `JWT_EXPIRATION_MS`           | Tiempo de vida del token en milisegundos                | `1800000` (30 min)      |
+| `JWT_ISSUER`                  | Emisor incluido en el claim `iss` del JWT               | `docurural`             |
+| `SPRING_PROFILES_ACTIVE`      | Perfil activo (`dev` o `prod`)                          | `dev`                   |
+| `CORS_ALLOWED_ORIGINS`        | Orígenes permitidos en CORS                             | `http://localhost:4200` |
+| `ADMIN_SEED_EMAIL`            | Email del administrador inicial (opcional, idempotente) | —                       |
+| `ADMIN_SEED_PASSWORD`         | Contraseña del administrador inicial (opcional)         | —                       |
+| `DOCURURAL_STORAGE_BASE_PATH` | Directorio base para almacenar archivos cargados        | `./uploads/documents`   |
 
 ### Perfiles de Spring
 
@@ -126,10 +128,15 @@ src/main/java/co/edu/docurural/
 │   ├── mapper/            → UserMapper
 │   └── service/           → UserService
 │
-├── document/              # Metadatos de documentos (Sprint 2)
+├── document/              # Gestión de documentos (DOC-03 / HU-09)
+│   ├── controller/        → DocumentController
+│   ├── dto/               → UploadDocumentRequest, UploadDocumentResponse
 │   ├── entity/            → Document
 │   ├── enums/             → DocumentFormat, DocumentStatus
-│   └── repository/        → DocumentRepository, projection/CategoryDocumentCount
+│   ├── mapper/            → DocumentMapper
+│   ├── repository/        → DocumentRepository, projection/CategoryDocumentCount
+│   ├── service/           → DocumentService, FileValidationService
+│   └── storage/           → FileStorageService, StorageProperties, StoredFile
 │
 ├── category/              # Categorías documentales (CAT-01..CAT-05 / HU-16..HU-19)
 │   ├── controller/        → CategoryController
@@ -198,13 +205,25 @@ Todos los endpoints de usuarios requieren rol **`ADMIN`**.
 
 Todos los endpoints de categorías requieren rol **`ADMIN`**.
 
-| Método    | Ruta                        | HU     | Descripción                                                         |
-|-----------|-----------------------------|--------|---------------------------------------------------------------------|
-| `GET`     | `/categories`               | HU-19  | Lista todas las categorías con conteo de documentos activos.        |
-| `GET`     | `/categories/{id}`          | HU-19  | Obtiene el detalle de una categoría por ID.                         |
-| `POST`    | `/categories`               | HU-16  | Crea una nueva categoría documental.                                |
-| `PUT`     | `/categories/{id}`          | HU-17  | Edita el nombre y descripción de una categoría.                     |
-| `PATCH`   | `/categories/{id}/status`   | HU-18  | Activa o desactiva una categoría (soft delete).                     |
+| Método  | Ruta                      | HU    | Descripción                                                  |
+|---------|---------------------------|-------|--------------------------------------------------------------|
+| `GET`   | `/categories`             | HU-19 | Lista todas las categorías con conteo de documentos activos. |
+| `GET`   | `/categories/{id}`        | HU-19 | Obtiene el detalle de una categoría por ID.                  |
+| `POST`  | `/categories`             | HU-16 | Crea una nueva categoría documental.                         |
+| `PUT`   | `/categories/{id}`        | HU-17 | Edita el nombre y descripción de una categoría.              |
+| `PATCH` | `/categories/{id}/status` | HU-18 | Activa o desactiva una categoría (soft delete).              |
+
+### Documentos
+
+| Método | Ruta         | Acceso            | HU    | Descripción                                                                 |
+|--------|--------------|-------------------|-------|-----------------------------------------------------------------------------|
+| `POST` | `/documents` | `ADMIN`, `EDITOR` | HU-09 | Carga un documento (`multipart/form-data`) con sus metadatos. Máximo 10 MB. |
+
+**Almacenamiento de archivos:**
+
+Los archivos se almacenan en `{DOCURURAL_STORAGE_BASE_PATH}/{año}/{mes}/{uuid}.{ext}`. La ruta absoluta se persiste en
+el campo `file_path` de la tabla `documents`; el nombre original del archivo se guarda en `original_file_name`. El tipo
+MIME se valida por contenido real (magic bytes) mediante Apache Tika, no solo por extensión.
 
 ### Formato de errores
 
