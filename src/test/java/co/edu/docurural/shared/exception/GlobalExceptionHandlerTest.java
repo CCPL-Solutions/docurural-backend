@@ -18,10 +18,12 @@ import org.springframework.security.authentication.AuthenticationServiceExceptio
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 import java.lang.reflect.Method;
 import java.util.Locale;
@@ -47,6 +49,7 @@ class GlobalExceptionHandlerTest {
         messageSource.addMessage("auth.access-denied", Locale.getDefault(), "No tiene permisos para realizar esta acción");
         messageSource.addMessage("auth.session.expired", Locale.getDefault(), "Su sesión ha expirado por inactividad. Por favor inicie sesión nuevamente");
         messageSource.addMessage("error.internal-server", Locale.getDefault(), "Error inesperado del servidor");
+        messageSource.addMessage("validation.document.file.required", Locale.getDefault(), "El archivo es obligatorio");
 
         handler = new GlobalExceptionHandler(messageSource);
 
@@ -211,6 +214,38 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody().status()).isEqualTo(500);
         assertThat(response.getBody().message()).isEqualTo("Error inesperado del servidor");
         assertThat(response.getBody().message()).doesNotContain("secret-123");
+    }
+
+    @Test
+    void handleMissingRequestPart_status400_withFieldError() {
+        MissingServletRequestPartException ex = new MissingServletRequestPartException("file");
+
+        ResponseEntity<ApiErrorResponse> response = handler.handleMissingRequestPart(ex, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().status()).isEqualTo(400);
+        assertThat(response.getBody().message()).isEqualTo("Errores de validación");
+        assertThat(response.getBody().fieldErrors())
+                .containsEntry("file", "El archivo es obligatorio");
+    }
+
+    @Test
+    void handleBindException_status400_withFieldErrors() {
+        BeanPropertyBindingResult bindingResult =
+                new BeanPropertyBindingResult(new Object(), "uploadDocumentRequest");
+        bindingResult.addError(new FieldError("uploadDocumentRequest", "title", "El título es obligatorio"));
+
+        BindException ex = new BindException(bindingResult);
+
+        ResponseEntity<ApiErrorResponse> response = handler.handleBindException(ex, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().status()).isEqualTo(400);
+        assertThat(response.getBody().message()).isEqualTo("Errores de validación");
+        assertThat(response.getBody().fieldErrors())
+                .containsEntry("title", "El título es obligatorio");
     }
 
     private static MethodParameter dummyMethodParameter() throws NoSuchMethodException {

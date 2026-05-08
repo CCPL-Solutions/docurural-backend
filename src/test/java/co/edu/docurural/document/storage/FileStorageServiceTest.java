@@ -46,18 +46,19 @@ class FileStorageServiceTest {
         byte[] content = "%PDF-1.4 test content".getBytes();
         MockMultipartFile file = new MockMultipartFile("file", "test.pdf", "application/pdf", content);
 
+        // Capturar la fecha ANTES de invocar store() para evitar flakiness en cambios de mes/año.
+        LocalDate now = LocalDate.now();
         StoredFile result = fileStorageService.store(file, DocumentFormat.PDF);
 
-        Path storedPath = Path.of(result.absolutePath());
-        assertThat(storedPath).exists();
-        assertThat(Files.readAllBytes(storedPath)).isEqualTo(content);
-
-        LocalDate now = LocalDate.now();
         String expectedYear = String.valueOf(now.getYear());
         String expectedMonth = String.format("%02d", now.getMonthValue());
-        assertThat(storedPath.toString()).contains(expectedYear);
-        assertThat(storedPath.toString()).contains(expectedMonth);
-        assertThat(storedPath.getFileName().toString()).endsWith(".pdf");
+
+        assertThat(result.relativePath()).startsWith(expectedYear + "/" + expectedMonth + "/");
+        assertThat(result.relativePath()).endsWith(".pdf");
+
+        Path storedPath = tempDir.resolve(result.relativePath());
+        assertThat(storedPath).exists();
+        assertThat(Files.readAllBytes(storedPath)).isEqualTo(content);
     }
 
     @Test
@@ -67,7 +68,7 @@ class FileStorageServiceTest {
         StoredFile result1 = fileStorageService.store(file, DocumentFormat.PDF);
         StoredFile result2 = fileStorageService.store(file, DocumentFormat.PDF);
 
-        assertThat(result1.absolutePath()).isNotEqualTo(result2.absolutePath());
+        assertThat(result1.relativePath()).isNotEqualTo(result2.relativePath());
     }
 
     @Test

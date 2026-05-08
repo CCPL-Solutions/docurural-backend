@@ -23,6 +23,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -78,13 +80,29 @@ public class DocumentService {
 
         StoredFile stored = fileStorageService.store(file, format);
 
+        // Limpieza compensatoria: si la transacción hace rollback, el archivo en
+        // disco quedaría huérfano. Se registra aquí para eliminarlo ante ese caso.
+        // La comprobación previa evita el IllegalStateException en tests sin contexto
+        // transaccional activo.
+        String storedRelativePath = stored.relativePath();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCompletion(int status) {
+                    if (status == STATUS_ROLLED_BACK) {
+                        fileStorageService.delete(storedRelativePath);
+                    }
+                }
+            });
+        }
+
         Document document = Document.builder()
                 .title(request.title())
                 .description(request.description())
                 .category(category)
                 .responsibleArea(request.responsibleArea())
                 .documentDate(request.documentDate())
-                .filePath(stored.absolutePath())
+                .filePath(storedRelativePath)
                 .originalFileName(file.getOriginalFilename())
                 .fileFormat(format)
                 .fileSizeBytes(file.getSize())

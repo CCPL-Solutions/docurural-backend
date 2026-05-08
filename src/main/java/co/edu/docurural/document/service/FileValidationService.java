@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Map;
 
 /**
@@ -49,8 +50,8 @@ public class FileValidationService {
         }
 
         String detectedMime;
-        try {
-            detectedMime = tika.detect(file.getInputStream(), file.getOriginalFilename());
+        try (InputStream is = file.getInputStream()) {
+            detectedMime = tika.detect(is, file.getOriginalFilename());
         } catch (IOException ex) {
             throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
                     messageResolver.get("document.file.read-failed"));

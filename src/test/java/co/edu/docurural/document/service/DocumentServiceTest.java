@@ -79,7 +79,7 @@ class DocumentServiceTest {
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
         when(fileValidationService.validate(file)).thenReturn(DocumentFormat.PDF);
         when(fileStorageService.store(file, DocumentFormat.PDF))
-                .thenReturn(new StoredFile("/uploads/documents/2026/05/uuid.pdf"));
+                .thenReturn(new StoredFile("2026/05/uuid.pdf"));
         when(userRepository.getReferenceById(ACTOR_ID)).thenReturn(uploader);
         when(documentRepository.save(any(Document.class))).thenAnswer(inv -> {
             Document d = inv.getArgument(0);
@@ -97,7 +97,7 @@ class DocumentServiceTest {
 
         ArgumentCaptor<Document> captor = ArgumentCaptor.forClass(Document.class);
         verify(documentRepository).save(captor.capture());
-        assertThat(captor.getValue().getFilePath()).isEqualTo("/uploads/documents/2026/05/uuid.pdf");
+        assertThat(captor.getValue().getFilePath()).isEqualTo("2026/05/uuid.pdf");
         assertThat(captor.getValue().getUploadedBy()).isEqualTo(uploader);
 
         verify(activityLogService).record(

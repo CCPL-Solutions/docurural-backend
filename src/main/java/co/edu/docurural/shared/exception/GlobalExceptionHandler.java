@@ -18,6 +18,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -116,6 +117,50 @@ public class GlobalExceptionHandler {
             MaxUploadSizeExceededException ex, HttpServletRequest request) {
         log.warn("Archivo demasiado grande en {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         return buildResponse(HttpStatus.PAYLOAD_TOO_LARGE, resolve("document.file.too-large"));
+    }
+
+    /**
+     * Part {@code file} ausente en un request multipart (p. ej. {@code POST /documents}
+     * sin el part {@code file}) -> 400 con el mensaje de campo requerido.
+     */
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public ResponseEntity<ApiErrorResponse> handleMissingRequestPart(
+            MissingServletRequestPartException ex, HttpServletRequest request) {
+        log.warn("Part faltante en {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
+        Map<String, String> fieldErrors = Map.of(ex.getRequestPartName(),
+                resolve("validation.document.file.required"));
+        ApiErrorResponse body = ApiErrorResponse.ofValidation(
+                HttpStatus.BAD_REQUEST.value(),
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                resolve("error.validation"),
+                fieldErrors);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    /**
+     * Errores de binding en {@code @ModelAttribute} (p. ej. tipo de dato inválido en
+     * los campos de texto del request multipart) -> 400 con mapa {@code fieldErrors}.
+     * {@link MethodArgumentNotValidException} extiende {@link org.springframework.validation.BindException}
+     * pero tiene su propio handler más específico; este captura el resto de subtipos.
+     */
+    @ExceptionHandler(org.springframework.validation.BindException.class)
+    public ResponseEntity<ApiErrorResponse> handleBindException(
+            org.springframework.validation.BindException ex, HttpServletRequest request) {
+        Map<String, String> fieldErrors = new LinkedHashMap<>();
+        for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
+            fieldErrors.putIfAbsent(fieldError.getField(), fieldError.getDefaultMessage());
+        }
+        ex.getBindingResult().getGlobalErrors().forEach(globalError -> {
+            String key = globalError.getObjectName() == null ? "_global" : globalError.getObjectName();
+            fieldErrors.putIfAbsent(key, globalError.getDefaultMessage());
+        });
+        log.warn("Binding fallido en {} {}: {}", request.getMethod(), request.getRequestURI(), fieldErrors);
+        ApiErrorResponse body = ApiErrorResponse.ofValidation(
+                HttpStatus.BAD_REQUEST.value(),
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                resolve("error.validation"),
+                fieldErrors);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
     /**

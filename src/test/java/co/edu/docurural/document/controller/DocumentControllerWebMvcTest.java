@@ -185,4 +185,18 @@ class DocumentControllerWebMvcTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.message").value("No se pudo almacenar el archivo en el servidor"));
     }
+
+    @Test
+    void upload_returns400WithFieldError_whenFileMissing() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+
+        // Petición multipart sin el part "file" -> MissingServletRequestPartException -> 400
+        mockMvc.perform(multipart("/documents")
+                        .param("title", "Acta")
+                        .param("categoryId", "1")
+                        .param("responsibleArea", "Rectoría")
+                        .param("documentDate", "2026-03-15"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.file").exists());
+    }
 }
