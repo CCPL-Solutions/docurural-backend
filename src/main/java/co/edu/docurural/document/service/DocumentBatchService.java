@@ -17,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -64,7 +63,7 @@ public class DocumentBatchService {
         }
         if (files.length > MAX_FILES_PER_BATCH) {
             throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
-                    MessageFormat.format(messageResolver.get("document.batch.too-many-files"), MAX_FILES_PER_BATCH));
+                    messageResolver.get("document.batch.too-many-files", MAX_FILES_PER_BATCH));
         }
 
         List<String> titles = request.titles();
@@ -98,10 +97,10 @@ public class DocumentBatchService {
     }
 
     private BatchUploadItemResult processOneFile(MultipartFile file,
-                                                  String fileName,
-                                                  String resolvedTitle,
-                                                  BatchUploadDocumentRequest request,
-                                                  AuditContext audit) {
+                                                 String fileName,
+                                                 String resolvedTitle,
+                                                 BatchUploadDocumentRequest request,
+                                                 AuditContext audit) {
         try {
             Document saved = documentService.uploadSingleForBatch(
                     file,

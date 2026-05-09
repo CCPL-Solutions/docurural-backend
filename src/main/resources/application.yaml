@@ -25,7 +25,7 @@ spring:
     multipart:
       enabled: true
       max-file-size: ${docurural.storage.max-file-size:10MB}
-      max-request-size: ${DOCURURAL_STORAGE_MAX_REQUEST_SIZE:55MB}
+      max-request-size: ${docurural.storage.max-request-size:55MB}
   messages:
     basename: messages
     encoding: UTF-8
@@ -47,6 +47,7 @@ docurural:
   storage:
     base-path: ${DOCURURAL_STORAGE_BASE_PATH:./uploads/documents}
     max-file-size: ${DOCURURAL_STORAGE_MAX_FILE_SIZE:10MB}
+    max-request-size: ${DOCURURAL_STORAGE_MAX_REQUEST_SIZE:55MB}
   seed:
     admin:
       email: ${ADMIN_SEED_EMAIL:}

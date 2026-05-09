@@ -92,11 +92,13 @@ public class DocumentController {
     }
 
     /**
-     * DOC-04 / HU-10: carga hasta {@value DocumentBatchService#MAX_FILES_PER_BATCH} documentos en un lote (200).
+     * DOC-04 / HU-10: carga hasta 5 documentos en un lote.
      *
-     * <p>Cada archivo se procesa de forma independiente. Si un archivo falla, los demás se persisten
-     * normalmente. La respuesta siempre retorna HTTP 200; los errores individuales se reportan en
-     * {@code results[].errorMessage}.
+     * <p>Si el request pasa las validaciones y la categoría es válida, la respuesta retorna HTTP 200.
+     * En ese caso, cada archivo se procesa de forma independiente: si un archivo falla, los demás se
+     * persisten normalmente y los errores individuales se reportan en {@code results[].errorMessage}.
+     * Si el request no pasa validaciones o la categoría es inválida, se retorna el
+     * {@code ApiErrorResponse} correspondiente.
      */
     @Operation(
             summary = "Cargar documentos (lote)",

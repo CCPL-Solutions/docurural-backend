@@ -57,11 +57,6 @@ public class DocumentService {
     public UploadDocumentResponse upload(UploadDocumentRequest request, MultipartFile file, AuditContext audit) {
         Long actorId = requireActorUserId(audit);
 
-        if (file == null || file.isEmpty()) {
-            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
-                    messageResolver.get("document.file.empty"));
-        }
-
         Category category = categoryRepository.findById(request.categoryId())
                 .filter(c -> c.getStatus() == CategoryStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException(

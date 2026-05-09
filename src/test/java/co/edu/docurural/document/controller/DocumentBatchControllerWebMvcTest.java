@@ -116,7 +116,7 @@ class DocumentBatchControllerWebMvcTest {
 
         mockMvc.perform(multipart("/documents/batch")
                         .file(new MockMultipartFile("files", "f1.pdf", "application/pdf", new byte[10]))
-                        .param("categoryId", "1")
+                        .param("categoryId", "6")
                         .param("responsibleArea", "Rectoría")
                         .param("documentDate", "2026-03-15"))
                 .andExpect(status().isBadRequest());
