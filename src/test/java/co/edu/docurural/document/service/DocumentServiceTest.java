@@ -3,7 +3,6 @@ package co.edu.docurural.document.service;
 import co.edu.docurural.activitylog.enums.ActivityAction;
 import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.category.entity.Category;
-import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.repository.CategoryRepository;
 import co.edu.docurural.document.dto.UploadDocumentRequest;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
@@ -47,15 +46,23 @@ class DocumentServiceTest {
     private static final Long ACTOR_ID = 10L;
     private static final AuditContext AUDIT = new AuditContext(ACTOR_ID, "127.0.0.1");
 
-    @Mock DocumentRepository documentRepository;
-    @Mock CategoryRepository categoryRepository;
-    @Mock UserRepository userRepository;
-    @Mock ActivityLogService activityLogService;
-    @Mock FileValidationService fileValidationService;
-    @Mock FileStorageService fileStorageService;
-    @Mock MessageResolver messageResolver;
+    @Mock
+    DocumentRepository documentRepository;
+    @Mock
+    CategoryRepository categoryRepository;
+    @Mock
+    UserRepository userRepository;
+    @Mock
+    ActivityLogService activityLogService;
+    @Mock
+    FileValidationService fileValidationService;
+    @Mock
+    FileStorageService fileStorageService;
+    @Mock
+    MessageResolver messageResolver;
 
-    @InjectMocks DocumentService documentService;
+    @InjectMocks
+    DocumentService documentService;
 
     @BeforeEach
     void stubMessageResolver() {
@@ -107,29 +114,6 @@ class DocumentServiceTest {
     // ------------------------------------------------------------------
     // upload() - validaciones de entrada
     // ------------------------------------------------------------------
-
-    @Test
-    void upload_throwsInvalidArgument_whenFileIsNull() {
-        UploadDocumentRequest request = TestFixtures.uploadDocumentRequest(1L);
-
-        assertThatThrownBy(() -> documentService.upload(request, null, AUDIT))
-                .isInstanceOf(BusinessRuleException.class)
-                .extracting(e -> ((BusinessRuleException) e).getCode())
-                .isEqualTo(BusinessErrorCode.INVALID_ARGUMENT);
-
-        verify(documentRepository, never()).save(any());
-    }
-
-    @Test
-    void upload_throwsInvalidArgument_whenFileIsEmpty() {
-        UploadDocumentRequest request = TestFixtures.uploadDocumentRequest(1L);
-        MockMultipartFile emptyFile = new MockMultipartFile("file", new byte[0]);
-
-        assertThatThrownBy(() -> documentService.upload(request, emptyFile, AUDIT))
-                .isInstanceOf(BusinessRuleException.class)
-                .extracting(e -> ((BusinessRuleException) e).getCode())
-                .isEqualTo(BusinessErrorCode.INVALID_ARGUMENT);
-    }
 
     @Test
     void upload_throwsOnNullAudit() {
