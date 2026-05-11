@@ -2,6 +2,7 @@ package co.edu.docurural.document.storage;
 
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.shared.exception.FileStorageException;
+import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.shared.util.MessageResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -9,10 +10,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.io.Resource;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -83,5 +86,44 @@ class FileStorageServiceTest {
         assertThatThrownBy(() -> fileStorageService.store(brokenFile, DocumentFormat.PDF))
                 .isInstanceOf(FileStorageException.class)
                 .hasMessage("document.file.storage-failed");
+    }
+
+    // ------------------------------------------------------------------
+    // load()
+    // ------------------------------------------------------------------
+
+    @Test
+    void load_returnsResource_whenFileExists() throws IOException {
+        byte[] content = "PDF content".getBytes(StandardCharsets.UTF_8);
+        Path file = Files.createFile(tempDir.resolve("test.pdf"));
+        Files.write(file, content);
+
+        Resource resource = fileStorageService.load("test.pdf");
+
+        assertThat(resource.exists()).isTrue();
+        assertThat(resource.contentLength()).isEqualTo(content.length);
+    }
+
+    @Test
+    void load_throwsResourceNotFound_whenFileMissing() {
+        assertThatThrownBy(() -> fileStorageService.load("nonexistent.pdf"))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("document.file.not-available");
+    }
+
+    @Test
+    void load_throwsResourceNotFound_whenPathIsDirectory() throws IOException {
+        Files.createDirectory(tempDir.resolve("subdir"));
+
+        assertThatThrownBy(() -> fileStorageService.load("subdir"))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("document.file.not-available");
+    }
+
+    @Test
+    void load_throwsFileStorageException_whenPathTraversal() {
+        assertThatThrownBy(() -> fileStorageService.load("../../etc/passwd"))
+                .isInstanceOf(FileStorageException.class)
+                .hasMessage("document.file.not-available");
     }
 }

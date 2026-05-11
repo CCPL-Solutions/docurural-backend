@@ -1,6 +1,9 @@
 package co.edu.docurural.document.controller;
 
+import co.edu.docurural.document.dto.DocumentDetailResponse;
+import co.edu.docurural.document.dto.DocumentViewContent;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
+import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.document.service.DocumentBatchService;
 import co.edu.docurural.document.service.DocumentService;
 import co.edu.docurural.shared.audit.AuditContext;
@@ -19,6 +22,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -26,9 +30,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -201,5 +210,116 @@ class DocumentControllerWebMvcTest {
                         .param("documentDate", "2026-03-15"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrors.file").exists());
+    }
+
+    // ------------------------------------------------------------------
+    // GET /documents/{id} (DOC-02)
+    // ------------------------------------------------------------------
+
+    @Test
+    void getById_returns200WithDetail_whenDocumentActive() throws Exception {
+        DocumentDetailResponse response = new DocumentDetailResponse(
+                48L,
+                "Acta Consejo Directivo Marzo 2026",
+                "Acta de reunión",
+                new DocumentDetailResponse.CategoryRef(1L, "Actas"),
+                "Rectoría",
+                LocalDate.of(2026, 3, 15),
+                "PDF",
+                524288L,
+                "acta.pdf",
+                new DocumentDetailResponse.UploadedByRef(10L, "Ana Admin"),
+                LocalDateTime.of(2026, 4, 10, 9, 30));
+
+        when(documentService.findDetailById(48L)).thenReturn(response);
+
+        mockMvc.perform(get("/documents/48"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(48))
+                .andExpect(jsonPath("$.title").value("Acta Consejo Directivo Marzo 2026"))
+                .andExpect(jsonPath("$.category.id").value(1))
+                .andExpect(jsonPath("$.category.name").value("Actas"))
+                .andExpect(jsonPath("$.uploadedBy.id").value(10))
+                .andExpect(jsonPath("$.uploadedBy.fullName").value("Ana Admin"))
+                .andExpect(jsonPath("$.fileFormat").value("PDF"));
+    }
+
+    @Test
+    void getById_returns404_whenDocumentNotFound() throws Exception {
+        when(documentService.findDetailById(99L))
+                .thenThrow(new ResourceNotFoundException("document.not-found"));
+
+        mockMvc.perform(get("/documents/99"))
+                .andExpect(status().isNotFound());
+    }
+
+    // ------------------------------------------------------------------
+    // GET /documents/{id}/view (DOC-07)
+    // ------------------------------------------------------------------
+
+    @Test
+    void view_returns200WithInlineDispositionAndStream_whenPdf() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        byte[] pdfBytes = "%PDF-1.4 test".getBytes();
+        DocumentViewContent content = new DocumentViewContent(
+                new ByteArrayResource(pdfBytes), DocumentFormat.PDF, "acta.pdf", pdfBytes.length);
+
+        when(documentService.openForView(eq(48L), any())).thenReturn(content);
+
+        mockMvc.perform(get("/documents/48/view"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andExpect(header().string("Content-Disposition", startsWith("inline")))
+                .andExpect(header().string("X-File-Name", "acta.pdf"))
+                .andExpect(header().string("X-File-Size", String.valueOf(pdfBytes.length)))
+                .andExpect(content().bytes(pdfBytes));
+    }
+
+    @Test
+    void view_returns200WithAttachmentDisposition_whenDocx() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        byte[] docxBytes = new byte[]{1, 2, 3};
+        DocumentViewContent content = new DocumentViewContent(
+                new ByteArrayResource(docxBytes), DocumentFormat.DOCX, "informe.docx", docxBytes.length);
+
+        when(documentService.openForView(eq(48L), any())).thenReturn(content);
+
+        mockMvc.perform(get("/documents/48/view"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", startsWith("attachment")))
+                .andExpect(header().string("Content-Type", startsWith(
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document")));
+    }
+
+    @Test
+    void view_returns404_whenDocumentNotFound() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        when(documentService.openForView(eq(99L), any()))
+                .thenThrow(new ResourceNotFoundException("document.not-found"));
+
+        mockMvc.perform(get("/documents/99/view"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void view_returns404_whenFileMissingOnDisk() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        when(documentService.openForView(eq(48L), any()))
+                .thenThrow(new ResourceNotFoundException("document.file.not-available"));
+
+        mockMvc.perform(get("/documents/48/view"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("document.file.not-available"));
+    }
+
+    @Test
+    void view_returns500_whenFileStorageFails() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        when(documentService.openForView(eq(48L), any()))
+                .thenThrow(new FileStorageException("document.file.not-available"));
+
+        mockMvc.perform(get("/documents/48/view"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").value("document.file.not-available"));
     }
 }
