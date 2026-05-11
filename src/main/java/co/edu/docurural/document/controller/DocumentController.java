@@ -101,9 +101,19 @@ public class DocumentController {
             description = "DOC-07 — Devuelve el stream binario del archivo. PDF/JPG/PNG abren en el navegador (inline); "
                     + "DOCX/XLSX se descargan (attachment). Registra acción VIEW en activity_log.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Stream del archivo retornado exitosamente",
-                    content = @Content(mediaType = "application/octet-stream",
-                            schema = @Schema(type = "string", format = "binary"))),
+            @ApiResponse(responseCode = "200", description = "Stream del archivo retornado exitosamente; el Content-Type varía según el formato del documento",
+                    content = {
+                            @Content(mediaType = "application/pdf",
+                                    schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = "image/jpeg",
+                                    schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = "image/png",
+                                    schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                    schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                    schema = @Schema(type = "string", format = "binary"))
+                    }),
             @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(implementation = ApiErrorResponse.class))),

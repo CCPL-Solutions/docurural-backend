@@ -83,7 +83,7 @@ public class FileStorageService {
         try {
             return new UrlResource(absolute.toUri());
         } catch (MalformedURLException ex) {
-            throw new FileStorageException(messageResolver.get("document.file.read-failed"), ex);
+            throw new FileStorageException(messageResolver.get("document.file.load-failed"), ex);
         }
     }
 
