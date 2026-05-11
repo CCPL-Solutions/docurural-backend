@@ -1,5 +1,6 @@
 package co.edu.docurural.document.mapper;
 
+import co.edu.docurural.document.dto.DocumentDetailResponse;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.enums.DocumentFormat;
@@ -45,6 +46,51 @@ class DocumentMapperTest {
     @Test
     void toUploadResponse_throwsOnNullDocument() {
         assertThatThrownBy(() -> DocumentMapper.toUploadResponse(null, "msg"))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    // ------------------------------------------------------------------
+    // toDetailResponse()
+    // ------------------------------------------------------------------
+
+    @Test
+    void toDetailResponse_mapsAllFields_whenDocumentValid() {
+        var category = TestFixtures.categoryActive(1L, "Actas", "Actas de reuniones");
+        var user = TestFixtures.userAdmin(10L);
+        Document doc = TestFixtures.documentActive(48L, category, user);
+
+        DocumentDetailResponse response = DocumentMapper.toDetailResponse(doc);
+
+        assertThat(response.id()).isEqualTo(48L);
+        assertThat(response.title()).isEqualTo(doc.getTitle());
+        assertThat(response.description()).isEqualTo(doc.getDescription());
+        assertThat(response.category().id()).isEqualTo(1L);
+        assertThat(response.category().name()).isEqualTo("Actas");
+        assertThat(response.responsibleArea()).isEqualTo(doc.getResponsibleArea());
+        assertThat(response.documentDate()).isEqualTo(doc.getDocumentDate());
+        assertThat(response.fileFormat()).isEqualTo(DocumentFormat.PDF.name());
+        assertThat(response.fileSizeBytes()).isEqualTo(doc.getFileSizeBytes());
+        assertThat(response.originalFileName()).isEqualTo(doc.getOriginalFileName());
+        assertThat(response.uploadedBy().id()).isEqualTo(10L);
+        assertThat(response.uploadedBy().fullName()).isEqualTo(user.getFullName());
+        assertThat(response.createdAt()).isEqualTo(TestFixtures.FIXED_CREATED_AT);
+    }
+
+    @Test
+    void toDetailResponse_mapsDescriptionAsNull_whenAbsent() {
+        var category = TestFixtures.categoryActive(1L, "Actas");
+        var user = TestFixtures.userAdmin(10L);
+        Document doc = TestFixtures.documentActive(48L, category, user);
+        doc.setDescription(null);
+
+        DocumentDetailResponse response = DocumentMapper.toDetailResponse(doc);
+
+        assertThat(response.description()).isNull();
+    }
+
+    @Test
+    void toDetailResponse_throwsOnNullDocument() {
+        assertThatThrownBy(() -> DocumentMapper.toDetailResponse(null))
                 .isInstanceOf(NullPointerException.class);
     }
 }

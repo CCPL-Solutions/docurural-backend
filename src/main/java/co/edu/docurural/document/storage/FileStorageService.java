@@ -2,13 +2,17 @@ package co.edu.docurural.document.storage;
 
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.shared.exception.FileStorageException;
+import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.shared.util.MessageResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -53,6 +57,33 @@ public class FileStorageService {
         } catch (IOException ex) {
             log.error("Error al almacenar archivo: {}", ex.getMessage(), ex);
             throw new FileStorageException(messageResolver.get("document.file.storage-failed"), ex);
+        }
+    }
+
+    /**
+     * Carga el archivo identificado por su ruta relativa al {@code basePath} (DOC-07 / HU-11).
+     *
+     * @param relativePath ruta relativa devuelta por {@link #store}
+     * @return {@link Resource} listo para ser enviado al cliente como stream
+     * @throws FileStorageException      si la ruta intenta salir del directorio base (path traversal)
+     *                                   o si ocurre un error al construir la URL del recurso
+     * @throws ResourceNotFoundException si el archivo no existe o no es un archivo regular
+     */
+    public Resource load(String relativePath) {
+        Path basePath = Paths.get(storageProperties.getBasePath()).toAbsolutePath().normalize();
+        Path absolute = basePath.resolve(relativePath).normalize();
+
+        if (!absolute.startsWith(basePath)) {
+            log.warn("Intento de path traversal detectado: '{}'", relativePath);
+            throw new FileStorageException(messageResolver.get("document.file.not-available"));
+        }
+        if (!Files.exists(absolute) || !Files.isRegularFile(absolute)) {
+            throw new ResourceNotFoundException(messageResolver.get("document.file.not-available"));
+        }
+        try {
+            return new UrlResource(absolute.toUri());
+        } catch (MalformedURLException ex) {
+            throw new FileStorageException(messageResolver.get("document.file.read-failed"), ex);
         }
     }
 

@@ -1,5 +1,6 @@
 package co.edu.docurural.document.mapper;
 
+import co.edu.docurural.document.dto.DocumentDetailResponse;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
 import co.edu.docurural.document.entity.Document;
 
@@ -29,6 +30,30 @@ public final class DocumentMapper {
                 document.getOriginalFileName(),
                 document.getCreatedAt(),
                 message
+        );
+    }
+
+    /**
+     * Construye la ficha completa de metadatos del documento (DOC-02 / HU-11).
+     */
+    public static DocumentDetailResponse toDetailResponse(Document document) {
+        Objects.requireNonNull(document, "document no puede ser null");
+        return new DocumentDetailResponse(
+                document.getId(),
+                document.getTitle(),
+                document.getDescription(),
+                new DocumentDetailResponse.CategoryRef(
+                        document.getCategory().getId(),
+                        document.getCategory().getName()),
+                document.getResponsibleArea(),
+                document.getDocumentDate(),
+                document.getFileFormat() != null ? document.getFileFormat().name() : null,
+                document.getFileSizeBytes(),
+                document.getOriginalFileName(),
+                new DocumentDetailResponse.UploadedByRef(
+                        document.getUploadedBy().getId(),
+                        document.getUploadedBy().getFullName()),
+                document.getCreatedAt()
         );
     }
 }

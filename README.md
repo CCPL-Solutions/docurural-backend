@@ -128,9 +128,10 @@ src/main/java/co/edu/docurural/
 │   ├── mapper/            → UserMapper
 │   └── service/           → UserService
 │
-├── document/              # Gestión de documentos (DOC-03 / HU-09)
+├── document/              # Gestión de documentos (DOC-02..DOC-04, DOC-07 / HU-09..HU-11)
 │   ├── controller/        → DocumentController
-│   ├── dto/               → UploadDocumentRequest, UploadDocumentResponse
+│   ├── dto/               → DocumentDetailResponse, DocumentViewContent,
+│   │                          UploadDocumentRequest, UploadDocumentResponse
 │   ├── entity/            → Document
 │   ├── enums/             → DocumentFormat, DocumentStatus
 │   ├── mapper/            → DocumentMapper
@@ -215,9 +216,12 @@ Todos los endpoints de categorías requieren rol **`ADMIN`**.
 
 ### Documentos
 
-| Método | Ruta         | Acceso            | HU    | Descripción                                                                 |
-|--------|--------------|-------------------|-------|-----------------------------------------------------------------------------|
-| `POST` | `/documents` | `ADMIN`, `EDITOR` | HU-09 | Carga un documento (`multipart/form-data`) con sus metadatos. Máximo 10 MB. |
+| Método | Ruta                  | Acceso                      | HU    | Descripción                                                                 |
+|--------|-----------------------|-----------------------------|-------|-----------------------------------------------------------------------------|
+| `GET`  | `/documents/{id}`     | `ADMIN`, `EDITOR`, `READER` | HU-11 | Retorna la ficha completa de metadatos de un documento activo (DOC-02).     |
+| `GET`  | `/documents/{id}/view`| `ADMIN`, `EDITOR`, `READER` | HU-11 | Stream del archivo. PDF/JPG/PNG → `inline`; DOCX/XLSX → `attachment` (DOC-07). Registra acción `VIEW`. |
+| `POST` | `/documents`          | `ADMIN`, `EDITOR`           | HU-09 | Carga un documento (`multipart/form-data`) con sus metadatos. Máximo 10 MB. |
+| `POST` | `/documents/batch`    | `ADMIN`, `EDITOR`           | HU-10 | Carga hasta 5 documentos simultáneamente con metadatos comunes.             |
 
 **Almacenamiento de archivos:**
 

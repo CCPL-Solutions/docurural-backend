@@ -5,10 +5,13 @@ import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.repository.CategoryRepository;
+import co.edu.docurural.document.dto.DocumentDetailResponse;
+import co.edu.docurural.document.dto.DocumentViewContent;
 import co.edu.docurural.document.dto.UploadDocumentRequest;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.enums.DocumentFormat;
+import co.edu.docurural.document.enums.DocumentStatus;
 import co.edu.docurural.document.mapper.DocumentMapper;
 import co.edu.docurural.document.repository.DocumentRepository;
 import co.edu.docurural.document.storage.FileStorageService;
@@ -21,6 +24,7 @@ import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.shared.util.MessageResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -30,7 +34,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDate;
 
 /**
- * Servicio del módulo de documentos (DOC-03 / HU-09, DOC-04 / HU-10).
+ * Servicio del módulo de documentos (DOC-02..DOC-04 / HU-09..HU-11).
  */
 @Service
 @RequiredArgsConstructor
@@ -177,6 +181,51 @@ public class DocumentService {
                 activityDetailPrefix + saved.getOriginalFileName());
 
         return saved;
+    }
+
+    /**
+     * Retorna la ficha completa de metadatos de un documento activo (DOC-02 / HU-11).
+     *
+     * @throws ResourceNotFoundException {@code 404} si el documento no existe o tiene estado DELETED.
+     */
+    @Transactional(readOnly = true)
+    public DocumentDetailResponse findDetailById(Long id) {
+        Document document = documentRepository.findByIdAndStatus(id, DocumentStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        messageResolver.get("document.not-found", id)));
+        return DocumentMapper.toDetailResponse(document);
+    }
+
+    /**
+     * Carga el archivo binario de un documento para visualización en línea (DOC-07 / HU-11).
+     *
+     * <p>El registro de actividad {@code VIEW} se genera sólo si el archivo existe en disco.
+     * Si el archivo físico no se encuentra, se lanza {@link ResourceNotFoundException} antes de registrar.
+     *
+     * @throws IllegalArgumentException  si {@code audit} o {@code audit.actorUserId()} es null.
+     * @throws ResourceNotFoundException {@code 404} si el documento no existe, está DELETED o el archivo físico no está disponible.
+     */
+    @Transactional
+    public DocumentViewContent openForView(Long id, AuditContext audit) {
+        requireActorUserId(audit);
+
+        Document document = documentRepository.findByIdAndStatus(id, DocumentStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        messageResolver.get("document.not-found", id)));
+
+        Resource resource = fileStorageService.load(document.getFilePath());
+
+        activityLogService.record(
+                ActivityAction.VIEW,
+                audit,
+                document.getId(),
+                "Formato: " + document.getFileFormat().name());
+
+        log.debug("Documento visualizado: id={} format={} viewedBy={}",
+                document.getId(), document.getFileFormat(), audit.actorUserId());
+
+        return new DocumentViewContent(resource, document.getFileFormat(),
+                document.getOriginalFileName(), document.getFileSizeBytes());
     }
 
     Long requireActorUserId(AuditContext audit) {
