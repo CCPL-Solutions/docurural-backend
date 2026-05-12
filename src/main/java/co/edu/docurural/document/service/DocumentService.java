@@ -6,7 +6,7 @@ import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.repository.CategoryRepository;
 import co.edu.docurural.document.dto.DocumentDetailResponse;
-import co.edu.docurural.document.dto.DocumentViewContent;
+import co.edu.docurural.document.dto.DocumentFileContent;
 import co.edu.docurural.document.dto.UploadDocumentRequest;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
 import co.edu.docurural.document.entity.Document;
@@ -34,7 +34,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDate;
 
 /**
- * Servicio del módulo de documentos (DOC-02..DOC-04 / HU-09..HU-11).
+ * Servicio del módulo de documentos (DOC-02..DOC-04, DOC-07, DOC-08 / HU-09..HU-12).
  */
 @Service
 @RequiredArgsConstructor
@@ -206,7 +206,7 @@ public class DocumentService {
      * @throws ResourceNotFoundException {@code 404} si el documento no existe, está DELETED o el archivo físico no está disponible.
      */
     @Transactional
-    public DocumentViewContent openForView(Long id, AuditContext audit) {
+    public DocumentFileContent openForView(Long id, AuditContext audit) {
         requireActorUserId(audit);
 
         Document document = documentRepository.findByIdAndStatus(id, DocumentStatus.ACTIVE)
@@ -224,7 +224,39 @@ public class DocumentService {
         log.debug("Documento visualizado: id={} format={} viewedBy={}",
                 document.getId(), document.getFileFormat(), audit.actorUserId());
 
-        return new DocumentViewContent(resource, document.getFileFormat(),
+        return new DocumentFileContent(resource, document.getFileFormat(),
+                document.getOriginalFileName(), document.getFileSizeBytes());
+    }
+
+    /**
+     * Carga el archivo binario de un documento para descarga (DOC-08 / HU-12).
+     *
+     * <p>El registro de actividad {@code DOWNLOAD} se genera sólo si el archivo existe en disco.
+     * Si el archivo físico no se encuentra, se lanza {@link ResourceNotFoundException} antes de registrar.
+     *
+     * @throws IllegalArgumentException  si {@code audit} o {@code audit.actorUserId()} es null.
+     * @throws ResourceNotFoundException {@code 404} si el documento no existe, está DELETED o el archivo físico no está disponible.
+     */
+    @Transactional
+    public DocumentFileContent openForDownload(Long id, AuditContext audit) {
+        requireActorUserId(audit);
+
+        Document document = documentRepository.findByIdAndStatus(id, DocumentStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        messageResolver.get("document.not-found", id)));
+
+        Resource resource = fileStorageService.load(document.getFilePath());
+
+        activityLogService.record(
+                ActivityAction.DOWNLOAD,
+                audit,
+                document.getId(),
+                "Archivo: " + document.getOriginalFileName());
+
+        log.debug("Documento descargado: id={} format={} downloadedBy={}",
+                document.getId(), document.getFileFormat(), audit.actorUserId());
+
+        return new DocumentFileContent(resource, document.getFileFormat(),
                 document.getOriginalFileName(), document.getFileSizeBytes());
     }
 

@@ -1,7 +1,7 @@
 package co.edu.docurural.document.controller;
 
 import co.edu.docurural.document.dto.DocumentDetailResponse;
-import co.edu.docurural.document.dto.DocumentViewContent;
+import co.edu.docurural.document.dto.DocumentFileContent;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.document.service.DocumentBatchService;
@@ -261,7 +261,7 @@ class DocumentControllerWebMvcTest {
     void view_returns200WithInlineDispositionAndStream_whenPdf() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
         byte[] pdfBytes = "%PDF-1.4 test".getBytes();
-        DocumentViewContent content = new DocumentViewContent(
+        DocumentFileContent content = new DocumentFileContent(
                 new ByteArrayResource(pdfBytes), DocumentFormat.PDF, "acta.pdf", pdfBytes.length);
 
         when(documentService.openForView(eq(48L), any())).thenReturn(content);
@@ -279,7 +279,7 @@ class DocumentControllerWebMvcTest {
     void view_returns200WithAttachmentDisposition_whenDocx() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
         byte[] docxBytes = new byte[]{1, 2, 3};
-        DocumentViewContent content = new DocumentViewContent(
+        DocumentFileContent content = new DocumentFileContent(
                 new ByteArrayResource(docxBytes), DocumentFormat.DOCX, "informe.docx", docxBytes.length);
 
         when(documentService.openForView(eq(48L), any())).thenReturn(content);
@@ -321,5 +321,74 @@ class DocumentControllerWebMvcTest {
         mockMvc.perform(get("/documents/48/view"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.message").value("document.file.not-available"));
+    }
+
+    // ------------------------------------------------------------------
+    // GET /documents/{id}/download (DOC-08)
+    // ------------------------------------------------------------------
+
+    @Test
+    void download_returns200WithAttachmentDispositionAndStream_whenPdf() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        byte[] pdfBytes = "%PDF-1.4 test".getBytes();
+        DocumentFileContent content = new DocumentFileContent(
+                new ByteArrayResource(pdfBytes), DocumentFormat.PDF, "acta.pdf", pdfBytes.length);
+
+        when(documentService.openForDownload(eq(48L), any())).thenReturn(content);
+
+        mockMvc.perform(get("/documents/48/download"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andExpect(header().string("Content-Disposition", startsWith("attachment")))
+                .andExpect(header().string("X-File-Name", "acta.pdf"))
+                .andExpect(header().string("X-File-Size", String.valueOf(pdfBytes.length)))
+                .andExpect(content().bytes(pdfBytes));
+    }
+
+    @Test
+    void download_returns200WithAttachmentDisposition_whenPng() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        byte[] pngBytes = new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47};
+        DocumentFileContent content = new DocumentFileContent(
+                new ByteArrayResource(pngBytes), DocumentFormat.PNG, "imagen.png", pngBytes.length);
+
+        when(documentService.openForDownload(eq(48L), any())).thenReturn(content);
+
+        mockMvc.perform(get("/documents/48/download"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "image/png"))
+                .andExpect(header().string("Content-Disposition", startsWith("attachment")));
+    }
+
+    @Test
+    void download_returns404_whenDocumentNotFound() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        when(documentService.openForDownload(eq(99L), any()))
+                .thenThrow(new ResourceNotFoundException("document.not-found"));
+
+        mockMvc.perform(get("/documents/99/download"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void download_returns404_whenFileMissingOnDisk() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        when(documentService.openForDownload(eq(48L), any()))
+                .thenThrow(new ResourceNotFoundException("document.file.not-available"));
+
+        mockMvc.perform(get("/documents/48/download"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("document.file.not-available"));
+    }
+
+    @Test
+    void download_returns500_whenFileStorageFails() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        when(documentService.openForDownload(eq(48L), any()))
+                .thenThrow(new FileStorageException("document.file.load-failed"));
+
+        mockMvc.perform(get("/documents/48/download"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").value("document.file.load-failed"));
     }
 }

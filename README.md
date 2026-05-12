@@ -128,9 +128,9 @@ src/main/java/co/edu/docurural/
 │   ├── mapper/            → UserMapper
 │   └── service/           → UserService
 │
-├── document/              # Gestión de documentos (DOC-02..DOC-04, DOC-07 / HU-09..HU-11)
+├── document/              # Gestión de documentos (DOC-02..DOC-04, DOC-07, DOC-08 / HU-09..HU-12)
 │   ├── controller/        → DocumentController
-│   ├── dto/               → DocumentDetailResponse, DocumentViewContent,
+│   ├── dto/               → DocumentDetailResponse, DocumentFileContent,
 │   │                          UploadDocumentRequest, UploadDocumentResponse
 │   ├── entity/            → Document
 │   ├── enums/             → DocumentFormat, DocumentStatus
@@ -216,12 +216,13 @@ Todos los endpoints de categorías requieren rol **`ADMIN`**.
 
 ### Documentos
 
-| Método | Ruta                  | Acceso                      | HU    | Descripción                                                                 |
-|--------|-----------------------|-----------------------------|-------|-----------------------------------------------------------------------------|
-| `GET`  | `/documents/{id}`     | `ADMIN`, `EDITOR`, `READER` | HU-11 | Retorna la ficha completa de metadatos de un documento activo (DOC-02).     |
-| `GET`  | `/documents/{id}/view`| `ADMIN`, `EDITOR`, `READER` | HU-11 | Stream del archivo. PDF/JPG/PNG → `inline`; DOCX/XLSX → `attachment` (DOC-07). Registra acción `VIEW`. |
-| `POST` | `/documents`          | `ADMIN`, `EDITOR`           | HU-09 | Carga un documento (`multipart/form-data`) con sus metadatos. Máximo 10 MB. |
-| `POST` | `/documents/batch`    | `ADMIN`, `EDITOR`           | HU-10 | Carga hasta 5 documentos simultáneamente con metadatos comunes.             |
+| Método | Ruta                       | Acceso                      | HU    | Descripción                                                                                          |
+|--------|----------------------------|-----------------------------|-------|------------------------------------------------------------------------------------------------------|
+| `GET`  | `/documents/{id}`          | `ADMIN`, `EDITOR`, `READER` | HU-11 | Retorna la ficha completa de metadatos de un documento activo (DOC-02).                              |
+| `GET`  | `/documents/{id}/view`     | `ADMIN`, `EDITOR`, `READER` | HU-11 | Stream del archivo. PDF/JPG/PNG → `inline`; DOCX/XLSX → `attachment` (DOC-07). Registra acción `VIEW`. |
+| `GET`  | `/documents/{id}/download` | `ADMIN`, `EDITOR`, `READER` | HU-12 | Descarga el archivo con `Content-Disposition: attachment` y nombre original (DOC-08). Registra acción `DOWNLOAD`. |
+| `POST` | `/documents`               | `ADMIN`, `EDITOR`           | HU-09 | Carga un documento (`multipart/form-data`) con sus metadatos. Máximo 10 MB.                          |
+| `POST` | `/documents/batch`         | `ADMIN`, `EDITOR`           | HU-10 | Carga hasta 5 documentos simultáneamente con metadatos comunes.                                      |
 
 **Almacenamiento de archivos:**
 
