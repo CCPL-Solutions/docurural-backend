@@ -6,6 +6,8 @@ import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.repository.CategoryRepository;
 import co.edu.docurural.document.dto.DocumentDetailResponse;
 import co.edu.docurural.document.dto.DocumentFileContent;
+import co.edu.docurural.document.dto.UpdateDocumentMetadataRequest;
+import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
 import co.edu.docurural.document.dto.UploadDocumentRequest;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
 import co.edu.docurural.document.entity.Document;
@@ -205,6 +207,133 @@ class DocumentServiceTest {
                 .isInstanceOf(BusinessRuleException.class)
                 .extracting(e -> ((BusinessRuleException) e).getCode())
                 .isEqualTo(BusinessErrorCode.UNSUPPORTED_MEDIA_TYPE);
+    }
+
+    // ------------------------------------------------------------------
+    // updateMetadata()
+    // ------------------------------------------------------------------
+
+    @Test
+    void updateMetadata_updatesAndLogs_whenAdminAndChangesDetected() {
+        Category currentCategory = TestFixtures.categoryActive(1L, "Actas");
+        Category newCategory = TestFixtures.categoryActive(2L, "Informes");
+        User admin = TestFixtures.userAdmin(ACTOR_ID);
+        User uploader = TestFixtures.userEditor(33L);
+        Document doc = TestFixtures.documentActive(48L, currentCategory, uploader);
+        UpdateDocumentMetadataRequest request = new UpdateDocumentMetadataRequest(
+                "Acta Consejo Directivo Marzo 2026 - Revisado",
+                2L,
+                "Secretaría",
+                doc.getDocumentDate().plusDays(1),
+                "Versión corregida del acta");
+
+        when(documentRepository.findByIdAndStatus(48L, DocumentStatus.ACTIVE)).thenReturn(Optional.of(doc));
+        when(categoryRepository.findById(2L)).thenReturn(Optional.of(newCategory));
+        when(userRepository.findById(ACTOR_ID)).thenReturn(Optional.of(admin));
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateDocumentMetadataResponse response = documentService.updateMetadata(48L, request, AUDIT);
+
+        assertThat(response.id()).isEqualTo(48L);
+        assertThat(response.title()).isEqualTo("Acta Consejo Directivo Marzo 2026 - Revisado");
+        assertThat(response.category()).isEqualTo("Informes");
+        assertThat(response.responsibleArea()).isEqualTo("Secretaría");
+
+        verify(documentRepository).save(doc);
+        verify(activityLogService).record(eq(ActivityAction.EDIT_DOC), eq(AUDIT), eq(48L), anyString());
+    }
+
+    @Test
+    void updateMetadata_keepsDescription_whenDescriptionOmitted() {
+        Category category = TestFixtures.categoryActive(1L, "Actas");
+        User admin = TestFixtures.userAdmin(ACTOR_ID);
+        User uploader = TestFixtures.userEditor(20L);
+        Document doc = TestFixtures.documentActive(48L, category, uploader);
+        String originalDescription = doc.getDescription();
+        UpdateDocumentMetadataRequest request = new UpdateDocumentMetadataRequest(
+                "Acta Consejo Directivo Marzo 2026 - Revisado",
+                1L,
+                doc.getResponsibleArea(),
+                doc.getDocumentDate(),
+                null);
+
+        when(documentRepository.findByIdAndStatus(48L, DocumentStatus.ACTIVE)).thenReturn(Optional.of(doc));
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(userRepository.findById(ACTOR_ID)).thenReturn(Optional.of(admin));
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        documentService.updateMetadata(48L, request, AUDIT);
+
+        assertThat(doc.getDescription()).isEqualTo(originalDescription);
+        verify(activityLogService).record(eq(ActivityAction.EDIT_DOC), eq(AUDIT), eq(48L), anyString());
+    }
+
+    @Test
+    void updateMetadata_returnsSuccessWithoutSavingOrLogging_whenNoChangesDetected() {
+        Category category = TestFixtures.categoryActive(1L, "Actas");
+        User admin = TestFixtures.userAdmin(ACTOR_ID);
+        Document doc = TestFixtures.documentActive(48L, category, TestFixtures.userEditor(30L));
+        UpdateDocumentMetadataRequest request = new UpdateDocumentMetadataRequest(
+                doc.getTitle(),
+                category.getId(),
+                doc.getResponsibleArea(),
+                doc.getDocumentDate(),
+                null);
+
+        when(documentRepository.findByIdAndStatus(48L, DocumentStatus.ACTIVE)).thenReturn(Optional.of(doc));
+        when(categoryRepository.findById(category.getId())).thenReturn(Optional.of(category));
+        when(userRepository.findById(ACTOR_ID)).thenReturn(Optional.of(admin));
+
+        UpdateDocumentMetadataResponse response = documentService.updateMetadata(48L, request, AUDIT);
+
+        assertThat(response.id()).isEqualTo(48L);
+        assertThat(response.message()).isEqualTo("document.updated.no-changes");
+        verify(documentRepository, never()).save(any());
+        verify(activityLogService, never()).record(eq(ActivityAction.EDIT_DOC), any(), anyLong(), anyString());
+    }
+
+    @Test
+    void updateMetadata_throwsForbidden_whenEditorAttemptsToEditForeignDocument() {
+        Long editorActorId = 50L;
+        AuditContext editorAudit = new AuditContext(editorActorId, "127.0.0.1");
+        Category category = TestFixtures.categoryActive(1L, "Actas");
+        User editor = TestFixtures.userEditor(editorActorId);
+        User foreignUploader = TestFixtures.userEditor(77L);
+        Document doc = TestFixtures.documentActive(48L, category, foreignUploader);
+        UpdateDocumentMetadataRequest request = TestFixtures.updateDocumentMetadataRequest(1L);
+
+        when(documentRepository.findByIdAndStatus(48L, DocumentStatus.ACTIVE)).thenReturn(Optional.of(doc));
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(userRepository.findById(editorActorId)).thenReturn(Optional.of(editor));
+        when(messageResolver.get("document.edit.forbidden")).thenReturn("No tiene permisos para editar este documento");
+
+        assertThatThrownBy(() -> documentService.updateMetadata(48L, request, editorAudit))
+                .isInstanceOf(BusinessRuleException.class)
+                .satisfies(ex -> {
+                    BusinessRuleException businessEx = (BusinessRuleException) ex;
+                    assertThat(businessEx.getCode()).isEqualTo(BusinessErrorCode.FORBIDDEN);
+                    assertThat(businessEx.getMessage()).isEqualTo("No tiene permisos para editar este documento");
+                });
+
+        verify(documentRepository, never()).save(any());
+        verify(activityLogService, never()).record(eq(ActivityAction.EDIT_DOC), any(), anyLong(), anyString());
+    }
+
+    @Test
+    void updateMetadata_throwsNotFound_whenCategoryIsInactive() {
+        Category inactiveCategory = TestFixtures.categoryInactive(9L, "Actas");
+        User admin = TestFixtures.userAdmin(ACTOR_ID);
+        Document doc = TestFixtures.documentActive(48L, TestFixtures.categoryActive(1L, "Actas"), TestFixtures.userEditor(12L));
+        UpdateDocumentMetadataRequest request = TestFixtures.updateDocumentMetadataRequest(9L);
+
+        when(documentRepository.findByIdAndStatus(48L, DocumentStatus.ACTIVE)).thenReturn(Optional.of(doc));
+        when(categoryRepository.findById(9L)).thenReturn(Optional.of(inactiveCategory));
+
+        assertThatThrownBy(() -> documentService.updateMetadata(48L, request, AUDIT))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(documentRepository, never()).save(any());
+        verify(activityLogService, never()).record(eq(ActivityAction.EDIT_DOC), any(), anyLong(), anyString());
     }
 
     // ------------------------------------------------------------------

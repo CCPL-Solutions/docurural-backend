@@ -1,6 +1,7 @@
 package co.edu.docurural.document.mapper;
 
 import co.edu.docurural.document.dto.DocumentDetailResponse;
+import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.enums.DocumentFormat;
@@ -91,6 +92,30 @@ class DocumentMapperTest {
     @Test
     void toDetailResponse_throwsOnNullDocument() {
         assertThatThrownBy(() -> DocumentMapper.toDetailResponse(null))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void toUpdateMetadataResponse_mapsAllFieldsCorrectly() {
+        var category = TestFixtures.categoryActive(1L, "Actas");
+        var user = TestFixtures.userAdmin(10L);
+        Document doc = TestFixtures.documentActive(47L, category, user);
+        doc.setTitle("Acta Consejo Directivo Marzo 2026 - Revisado");
+
+        UpdateDocumentMetadataResponse response =
+                DocumentMapper.toUpdateMetadataResponse(doc, "Documento actualizado exitosamente");
+
+        assertThat(response.id()).isEqualTo(47L);
+        assertThat(response.title()).isEqualTo("Acta Consejo Directivo Marzo 2026 - Revisado");
+        assertThat(response.category()).isEqualTo("Actas");
+        assertThat(response.responsibleArea()).isEqualTo("Rectoría");
+        assertThat(response.documentDate()).isEqualTo(doc.getDocumentDate());
+        assertThat(response.message()).isEqualTo("Documento actualizado exitosamente");
+    }
+
+    @Test
+    void toUpdateMetadataResponse_throwsOnNullDocument() {
+        assertThatThrownBy(() -> DocumentMapper.toUpdateMetadataResponse(null, "ok"))
                 .isInstanceOf(NullPointerException.class);
     }
 }

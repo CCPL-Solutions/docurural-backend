@@ -2,6 +2,7 @@ package co.edu.docurural.document.controller;
 
 import co.edu.docurural.document.dto.DocumentDetailResponse;
 import co.edu.docurural.document.dto.DocumentFileContent;
+import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.document.service.DocumentBatchService;
@@ -36,6 +37,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -210,6 +212,82 @@ class DocumentControllerWebMvcTest {
                         .param("documentDate", "2026-03-15"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrors.file").exists());
+    }
+
+    // ------------------------------------------------------------------
+    // PUT /documents/{id} (DOC-05)
+    // ------------------------------------------------------------------
+
+    @Test
+    void updateMetadata_returns200AndPayload_whenValid() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+
+        UpdateDocumentMetadataResponse response = new UpdateDocumentMetadataResponse(
+                47L,
+                "Acta Consejo Directivo Marzo 2026 - Revisado",
+                "Actas",
+                "Rectoría",
+                LocalDate.of(2026, 3, 15),
+                "Descripción",
+                "Documento actualizado exitosamente");
+
+        when(documentService.updateMetadata(eq(47L), any(), any())).thenReturn(response);
+
+        mockMvc.perform(put("/documents/47")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "title": "Acta Consejo Directivo Marzo 2026 - Revisado",
+                                  "categoryId": 1,
+                                  "responsibleArea": "Rectoría",
+                                  "documentDate": "2026-03-15",
+                                  "description": "Versión corregida del acta"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(47))
+                .andExpect(jsonPath("$.title").value("Acta Consejo Directivo Marzo 2026 - Revisado"))
+                .andExpect(jsonPath("$.category").value("Actas"))
+                .andExpect(jsonPath("$.message").value("Documento actualizado exitosamente"));
+    }
+
+    @Test
+    void updateMetadata_returns400_whenTitleIsBlank() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+
+        mockMvc.perform(put("/documents/47")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "title": "",
+                                  "categoryId": 1,
+                                  "responsibleArea": "Rectoría",
+                                  "documentDate": "2026-03-15"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.title").exists());
+    }
+
+    @Test
+    void updateMetadata_returns403_whenEditorTriesToEditForeignDocument() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        when(documentService.updateMetadata(eq(47L), any(), any()))
+                .thenThrow(new BusinessRuleException(BusinessErrorCode.FORBIDDEN,
+                        "No tiene permisos para editar este documento"));
+
+        mockMvc.perform(put("/documents/47")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "title": "Acta Consejo Directivo Marzo 2026 - Revisado",
+                                  "categoryId": 1,
+                                  "responsibleArea": "Rectoría",
+                                  "documentDate": "2026-03-15"
+                                }
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("No tiene permisos para editar este documento"));
     }
 
     // ------------------------------------------------------------------
