@@ -5,6 +5,7 @@ import co.edu.docurural.document.dto.BatchUploadDocumentResponse;
 import co.edu.docurural.document.dto.DeleteDocumentResponse;
 import co.edu.docurural.document.dto.DocumentDetailResponse;
 import co.edu.docurural.document.dto.DocumentFileContent;
+import co.edu.docurural.document.dto.DocumentListResponse;
 import co.edu.docurural.document.dto.UpdateDocumentMetadataRequest;
 import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
 import co.edu.docurural.document.dto.UploadDocumentRequest;
@@ -16,6 +17,7 @@ import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.audit.AuditContextResolver;
 import co.edu.docurural.shared.dto.ApiErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -41,6 +43,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -67,6 +70,42 @@ public class DocumentController {
 
     private static final EnumSet<DocumentFormat> INLINE_FORMATS =
             EnumSet.of(DocumentFormat.PDF, DocumentFormat.JPG, DocumentFormat.PNG);
+
+    /**
+     * DOC-01 / HU-15: lista paginada de documentos activos con ordenamiento configurable.
+     */
+    @Operation(
+            summary = "Listar documentos activos",
+            description = "DOC-01 — HU-15. Devuelve los documentos con status=ACTIVE paginados y ordenados. "
+                    + "Accesible para todos los roles autenticados.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Lista de documentos retornada exitosamente",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = DocumentListResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Parámetros de paginación u ordenamiento inválidos",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'READER')")
+    @GetMapping
+    public ResponseEntity<DocumentListResponse> list(
+            @Parameter(name = "page", description = "Número de página (default 1)", example = "1")
+            @RequestParam(value = "page", required = false) Integer page,
+            @Parameter(name = "size", description = "Documentos por página (default 20, máx 50)", example = "20")
+            @RequestParam(value = "size", required = false) Integer size,
+            @Parameter(name = "sortBy", description = "Campo de ordenamiento: createdAt | title | documentDate", example = "createdAt")
+            @RequestParam(value = "sortBy", required = false) String sortBy,
+            @Parameter(name = "sortDir", description = "Dirección: asc | desc", example = "desc")
+            @RequestParam(value = "sortDir", required = false) String sortDir) {
+        log.debug("GET /documents page={} size={} sortBy={} sortDir={}", page, size, sortBy, sortDir);
+        return ResponseEntity.ok(documentService.list(page, size, sortBy, sortDir));
+    }
 
     /**
      * DOC-02 / HU-11: retorna la ficha completa de metadatos de un documento activo.

@@ -2,10 +2,14 @@ package co.edu.docurural.document.mapper;
 
 import co.edu.docurural.document.dto.DeleteDocumentResponse;
 import co.edu.docurural.document.dto.DocumentDetailResponse;
+import co.edu.docurural.document.dto.DocumentListResponse;
+import co.edu.docurural.document.dto.DocumentSummaryResponse;
 import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
 import co.edu.docurural.document.entity.Document;
+import org.springframework.data.domain.Page;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -81,5 +85,42 @@ public final class DocumentMapper {
     public static DeleteDocumentResponse toDeleteResponse(Document document, String message) {
         Objects.requireNonNull(document, "document no puede ser null");
         return new DeleteDocumentResponse(document.getId(), message);
+    }
+
+    /**
+     * Construye la respuesta paginada del listado de documentos activos (DOC-01 / HU-15).
+     *
+     * @param page          resultado de Spring Data con los documentos de la página solicitada
+     * @param requestedPage número de página 1-based pedido por el cliente
+     * @param requestedSize tamaño de página pedido por el cliente
+     */
+    public static DocumentListResponse toListResponse(Page<Document> page, int requestedPage, int requestedSize) {
+        Objects.requireNonNull(page, "page no puede ser null");
+
+        List<DocumentSummaryResponse> documents = page.getContent().stream()
+                .map(DocumentMapper::toSummaryResponse)
+                .toList();
+
+        return new DocumentListResponse(
+                (int) page.getTotalElements(),
+                page.getTotalPages(),
+                requestedPage,
+                requestedSize,
+                documents
+        );
+    }
+
+    private static DocumentSummaryResponse toSummaryResponse(Document document) {
+        return new DocumentSummaryResponse(
+                document.getId(),
+                document.getTitle(),
+                document.getCategory().getName(),
+                document.getResponsibleArea(),
+                document.getDocumentDate(),
+                document.getFileFormat(),
+                document.getFileSizeBytes(),
+                document.getUploadedBy().getFullName(),
+                document.getCreatedAt()
+        );
     }
 }
