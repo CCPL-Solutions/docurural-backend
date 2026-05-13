@@ -1,5 +1,6 @@
 package co.edu.docurural.document.mapper;
 
+import co.edu.docurural.document.dto.DeleteDocumentResponse;
 import co.edu.docurural.document.dto.DocumentDetailResponse;
 import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
@@ -72,5 +73,13 @@ public final class DocumentMapper {
                 document.getDescription(),
                 message
         );
+    }
+
+    /**
+     * Construye la respuesta de eliminación lógica (DOC-06 / HU-14).
+     */
+    public static DeleteDocumentResponse toDeleteResponse(Document document, String message) {
+        Objects.requireNonNull(document, "document no puede ser null");
+        return new DeleteDocumentResponse(document.getId(), message);
     }
 }

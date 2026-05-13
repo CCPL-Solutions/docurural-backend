@@ -4,6 +4,7 @@ import co.edu.docurural.activitylog.enums.ActivityAction;
 import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.repository.CategoryRepository;
+import co.edu.docurural.document.dto.DeleteDocumentResponse;
 import co.edu.docurural.document.dto.DocumentDetailResponse;
 import co.edu.docurural.document.dto.DocumentFileContent;
 import co.edu.docurural.document.dto.UpdateDocumentMetadataRequest;
@@ -504,5 +505,42 @@ class DocumentServiceTest {
     void openForDownload_throwsIllegalArgument_whenActorUserIdNull() {
         assertThatThrownBy(() -> documentService.openForDownload(1L, new AuditContext(null, "127.0.0.1")))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // ------------------------------------------------------------------
+    // DOC-06/delete
+    // ------------------------------------------------------------------
+
+    @Test
+    void deleteLogical_marksDocumentAsDeletedAndLogs_whenDocumentIsActive() {
+        Category category = TestFixtures.categoryActive(1L, "Actas");
+        User uploader = TestFixtures.userAdmin(20L);
+        Document doc = TestFixtures.documentActive(48L, category, uploader);
+
+        when(documentRepository.findByIdAndStatus(48L, DocumentStatus.ACTIVE)).thenReturn(Optional.of(doc));
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        DeleteDocumentResponse response = documentService.deleteLogical(48L, AUDIT);
+
+        assertThat(response.id()).isEqualTo(48L);
+        assertThat(response.message()).isEqualTo("document.deleted.success");
+        assertThat(doc.getStatus()).isEqualTo(DocumentStatus.DELETED);
+
+        verify(documentRepository).save(doc);
+        verify(activityLogService).record(
+                eq(ActivityAction.DELETE_DOC), eq(AUDIT), eq(48L), eq("Título: " + doc.getTitle()));
+        verify(fileStorageService, never()).delete(anyString());
+    }
+
+    @Test
+    void deleteLogical_throwsNotFound_whenDocumentMissingOrAlreadyDeleted() {
+        when(documentRepository.findByIdAndStatus(99L, DocumentStatus.ACTIVE)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> documentService.deleteLogical(99L, AUDIT))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(documentRepository, never()).save(any());
+        verify(activityLogService, never()).record(eq(ActivityAction.DELETE_DOC), any(), anyLong(), anyString());
+        verify(fileStorageService, never()).delete(anyString());
     }
 }

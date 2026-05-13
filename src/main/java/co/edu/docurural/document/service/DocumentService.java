@@ -5,6 +5,7 @@ import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.repository.CategoryRepository;
+import co.edu.docurural.document.dto.DeleteDocumentResponse;
 import co.edu.docurural.document.dto.DocumentDetailResponse;
 import co.edu.docurural.document.dto.DocumentFileContent;
 import co.edu.docurural.document.dto.UpdateDocumentMetadataRequest;
@@ -41,7 +42,7 @@ import java.util.List;
 import java.util.function.Function;
 
 /**
- * Servicio del módulo de documentos (DOC-02..DOC-05, DOC-07, DOC-08 / HU-09..HU-13).
+ * Servicio del módulo de documentos (DOC-02..DOC-08 / HU-09..HU-14).
  */
 @Service
 @RequiredArgsConstructor
@@ -149,6 +150,34 @@ public class DocumentService {
 
         return DocumentMapper.toUpdateMetadataResponse(
                 updated, messageResolver.get("document.updated.success"));
+    }
+
+    /**
+     * Elimina lógicamente un documento activo (DOC-06 / HU-14).
+     *
+     * <p>No elimina el archivo físico del almacenamiento local del MVP.
+     * Si el documento no existe o ya está {@code DELETED}, retorna 404 (no idempotente).
+     */
+    @Transactional
+    public DeleteDocumentResponse deleteLogical(Long id, AuditContext audit) {
+        Long actorId = requireActorUserId(audit);
+
+        Document document = documentRepository.findByIdAndStatus(id, DocumentStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        messageResolver.get("document.not-found", id)));
+
+        document.setStatus(DocumentStatus.DELETED);
+        Document deleted = documentRepository.save(document);
+
+        activityLogService.record(
+                ActivityAction.DELETE_DOC,
+                audit,
+                deleted.getId(),
+                "Título: " + deleted.getTitle());
+
+        log.info("Documento eliminado lógicamente: documentId={} requestedBy={}", deleted.getId(), actorId);
+
+        return DocumentMapper.toDeleteResponse(deleted, messageResolver.get("document.deleted.success"));
     }
 
     /**
