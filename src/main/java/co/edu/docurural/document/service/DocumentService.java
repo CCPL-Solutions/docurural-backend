@@ -173,7 +173,7 @@ public class DocumentService {
                 ActivityAction.DELETE_DOC,
                 audit,
                 deleted.getId(),
-                "Titulo: " + deleted.getTitle());
+                "Título: " + deleted.getTitle());
 
         log.info("Documento eliminado lógicamente: documentId={} requestedBy={}", deleted.getId(), actorId);
 
