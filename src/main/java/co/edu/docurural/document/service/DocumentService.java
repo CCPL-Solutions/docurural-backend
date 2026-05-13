@@ -6,7 +6,7 @@ import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.repository.CategoryRepository;
 import co.edu.docurural.document.dto.DocumentDetailResponse;
-import co.edu.docurural.document.dto.DocumentViewContent;
+import co.edu.docurural.document.dto.DocumentFileContent;
 import co.edu.docurural.document.dto.UploadDocumentRequest;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
 import co.edu.docurural.document.entity.Document;
@@ -32,9 +32,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
+import java.util.function.Function;
 
 /**
- * Servicio del módulo de documentos (DOC-02..DOC-04 / HU-09..HU-11).
+ * Servicio del módulo de documentos (DOC-02..DOC-04, DOC-07, DOC-08 / HU-09..HU-12).
  */
 @Service
 @RequiredArgsConstructor
@@ -206,7 +207,32 @@ public class DocumentService {
      * @throws ResourceNotFoundException {@code 404} si el documento no existe, está DELETED o el archivo físico no está disponible.
      */
     @Transactional
-    public DocumentViewContent openForView(Long id, AuditContext audit) {
+    public DocumentFileContent openForView(Long id, AuditContext audit) {
+        return loadAndAudit(id, audit, ActivityAction.VIEW,
+                doc -> "Formato: " + doc.getFileFormat().name(),
+                "visualizado");
+    }
+
+    /**
+     * Carga el archivo binario de un documento para descarga (DOC-08 / HU-12).
+     *
+     * <p>El registro de actividad {@code DOWNLOAD} se genera sólo si el archivo existe en disco.
+     * Si el archivo físico no se encuentra, se lanza {@link ResourceNotFoundException} antes de registrar.
+     *
+     * @throws IllegalArgumentException  si {@code audit} o {@code audit.actorUserId()} es null.
+     * @throws ResourceNotFoundException {@code 404} si el documento no existe, está DELETED o el archivo físico no está disponible.
+     */
+    @Transactional
+    public DocumentFileContent openForDownload(Long id, AuditContext audit) {
+        return loadAndAudit(id, audit, ActivityAction.DOWNLOAD,
+                doc -> "Archivo: " + doc.getOriginalFileName(),
+                "descargado");
+    }
+
+    private DocumentFileContent loadAndAudit(Long id, AuditContext audit,
+                                             ActivityAction action,
+                                             Function<Document, String> detailBuilder,
+                                             String logVerb) {
         requireActorUserId(audit);
 
         Document document = documentRepository.findByIdAndStatus(id, DocumentStatus.ACTIVE)
@@ -215,16 +241,12 @@ public class DocumentService {
 
         Resource resource = fileStorageService.load(document.getFilePath());
 
-        activityLogService.record(
-                ActivityAction.VIEW,
-                audit,
-                document.getId(),
-                "Formato: " + document.getFileFormat().name());
+        activityLogService.record(action, audit, document.getId(), detailBuilder.apply(document));
 
-        log.debug("Documento visualizado: id={} format={} viewedBy={}",
-                document.getId(), document.getFileFormat(), audit.actorUserId());
+        log.debug("Documento {}: id={} format={} actor={}",
+                logVerb, document.getId(), document.getFileFormat(), audit.actorUserId());
 
-        return new DocumentViewContent(resource, document.getFileFormat(),
+        return new DocumentFileContent(resource, document.getFileFormat(),
                 document.getOriginalFileName(), document.getFileSizeBytes());
     }
 

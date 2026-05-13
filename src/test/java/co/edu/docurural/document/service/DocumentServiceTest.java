@@ -5,7 +5,7 @@ import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.repository.CategoryRepository;
 import co.edu.docurural.document.dto.DocumentDetailResponse;
-import co.edu.docurural.document.dto.DocumentViewContent;
+import co.edu.docurural.document.dto.DocumentFileContent;
 import co.edu.docurural.document.dto.UploadDocumentRequest;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
 import co.edu.docurural.document.entity.Document;
@@ -257,7 +257,7 @@ class DocumentServiceTest {
                 .thenReturn(Optional.of(doc));
         when(fileStorageService.load(doc.getFilePath())).thenReturn(resource);
 
-        DocumentViewContent content = documentService.openForView(48L, AUDIT);
+        DocumentFileContent content = documentService.openForView(48L, AUDIT);
 
         assertThat(content.resource()).isEqualTo(resource);
         assertThat(content.format()).isEqualTo(DocumentFormat.PDF);
@@ -305,6 +305,75 @@ class DocumentServiceTest {
     @Test
     void openForView_throwsIllegalArgument_whenActorUserIdNull() {
         assertThatThrownBy(() -> documentService.openForView(1L, new AuditContext(null, "127.0.0.1")))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // ------------------------------------------------------------------
+    // openForDownload()
+    // ------------------------------------------------------------------
+
+    @Test
+    void openForDownload_returnsContentAndLogsActivity_whenDocumentValid() {
+        Category category = TestFixtures.categoryActive(1L, "Actas");
+        User uploader = TestFixtures.userAdmin(ACTOR_ID);
+        Document doc = TestFixtures.documentActive(48L, category, uploader);
+        Resource resource = new ByteArrayResource(new byte[]{1, 2, 3});
+
+        when(documentRepository.findByIdAndStatus(48L, DocumentStatus.ACTIVE))
+                .thenReturn(Optional.of(doc));
+        when(fileStorageService.load(doc.getFilePath())).thenReturn(resource);
+
+        DocumentFileContent content = documentService.openForDownload(48L, AUDIT);
+
+        assertThat(content.resource()).isEqualTo(resource);
+        assertThat(content.format()).isEqualTo(DocumentFormat.PDF);
+        assertThat(content.originalFileName()).isEqualTo(doc.getOriginalFileName());
+        assertThat(content.fileSizeBytes()).isEqualTo(doc.getFileSizeBytes());
+
+        verify(activityLogService).record(
+                eq(ActivityAction.DOWNLOAD), eq(AUDIT), eq(48L),
+                eq("Archivo: " + doc.getOriginalFileName()));
+    }
+
+    @Test
+    void openForDownload_throwsResourceNotFound_whenDocumentMissing() {
+        when(documentRepository.findByIdAndStatus(99L, DocumentStatus.ACTIVE))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> documentService.openForDownload(99L, AUDIT))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(fileStorageService, never()).load(anyString());
+        verify(activityLogService, never()).record(any(), any(), anyLong(), anyString());
+    }
+
+    @Test
+    void openForDownload_propagatesResourceNotFound_whenFileMissingOnDisk() {
+        Category category = TestFixtures.categoryActive(1L, "Actas");
+        User uploader = TestFixtures.userAdmin(ACTOR_ID);
+        Document doc = TestFixtures.documentActive(48L, category, uploader);
+
+        when(documentRepository.findByIdAndStatus(48L, DocumentStatus.ACTIVE))
+                .thenReturn(Optional.of(doc));
+        when(fileStorageService.load(doc.getFilePath()))
+                .thenThrow(new ResourceNotFoundException("document.file.not-available"));
+
+        assertThatThrownBy(() -> documentService.openForDownload(48L, AUDIT))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("document.file.not-available");
+
+        verify(activityLogService, never()).record(any(), any(), anyLong(), anyString());
+    }
+
+    @Test
+    void openForDownload_throwsIllegalArgument_whenAuditNull() {
+        assertThatThrownBy(() -> documentService.openForDownload(1L, null))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void openForDownload_throwsIllegalArgument_whenActorUserIdNull() {
+        assertThatThrownBy(() -> documentService.openForDownload(1L, new AuditContext(null, "127.0.0.1")))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

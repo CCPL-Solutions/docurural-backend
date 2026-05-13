@@ -3,7 +3,7 @@ package co.edu.docurural.document.controller;
 import co.edu.docurural.document.dto.BatchUploadDocumentRequest;
 import co.edu.docurural.document.dto.BatchUploadDocumentResponse;
 import co.edu.docurural.document.dto.DocumentDetailResponse;
-import co.edu.docurural.document.dto.DocumentViewContent;
+import co.edu.docurural.document.dto.DocumentFileContent;
 import co.edu.docurural.document.dto.UploadDocumentRequest;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
 import co.edu.docurural.document.enums.DocumentFormat;
@@ -43,7 +43,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
 
 /**
- * Controlador REST del módulo de Documentos (DOC-01..DOC-08).
+ * Controlador REST del módulo de Documentos (DOC-01..DOC-08 / HU-09..HU-12).
  *
  * <p>El {@code context-path} {@code /api} se configura globalmente; el mapping incluye {@code /documents}.
  */
@@ -129,7 +129,7 @@ public class DocumentController {
     public ResponseEntity<Resource> view(@PathVariable Long id, HttpServletRequest httpRequest) {
         log.debug("GET /documents/{}/view", id);
         AuditContext audit = auditContextResolver.resolve(httpRequest);
-        DocumentViewContent content = documentService.openForView(id, audit);
+        DocumentFileContent content = documentService.openForView(id, audit);
 
         MediaType mediaType = mediaTypeFor(content.format());
         ContentDisposition disposition = INLINE_FORMATS.contains(content.format())
@@ -142,7 +142,7 @@ public class DocumentController {
                 .contentType(mediaType)
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .contentLength(content.fileSizeBytes())
-                .header("X-File-Name", content.originalFileName())
+                .header("X-File-Name", sanitizeForHeader(content.originalFileName()))
                 .header("X-File-Size", String.valueOf(content.fileSizeBytes()))
                 .body(content.resource());
     }
@@ -157,6 +157,76 @@ public class DocumentController {
             case XLSX -> MediaType.parseMediaType(
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         };
+    }
+
+    private static String sanitizeForHeader(String filename) {
+        if (filename == null || filename.isBlank()) {
+            return "file";
+        }
+        String sanitized = filename
+                .replaceAll("\\p{Cntrl}", "")
+                .replace("/", "")
+                .replace("\\", "")
+                .trim();
+        if (sanitized.isEmpty()) {
+            return "file";
+        }
+        return sanitized.length() <= 255 ? sanitized : sanitized.substring(0, 255);
+    }
+
+    /**
+     * DOC-08 / HU-12: retorna el stream binario del archivo para descarga.
+     *
+     * <p>Siempre se sirve con {@code Content-Disposition: attachment}, independientemente del formato,
+     * para forzar la descarga en el navegador.
+     * El evento {@code DOWNLOAD} queda registrado en {@code activity_log}.
+     */
+    @Operation(
+            summary = "Descargar documento",
+            description = "DOC-08 — Devuelve el stream binario del archivo con Content-Disposition: attachment "
+                    + "para forzar la descarga en el navegador. Accesible para todos los roles. "
+                    + "Registra acción DOWNLOAD en activity_log.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Stream del archivo retornado para descarga; el Content-Type varía según el formato del documento",
+                    content = {
+                            @Content(mediaType = "application/pdf",
+                                    schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = "image/jpeg",
+                                    schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = "image/png",
+                                    schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                    schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                    schema = @Schema(type = "string", format = "binary"))
+                    }),
+            @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Documento no existe o archivo físico no disponible",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'READER')")
+    @GetMapping("/{id}/download")
+    public ResponseEntity<Resource> download(@PathVariable Long id, HttpServletRequest httpRequest) {
+        log.debug("GET /documents/{}/download", id);
+        AuditContext audit = auditContextResolver.resolve(httpRequest);
+        DocumentFileContent content = documentService.openForDownload(id, audit);
+
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename(content.originalFileName(), StandardCharsets.UTF_8).build();
+
+        return ResponseEntity.ok()
+                .contentType(mediaTypeFor(content.format()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .contentLength(content.fileSizeBytes())
+                .header("X-File-Name", sanitizeForHeader(content.originalFileName()))
+                .header("X-File-Size", String.valueOf(content.fileSizeBytes()))
+                .body(content.resource());
     }
 
     /**
