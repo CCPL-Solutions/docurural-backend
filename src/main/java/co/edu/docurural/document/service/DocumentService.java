@@ -8,6 +8,7 @@ import co.edu.docurural.category.repository.CategoryRepository;
 import co.edu.docurural.document.dto.DeleteDocumentResponse;
 import co.edu.docurural.document.dto.DocumentDetailResponse;
 import co.edu.docurural.document.dto.DocumentFileContent;
+import co.edu.docurural.document.dto.DocumentListResponse;
 import co.edu.docurural.document.dto.UpdateDocumentMetadataRequest;
 import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
 import co.edu.docurural.document.dto.UploadDocumentRequest;
@@ -30,6 +31,9 @@ import co.edu.docurural.shared.util.MessageResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -39,15 +43,24 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.function.Function;
 
 /**
- * Servicio del módulo de documentos (DOC-02..DOC-08 / HU-09..HU-14).
+ * Servicio del módulo de documentos (DOC-01..DOC-08 / HU-09..HU-15).
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class DocumentService {
+
+    private static final int DEFAULT_PAGE = 1;
+    private static final int DEFAULT_SIZE = 20;
+    private static final int MAX_SIZE = 50;
+    private static final String DEFAULT_SORT_BY = "createdAt";
+    private static final String DEFAULT_SORT_DIR = "desc";
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("createdAt", "title", "documentDate");
 
     private final DocumentRepository documentRepository;
     private final CategoryRepository categoryRepository;
@@ -311,6 +324,54 @@ public class DocumentService {
                 activityDetailPrefix + saved.getOriginalFileName());
 
         return saved;
+    }
+
+    /**
+     * DOC-01 / HU-15 — lista paginada de documentos ACTIVE ordenada según los parámetros recibidos.
+     *
+     * <p>Los parámetros nulos se resuelven a sus valores por defecto antes de validar.
+     * Los errores de validación lanzan {@link BusinessRuleException}{@code (INVALID_ARGUMENT)}.
+     *
+     * @param page    número de página 1-based (default 1)
+     * @param size    documentos por página (default 20, máx 50)
+     * @param sortBy  campo de orden: createdAt | title | documentDate (default createdAt)
+     * @param sortDir dirección: asc | desc (default desc)
+     */
+    @Transactional(readOnly = true)
+    public DocumentListResponse list(Integer page, Integer size, String sortBy, String sortDir) {
+        int resolvedPage = (page == null) ? DEFAULT_PAGE : page;
+        int resolvedSize = (size == null) ? DEFAULT_SIZE : size;
+        String resolvedSortBy = (sortBy == null || sortBy.isBlank()) ? DEFAULT_SORT_BY : sortBy;
+        String resolvedSortDir = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir;
+
+        if (resolvedPage < 1) {
+            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
+                    messageResolver.get("document.page.invalid"));
+        }
+        if (resolvedSize < 1 || resolvedSize > MAX_SIZE) {
+            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
+                    messageResolver.get("document.page.size-invalid"));
+        }
+        if (!ALLOWED_SORT_FIELDS.contains(resolvedSortBy)) {
+            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
+                    messageResolver.get("document.sort.unsupported-field", resolvedSortBy));
+        }
+
+        Sort.Direction direction;
+        try {
+            direction = Sort.Direction.fromString(resolvedSortDir.toLowerCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
+                    messageResolver.get("document.sort.unsupported-direction", resolvedSortDir));
+        }
+
+        PageRequest pageable = PageRequest.of(resolvedPage - 1, resolvedSize, Sort.by(direction, resolvedSortBy));
+        Page<Document> pageResult = documentRepository.findByStatus(DocumentStatus.ACTIVE, pageable);
+
+        log.debug("Listado de documentos: page={} size={} sortBy={} sortDir={} total={}",
+                resolvedPage, resolvedSize, resolvedSortBy, resolvedSortDir, pageResult.getTotalElements());
+
+        return DocumentMapper.toListResponse(pageResult, resolvedPage, resolvedSize);
     }
 
     /**

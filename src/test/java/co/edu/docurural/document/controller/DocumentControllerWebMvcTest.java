@@ -1,8 +1,10 @@
 package co.edu.docurural.document.controller;
 
-import co.edu.docurural.document.dto.DocumentDetailResponse;
 import co.edu.docurural.document.dto.DeleteDocumentResponse;
+import co.edu.docurural.document.dto.DocumentDetailResponse;
 import co.edu.docurural.document.dto.DocumentFileContent;
+import co.edu.docurural.document.dto.DocumentListResponse;
+import co.edu.docurural.document.dto.DocumentSummaryResponse;
 import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
 import co.edu.docurural.document.enums.DocumentFormat;
@@ -18,6 +20,7 @@ import co.edu.docurural.shared.exception.GlobalExceptionHandler;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.shared.security.JwtAuthenticationFilter;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -31,10 +34,14 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -514,5 +521,74 @@ class DocumentControllerWebMvcTest {
         mockMvc.perform(get("/documents/48/download"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("X-File-Name", "maloInjected: bad"));
+    }
+
+    // ------------------------------------------------------------------
+    // GET /documents (DOC-01)
+    // ------------------------------------------------------------------
+
+    @Test
+    void list_returns200WithEnvelope_whenServiceReturnsDocuments() throws Exception {
+        DocumentSummaryResponse summary = new DocumentSummaryResponse(
+                47L,
+                "Acta Consejo Directivo Marzo 2026",
+                "Actas",
+                "Rectoría",
+                LocalDate.of(2026, 3, 15),
+                DocumentFormat.PDF,
+                524288L,
+                "Ana Admin",
+                LocalDateTime.of(2026, 4, 10, 9, 30));
+
+        DocumentListResponse listResponse = new DocumentListResponse(47, 3, 1, 20, List.of(summary));
+        when(documentService.list(isNull(), isNull(), isNull(), isNull())).thenReturn(listResponse);
+
+        mockMvc.perform(get("/documents"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalDocuments").value(47))
+                .andExpect(jsonPath("$.totalPages").value(3))
+                .andExpect(jsonPath("$.currentPage").value(1))
+                .andExpect(jsonPath("$.pageSize").value(20))
+                .andExpect(jsonPath("$.documents[0].id").value(47))
+                .andExpect(jsonPath("$.documents[0].title").value("Acta Consejo Directivo Marzo 2026"))
+                .andExpect(jsonPath("$.documents[0].category").value("Actas"))
+                .andExpect(jsonPath("$.documents[0].fileFormat").value("PDF"));
+    }
+
+    @Test
+    void list_passesQueryParamsToService() throws Exception {
+        DocumentListResponse listResponse = new DocumentListResponse(0, 0, 2, 10, List.of());
+        when(documentService.list(eq(2), eq(10), eq("title"), eq("asc"))).thenReturn(listResponse);
+
+        mockMvc.perform(get("/documents")
+                        .param("page", "2")
+                        .param("size", "10")
+                        .param("sortBy", "title")
+                        .param("sortDir", "asc"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Integer> pageCaptor = ArgumentCaptor.forClass(Integer.class);
+        ArgumentCaptor<Integer> sizeCaptor = ArgumentCaptor.forClass(Integer.class);
+        ArgumentCaptor<String> sortByCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> sortDirCaptor = ArgumentCaptor.forClass(String.class);
+        verify(documentService).list(pageCaptor.capture(), sizeCaptor.capture(),
+                sortByCaptor.capture(), sortDirCaptor.capture());
+        assertThat(pageCaptor.getValue()).isEqualTo(2);
+        assertThat(sizeCaptor.getValue()).isEqualTo(10);
+        assertThat(sortByCaptor.getValue()).isEqualTo("title");
+        assertThat(sortDirCaptor.getValue()).isEqualTo("asc");
+    }
+
+    @Test
+    void list_returns400_whenServiceThrowsInvalidArgument() throws Exception {
+        when(documentService.list(any(), any(), any(), any()))
+                .thenThrow(new BusinessRuleException(
+                        BusinessErrorCode.INVALID_ARGUMENT,
+                        "El campo de ordenamiento ''fileSize'' no es soportado. Use createdAt, title o documentDate"));
+
+        mockMvc.perform(get("/documents").param("sortBy", "fileSize"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        "El campo de ordenamiento ''fileSize'' no es soportado. Use createdAt, title o documentDate"));
     }
 }

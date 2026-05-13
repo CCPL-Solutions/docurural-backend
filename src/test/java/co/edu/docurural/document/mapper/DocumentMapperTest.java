@@ -1,12 +1,19 @@
 package co.edu.docurural.document.mapper;
 
 import co.edu.docurural.document.dto.DocumentDetailResponse;
+import co.edu.docurural.document.dto.DocumentListResponse;
 import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.support.TestFixtures;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -116,6 +123,58 @@ class DocumentMapperTest {
     @Test
     void toUpdateMetadataResponse_throwsOnNullDocument() {
         assertThatThrownBy(() -> DocumentMapper.toUpdateMetadataResponse(null, "ok"))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    // ------------------------------------------------------------------
+    // toListResponse()
+    // ------------------------------------------------------------------
+
+    @Test
+    void toListResponse_mapsAllFieldsCorrectly() {
+        var category = TestFixtures.categoryActive(1L, "Actas");
+        var user = TestFixtures.userAdmin(10L);
+        Document doc = TestFixtures.documentActive(47L, category, user);
+
+        PageRequest pageRequest = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Document> page = new PageImpl<>(List.of(doc), pageRequest, 1L);
+
+        DocumentListResponse response = DocumentMapper.toListResponse(page, 1, 20);
+
+        assertThat(response.totalDocuments()).isEqualTo(1);
+        assertThat(response.totalPages()).isEqualTo(1);
+        assertThat(response.currentPage()).isEqualTo(1);
+        assertThat(response.pageSize()).isEqualTo(20);
+        assertThat(response.documents()).hasSize(1);
+
+        var summary = response.documents().get(0);
+        assertThat(summary.id()).isEqualTo(47L);
+        assertThat(summary.title()).isEqualTo(doc.getTitle());
+        assertThat(summary.category()).isEqualTo("Actas");
+        assertThat(summary.responsibleArea()).isEqualTo(doc.getResponsibleArea());
+        assertThat(summary.documentDate()).isEqualTo(doc.getDocumentDate());
+        assertThat(summary.fileFormat()).isEqualTo(DocumentFormat.PDF);
+        assertThat(summary.fileSizeBytes()).isEqualTo(doc.getFileSizeBytes());
+        assertThat(summary.uploadedBy()).isEqualTo(user.getFullName());
+        assertThat(summary.createdAt()).isEqualTo(TestFixtures.FIXED_CREATED_AT);
+    }
+
+    @Test
+    void toListResponse_returnsEmptyListAndZeroTotals_whenPageIsEmpty() {
+        Page<Document> page = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0L);
+
+        DocumentListResponse response = DocumentMapper.toListResponse(page, 1, 20);
+
+        assertThat(response.totalDocuments()).isEqualTo(0);
+        assertThat(response.totalPages()).isEqualTo(0);
+        assertThat(response.currentPage()).isEqualTo(1);
+        assertThat(response.pageSize()).isEqualTo(20);
+        assertThat(response.documents()).isEmpty();
+    }
+
+    @Test
+    void toListResponse_throwsOnNullPage() {
+        assertThatThrownBy(() -> DocumentMapper.toListResponse(null, 1, 20))
                 .isInstanceOf(NullPointerException.class);
     }
 }
