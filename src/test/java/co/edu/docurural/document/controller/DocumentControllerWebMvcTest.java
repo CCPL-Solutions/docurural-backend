@@ -1,6 +1,7 @@
 package co.edu.docurural.document.controller;
 
 import co.edu.docurural.document.dto.DocumentDetailResponse;
+import co.edu.docurural.document.dto.DeleteDocumentResponse;
 import co.edu.docurural.document.dto.DocumentFileContent;
 import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
@@ -35,6 +36,7 @@ import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -288,6 +290,36 @@ class DocumentControllerWebMvcTest {
                                 """))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.message").value("No tiene permisos para editar este documento"));
+    }
+
+    // ------------------------------------------------------------------
+    // DELETE /documents/{id} (DOC-06)
+    // ------------------------------------------------------------------
+
+    @Test
+    void deleteLogical_returns200AndPayload_whenDocumentActive() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+
+        DeleteDocumentResponse response = new DeleteDocumentResponse(
+                47L,
+                "Documento eliminado exitosamente");
+
+        when(documentService.deleteLogical(eq(47L), any())).thenReturn(response);
+
+        mockMvc.perform(delete("/documents/47"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(47))
+                .andExpect(jsonPath("$.message").value("Documento eliminado exitosamente"));
+    }
+
+    @Test
+    void deleteLogical_returns404_whenDocumentNotFoundOrAlreadyDeleted() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        when(documentService.deleteLogical(eq(99L), any()))
+                .thenThrow(new ResourceNotFoundException("document.not-found"));
+
+        mockMvc.perform(delete("/documents/99"))
+                .andExpect(status().isNotFound());
     }
 
     // ------------------------------------------------------------------

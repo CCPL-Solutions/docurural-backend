@@ -2,6 +2,7 @@ package co.edu.docurural.document.controller;
 
 import co.edu.docurural.document.dto.BatchUploadDocumentRequest;
 import co.edu.docurural.document.dto.BatchUploadDocumentResponse;
+import co.edu.docurural.document.dto.DeleteDocumentResponse;
 import co.edu.docurural.document.dto.DocumentDetailResponse;
 import co.edu.docurural.document.dto.DocumentFileContent;
 import co.edu.docurural.document.dto.UpdateDocumentMetadataRequest;
@@ -32,6 +33,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -47,7 +49,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
 
 /**
- * Controlador REST del módulo de Documentos (DOC-01..DOC-08 / HU-09..HU-13).
+ * Controlador REST del módulo de Documentos (DOC-01..DOC-08 / HU-09..HU-14).
  *
  * <p>El {@code context-path} {@code /api} se configura globalmente; el mapping incluye {@code /documents}.
  */
@@ -129,6 +131,41 @@ public class DocumentController {
         log.debug("PUT /documents/{}", id);
         UpdateDocumentMetadataResponse response = documentService.updateMetadata(
                 id, request, auditContextResolver.resolve(httpRequest));
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * DOC-06 / HU-14: elimina lógicamente un documento activo (200).
+     */
+    @Operation(
+            summary = "Eliminar documento (lógico)",
+            description = "DOC-06 — Cambia el estado del documento de ACTIVE a DELETED. "
+                    + "No elimina el archivo físico en el MVP. Solo accesible para ADMIN.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Documento eliminado lógicamente",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = DeleteDocumentResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Acceso denegado (no ADMIN)",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "No existe un documento activo con el ID indicado",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<DeleteDocumentResponse> deleteLogical(
+            @PathVariable Long id,
+            HttpServletRequest httpRequest) {
+        log.debug("DELETE /documents/{}", id);
+        DeleteDocumentResponse response = documentService.deleteLogical(
+                id, auditContextResolver.resolve(httpRequest));
         return ResponseEntity.ok(response);
     }
 
