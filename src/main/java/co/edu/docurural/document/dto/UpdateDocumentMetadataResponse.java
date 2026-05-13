@@ -19,6 +19,8 @@ public record UpdateDocumentMetadataResponse(
         String responsibleArea,
         @Schema(description = "Fecha del documento", example = "2026-03-15")
         LocalDate documentDate,
+        @Schema(description = "Descripción actualizada del documento", example = "Versión revisada y aprobada por el consejo directivo.")
+        String description,
         @Schema(description = "Mensaje de confirmación", example = "Documento actualizado exitosamente")
         String message
 ) {

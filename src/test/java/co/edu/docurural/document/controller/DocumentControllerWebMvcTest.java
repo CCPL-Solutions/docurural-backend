@@ -228,6 +228,7 @@ class DocumentControllerWebMvcTest {
                 "Actas",
                 "Rectoría",
                 LocalDate.of(2026, 3, 15),
+                "Descripción",
                 "Documento actualizado exitosamente");
 
         when(documentService.updateMetadata(eq(47L), any(), any())).thenReturn(response);

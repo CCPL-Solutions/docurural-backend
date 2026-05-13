@@ -69,6 +69,7 @@ public final class DocumentMapper {
                 document.getCategory().getName(),
                 document.getResponsibleArea(),
                 document.getDocumentDate(),
+                document.getDescription(),
                 message
         );
     }
