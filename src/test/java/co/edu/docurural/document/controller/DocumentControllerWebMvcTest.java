@@ -391,4 +391,18 @@ class DocumentControllerWebMvcTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.message").value("document.file.load-failed"));
     }
+
+    @Test
+    void download_sanitizesControlCharsInXFileNameHeader() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        byte[] pdfBytes = new byte[]{1, 2, 3};
+        DocumentFileContent content = new DocumentFileContent(
+                new ByteArrayResource(pdfBytes), DocumentFormat.PDF, "malo\r\nInjected: bad", pdfBytes.length);
+
+        when(documentService.openForDownload(eq(48L), any())).thenReturn(content);
+
+        mockMvc.perform(get("/documents/48/download"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-File-Name", "maloInjected: bad"));
+    }
 }

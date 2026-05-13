@@ -32,6 +32,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
+import java.util.function.Function;
 
 /**
  * Servicio del módulo de documentos (DOC-02..DOC-04, DOC-07, DOC-08 / HU-09..HU-12).
@@ -207,25 +208,9 @@ public class DocumentService {
      */
     @Transactional
     public DocumentFileContent openForView(Long id, AuditContext audit) {
-        requireActorUserId(audit);
-
-        Document document = documentRepository.findByIdAndStatus(id, DocumentStatus.ACTIVE)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        messageResolver.get("document.not-found", id)));
-
-        Resource resource = fileStorageService.load(document.getFilePath());
-
-        activityLogService.record(
-                ActivityAction.VIEW,
-                audit,
-                document.getId(),
-                "Formato: " + document.getFileFormat().name());
-
-        log.debug("Documento visualizado: id={} format={} viewedBy={}",
-                document.getId(), document.getFileFormat(), audit.actorUserId());
-
-        return new DocumentFileContent(resource, document.getFileFormat(),
-                document.getOriginalFileName(), document.getFileSizeBytes());
+        return loadAndAudit(id, audit, ActivityAction.VIEW,
+                doc -> "Formato: " + doc.getFileFormat().name(),
+                "visualizado");
     }
 
     /**
@@ -239,6 +224,15 @@ public class DocumentService {
      */
     @Transactional
     public DocumentFileContent openForDownload(Long id, AuditContext audit) {
+        return loadAndAudit(id, audit, ActivityAction.DOWNLOAD,
+                doc -> "Archivo: " + doc.getOriginalFileName(),
+                "descargado");
+    }
+
+    private DocumentFileContent loadAndAudit(Long id, AuditContext audit,
+                                             ActivityAction action,
+                                             Function<Document, String> detailBuilder,
+                                             String logVerb) {
         requireActorUserId(audit);
 
         Document document = documentRepository.findByIdAndStatus(id, DocumentStatus.ACTIVE)
@@ -247,14 +241,10 @@ public class DocumentService {
 
         Resource resource = fileStorageService.load(document.getFilePath());
 
-        activityLogService.record(
-                ActivityAction.DOWNLOAD,
-                audit,
-                document.getId(),
-                "Archivo: " + document.getOriginalFileName());
+        activityLogService.record(action, audit, document.getId(), detailBuilder.apply(document));
 
-        log.debug("Documento descargado: id={} format={} downloadedBy={}",
-                document.getId(), document.getFileFormat(), audit.actorUserId());
+        log.debug("Documento {}: id={} format={} actor={}",
+                logVerb, document.getId(), document.getFileFormat(), audit.actorUserId());
 
         return new DocumentFileContent(resource, document.getFileFormat(),
                 document.getOriginalFileName(), document.getFileSizeBytes());

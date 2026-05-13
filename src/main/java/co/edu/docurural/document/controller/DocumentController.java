@@ -142,7 +142,7 @@ public class DocumentController {
                 .contentType(mediaType)
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .contentLength(content.fileSizeBytes())
-                .header("X-File-Name", content.originalFileName())
+                .header("X-File-Name", sanitizeForHeader(content.originalFileName()))
                 .header("X-File-Size", String.valueOf(content.fileSizeBytes()))
                 .body(content.resource());
     }
@@ -157,6 +157,21 @@ public class DocumentController {
             case XLSX -> MediaType.parseMediaType(
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         };
+    }
+
+    private static String sanitizeForHeader(String filename) {
+        if (filename == null || filename.isBlank()) {
+            return "file";
+        }
+        String sanitized = filename
+                .replaceAll("\\p{Cntrl}", "")
+                .replace("/", "")
+                .replace("\\", "")
+                .trim();
+        if (sanitized.isEmpty()) {
+            return "file";
+        }
+        return sanitized.length() <= 255 ? sanitized : sanitized.substring(0, 255);
     }
 
     /**
@@ -209,7 +224,7 @@ public class DocumentController {
                 .contentType(mediaTypeFor(content.format()))
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .contentLength(content.fileSizeBytes())
-                .header("X-File-Name", content.originalFileName())
+                .header("X-File-Name", sanitizeForHeader(content.originalFileName()))
                 .header("X-File-Size", String.valueOf(content.fileSizeBytes()))
                 .body(content.resource());
     }
