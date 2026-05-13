@@ -7,6 +7,8 @@ import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.repository.CategoryRepository;
 import co.edu.docurural.document.dto.DocumentDetailResponse;
 import co.edu.docurural.document.dto.DocumentFileContent;
+import co.edu.docurural.document.dto.UpdateDocumentMetadataRequest;
+import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
 import co.edu.docurural.document.dto.UploadDocumentRequest;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
 import co.edu.docurural.document.entity.Document;
@@ -17,6 +19,8 @@ import co.edu.docurural.document.repository.DocumentRepository;
 import co.edu.docurural.document.storage.FileStorageService;
 import co.edu.docurural.document.storage.StoredFile;
 import co.edu.docurural.shared.audit.AuditContext;
+import co.edu.docurural.shared.domain.entity.User;
+import co.edu.docurural.shared.domain.enums.UserRole;
 import co.edu.docurural.shared.domain.repository.UserRepository;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
@@ -32,10 +36,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
 
 /**
- * Servicio del módulo de documentos (DOC-02..DOC-04, DOC-07, DOC-08 / HU-09..HU-12).
+ * Servicio del módulo de documentos (DOC-02..DOC-05, DOC-07, DOC-08 / HU-09..HU-13).
  */
 @Service
 @RequiredArgsConstructor
@@ -85,6 +91,67 @@ public class DocumentService {
     }
 
     /**
+     * Edita metadatos de un documento activo (DOC-05 / HU-13).
+     *
+     * <p>Reglas de permiso:
+     * <ul>
+     *   <li>{@code ADMIN}: puede editar cualquier documento.</li>
+     *   <li>{@code EDITOR}: solo documentos cargados por el mismo usuario.</li>
+     * </ul>
+     *
+     * <p>Reglas de actualización:
+     * <ul>
+     *   <li>Si {@code description} llega en {@code null}, se conserva la actual.</li>
+     *   <li>Si no hay cambios efectivos, retorna 200 y no registra actividad.</li>
+     * </ul>
+     */
+    @Transactional
+    public UpdateDocumentMetadataResponse updateMetadata(Long id, UpdateDocumentMetadataRequest request, AuditContext audit) {
+        Long actorId = requireActorUserId(audit);
+
+        Document document = documentRepository.findByIdAndStatus(id, DocumentStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        messageResolver.get("document.not-found", id)));
+
+        Category category = categoryRepository.findById(request.categoryId())
+                .filter(c -> c.getStatus() == CategoryStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        messageResolver.get("document.category.not-found")));
+
+        User actor = userRepository.findById(actorId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        messageResolver.get("user.not-found", actorId)));
+
+        boolean canEditAny = actor.getRole() == UserRole.ADMIN;
+        boolean canEditOwn = actor.getRole() == UserRole.EDITOR
+                && actorId.equals(document.getUploadedBy().getId());
+        if (!canEditAny && !canEditOwn) {
+            throw new BusinessRuleException(BusinessErrorCode.FORBIDDEN,
+                    messageResolver.get("document.edit.forbidden"));
+        }
+
+        List<String> modifiedFields = applyMetadataUpdates(document, request, category);
+        if (modifiedFields.isEmpty()) {
+            log.info("Edición de metadatos sin cambios: documentId={} requestedBy={}", id, actorId);
+            return DocumentMapper.toUpdateMetadataResponse(
+                    document, messageResolver.get("document.updated.no-changes"));
+        }
+
+        Document updated = documentRepository.save(document);
+        activityLogService.record(
+                ActivityAction.EDIT_DOC,
+                audit,
+                updated.getId(),
+                "Campos modificados: " + modifiedFields);
+
+        log.info("Metadatos actualizados: documentId={} modifiedFields={} requestedBy={}",
+                updated.getId(), modifiedFields, actorId);
+
+        return DocumentMapper.toUpdateMetadataResponse(
+                updated, messageResolver.get("document.updated.success"));
+    }
+
+    /**
      * Carga un archivo individual dentro de un lote (DOC-04 / HU-10).
      *
      * <p>Invocado desde {@link DocumentBatchService} — al cruzar el límite del bean, el proxy de
@@ -125,6 +192,39 @@ public class DocumentService {
                 saved.getId(), saved.getTitle(), saved.getFileFormat(), actorId);
 
         return saved;
+    }
+
+    private List<String> applyMetadataUpdates(Document document,
+                                              UpdateDocumentMetadataRequest request,
+                                              Category category) {
+        List<String> modifiedFields = new ArrayList<>();
+
+        if (!request.title().equals(document.getTitle())) {
+            document.setTitle(request.title());
+            modifiedFields.add("title");
+        }
+
+        if (!category.getId().equals(document.getCategory().getId())) {
+            document.setCategory(category);
+            modifiedFields.add("categoryId");
+        }
+
+        if (!request.responsibleArea().equals(document.getResponsibleArea())) {
+            document.setResponsibleArea(request.responsibleArea());
+            modifiedFields.add("responsibleArea");
+        }
+
+        if (!request.documentDate().equals(document.getDocumentDate())) {
+            document.setDocumentDate(request.documentDate());
+            modifiedFields.add("documentDate");
+        }
+
+        if (request.description() != null && !request.description().equals(document.getDescription())) {
+            document.setDescription(request.description());
+            modifiedFields.add("description");
+        }
+
+        return modifiedFields;
     }
 
     private Document processSingleFile(MultipartFile file,

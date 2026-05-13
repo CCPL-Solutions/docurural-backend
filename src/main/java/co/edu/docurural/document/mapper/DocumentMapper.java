@@ -1,6 +1,7 @@
 package co.edu.docurural.document.mapper;
 
 import co.edu.docurural.document.dto.DocumentDetailResponse;
+import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
 import co.edu.docurural.document.entity.Document;
 
@@ -54,6 +55,21 @@ public final class DocumentMapper {
                         document.getUploadedBy().getId(),
                         document.getUploadedBy().getFullName()),
                 document.getCreatedAt()
+        );
+    }
+
+    /**
+     * Construye la respuesta de edición de metadatos (DOC-05 / HU-13).
+     */
+    public static UpdateDocumentMetadataResponse toUpdateMetadataResponse(Document document, String message) {
+        Objects.requireNonNull(document, "document no puede ser null");
+        return new UpdateDocumentMetadataResponse(
+                document.getId(),
+                document.getTitle(),
+                document.getCategory().getName(),
+                document.getResponsibleArea(),
+                document.getDocumentDate(),
+                message
         );
     }
 }

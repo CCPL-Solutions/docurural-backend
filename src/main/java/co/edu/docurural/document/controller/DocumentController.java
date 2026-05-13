@@ -4,6 +4,8 @@ import co.edu.docurural.document.dto.BatchUploadDocumentRequest;
 import co.edu.docurural.document.dto.BatchUploadDocumentResponse;
 import co.edu.docurural.document.dto.DocumentDetailResponse;
 import co.edu.docurural.document.dto.DocumentFileContent;
+import co.edu.docurural.document.dto.UpdateDocumentMetadataRequest;
+import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
 import co.edu.docurural.document.dto.UploadDocumentRequest;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
 import co.edu.docurural.document.enums.DocumentFormat;
@@ -34,6 +36,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
@@ -43,7 +47,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
 
 /**
- * Controlador REST del módulo de Documentos (DOC-01..DOC-08 / HU-09..HU-12).
+ * Controlador REST del módulo de Documentos (DOC-01..DOC-08 / HU-09..HU-13).
  *
  * <p>El {@code context-path} {@code /api} se configura globalmente; el mapping incluye {@code /documents}.
  */
@@ -87,6 +91,45 @@ public class DocumentController {
     public ResponseEntity<DocumentDetailResponse> getById(@PathVariable Long id) {
         log.debug("GET /documents/{}", id);
         return ResponseEntity.ok(documentService.findDetailById(id));
+    }
+
+    /**
+     * DOC-05 / HU-13: edita metadatos de un documento activo (200).
+     */
+    @Operation(
+            summary = "Editar metadatos de documento",
+            description = "DOC-05 — Actualiza título, descripción, categoría, área responsable y fecha del documento. "
+                    + "ADMIN puede editar cualquier documento; EDITOR solo documentos propios.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Metadatos actualizados exitosamente",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = UpdateDocumentMetadataResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Campos inválidos",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Sin permisos para editar el documento solicitado",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Documento no existe, fue eliminado o categoría inválida",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR')")
+    @PutMapping("/{id}")
+    public ResponseEntity<UpdateDocumentMetadataResponse> updateMetadata(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateDocumentMetadataRequest request,
+            HttpServletRequest httpRequest) {
+        log.debug("PUT /documents/{}", id);
+        UpdateDocumentMetadataResponse response = documentService.updateMetadata(
+                id, request, auditContextResolver.resolve(httpRequest));
+        return ResponseEntity.ok(response);
     }
 
     /**

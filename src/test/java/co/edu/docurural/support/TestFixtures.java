@@ -6,6 +6,7 @@ import co.edu.docurural.category.dto.UpdateCategoryRequest;
 import co.edu.docurural.category.dto.UpdateCategoryStatusRequest;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
+import co.edu.docurural.document.dto.UpdateDocumentMetadataRequest;
 import co.edu.docurural.document.dto.UploadDocumentRequest;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.enums.DocumentFormat;
@@ -150,6 +151,15 @@ public final class TestFixtures {
                 "Rectoría",
                 LocalDate.of(2026, 3, 15),
                 "Acta de reunión");
+    }
+
+    public static UpdateDocumentMetadataRequest updateDocumentMetadataRequest(Long categoryId) {
+        return new UpdateDocumentMetadataRequest(
+                "Acta Consejo Directivo Marzo 2026 - Revisado",
+                categoryId,
+                "Rectoría",
+                LocalDate.of(2026, 3, 15),
+                "Versión corregida del acta");
     }
 
     public static Document documentActive(Long id, Category category, User uploadedBy) {
