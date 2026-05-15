@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -107,7 +108,7 @@ public class DocumentBatchService {
                     resolvedTitle,
                     request.categoryId(),
                     request.responsibleArea(),
-                    request.documentDate(),
+                    LocalDate.now(),
                     audit);
             return new BatchUploadItemResult(fileName, true, saved.getId(), null);
         } catch (BusinessRuleException e) {

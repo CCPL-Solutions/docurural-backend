@@ -46,9 +46,12 @@ class DocumentBatchControllerWebMvcTest {
     @Autowired
     MockMvc mockMvc;
 
-    @MockitoBean DocumentService documentService;
-    @MockitoBean DocumentBatchService documentBatchService;
-    @MockitoBean AuditContextResolver auditContextResolver;
+    @MockitoBean
+    DocumentService documentService;
+    @MockitoBean
+    DocumentBatchService documentBatchService;
+    @MockitoBean
+    AuditContextResolver auditContextResolver;
 
     @Test
     void uploadBatch_returns200WithAllSuccessful_whenAllFilesValid() throws Exception {
@@ -145,18 +148,6 @@ class DocumentBatchControllerWebMvcTest {
                         .param("documentDate", "2026-03-15"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrors.responsibleArea").exists());
-    }
-
-    @Test
-    void uploadBatch_returns400_whenDocumentDateIsMissing() throws Exception {
-        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
-
-        mockMvc.perform(multipart("/documents/batch")
-                        .file(new MockMultipartFile("files", "doc.pdf", "application/pdf", new byte[10]))
-                        .param("categoryId", "1")
-                        .param("responsibleArea", "Rectoría"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.fieldErrors.documentDate").exists());
     }
 
     @Test

@@ -276,6 +276,6 @@ class DocumentBatchServiceTest {
     }
 
     private static BatchUploadDocumentRequest request(Long categoryId, List<String> titles) {
-        return new BatchUploadDocumentRequest(categoryId, "Rectoría", DOC_DATE, titles);
+        return new BatchUploadDocumentRequest(categoryId, "Rectoría", titles);
     }
 }

@@ -5,7 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -25,10 +24,6 @@ public record BatchUploadDocumentRequest(
         @Size(max = 100, message = "{validation.document.responsible-area.size}")
         @Schema(description = "Área responsable aplicada a todos los archivos del lote", example = "Rectoría")
         String responsibleArea,
-
-        @NotNull(message = "{validation.document.document-date.required}")
-        @Schema(description = "Fecha del documento aplicada a todos los archivos del lote", example = "2026-03-15")
-        LocalDate documentDate,
 
         @Schema(description = "Títulos por archivo (en el mismo orden que files[]). "
                 + "Si se omite o la posición está vacía, se usa el nombre original del archivo.",
