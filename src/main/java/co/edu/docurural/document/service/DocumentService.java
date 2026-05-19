@@ -27,6 +27,7 @@ import co.edu.docurural.shared.domain.repository.UserRepository;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
+import co.edu.docurural.shared.util.FileNameSanitizer;
 import co.edu.docurural.shared.util.MessageResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -311,7 +312,7 @@ public class DocumentService {
                 .responsibleArea(responsibleArea)
                 .documentDate(documentDate)
                 .filePath(storedRelativePath)
-                .originalFileName(file.getOriginalFilename())
+                .originalFileName(FileNameSanitizer.sanitize(file.getOriginalFilename()))
                 .fileFormat(format)
                 .fileSizeBytes(file.getSize())
                 .uploadedBy(userRepository.getReferenceById(actorId))

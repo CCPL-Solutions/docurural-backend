@@ -153,11 +153,18 @@ class AuthServiceTest {
     // ------------------------------------------------------------------
 
     @Test
-    void logout_withActorInAudit_recordsLogout_returnsMessage() {
+    void logout_withActorInAudit_incrementsTokenVersion_recordsLogout_returnsMessage() {
+        User user = TestFixtures.userAdmin(42L);
+        when(userRepository.findById(42L)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
         MessageResponse response = authService.logout(LOGOUT_AUDIT);
 
-        // MessageSource stub returns the key itself (see @BeforeEach).
         assertThat(response.message()).isEqualTo("auth.logout.success");
+
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().getTokenVersion()).isEqualTo(1);
 
         verify(activityLogService).record(
                 eq(ActivityAction.LOGOUT),

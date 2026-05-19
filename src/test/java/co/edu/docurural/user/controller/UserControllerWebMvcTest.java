@@ -160,8 +160,8 @@ class UserControllerWebMvcTest {
         CreateUserRequest request = new CreateUserRequest(
                 "Nora Nueva",
                 "nora.nueva@docurural.edu.co",
-                "supersecreta",
-                "supersecreta",
+                "Supersecreta1!",
+                "Supersecreta1!",
                 UserRole.READER);
 
         CreateUserResponse response = new CreateUserResponse(

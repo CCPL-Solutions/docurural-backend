@@ -45,8 +45,8 @@ class PasswordsMatchValidatorTest {
         CreateUserRequest request = new CreateUserRequest(
                 "Ana Admin",
                 "ana.admin@docurural.edu.co",
-                "password123",
-                "password123",
+                "Password123!",
+                "Password123!",
                 UserRole.ADMIN
         );
 

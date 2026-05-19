@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -39,8 +40,11 @@ public record UpdateUserRequest(
         @Schema(description = "Nuevo rol", example = "READER")
         UserRole role,
 
-        @Size(min = 8, message = "{validation.user.password.size}")
-        @Schema(description = "Nueva contraseña (opcional, omitir para no cambiar)", example = "NuevaClave1!")
+        @Size(min = 12, max = 128, message = "{validation.user.password.size}")
+        @Pattern(
+                regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d]).+$",
+                message = "{validation.user.password.complexity}")
+        @Schema(description = "Nueva contraseña opcional (mín. 12 caracteres, mayúscula, minúscula, dígito y símbolo)", example = "NuevaClave1!")
         String password,
 
         @Schema(description = "Confirmación de la nueva contraseña (debe coincidir con 'password')", example = "NuevaClave1!")

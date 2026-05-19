@@ -142,13 +142,14 @@ public class UserService {
             throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, messageResolver.get("user.passwords.mismatch"));
         }
 
-        if (userRepository.existsByEmail(request.email())) {
+        String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
+        if (userRepository.existsByEmail(normalizedEmail)) {
             throw new ConflictException(messageResolver.get("user.email.already-registered"));
         }
 
         User newUser = User.builder()
                 .fullName(request.fullName())
-                .email(request.email())
+                .email(normalizedEmail)
                 .passwordHash(passwordEncoder.encode(request.password()))
                 .role(request.role())
                 .status(UserStatus.ACTIVE)
@@ -198,13 +199,15 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         messageResolver.get("user.not-found", id)));
 
+        String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
+
         // Realizar validaciones
-        validateEmailUniqueness(request.email(), id, user);
+        validateEmailUniqueness(normalizedEmail, id, user);
         validateRoleChange(request.role(), user, id, adminId);
         validatePasswordConsistency(request.password(), request.confirmPassword());
 
         // Actualizar campos y registrar cambios
-        List<String> modifiedFields = applyUpdates(user, request);
+        List<String> modifiedFields = applyUpdates(user, request, normalizedEmail);
 
         User updatedUser = userRepository.save(user);
 
@@ -257,7 +260,7 @@ public class UserService {
      *
      * @return Lista con los nombres de los campos que fueron actualizados.
      */
-    private List<String> applyUpdates(User user, UpdateUserRequest request) {
+    private List<String> applyUpdates(User user, UpdateUserRequest request, String normalizedEmail) {
         List<String> modifiedFields = new ArrayList<>();
 
         if (!request.fullName().equals(user.getFullName())) {
@@ -265,13 +268,15 @@ public class UserService {
             modifiedFields.add("fullName");
         }
 
-        if (!request.email().equalsIgnoreCase(user.getEmail())) {
-            user.setEmail(request.email());
+        if (!normalizedEmail.equals(user.getEmail())) {
+            user.setEmail(normalizedEmail);
             modifiedFields.add("email");
         }
 
         if (request.role() != user.getRole()) {
             user.setRole(request.role());
+            // el cambio de rol invalida todos los tokens emitidos con el rol anterior
+            user.setTokenVersion((user.getTokenVersion() == null ? 0 : user.getTokenVersion()) + 1);
             modifiedFields.add("role");
         }
 
@@ -334,6 +339,10 @@ public class UserService {
         }
 
         user.setStatus(newStatus);
+        // al desactivar, invalida todos los tokens activos del usuario
+        if (newStatus == UserStatus.INACTIVE) {
+            user.setTokenVersion((user.getTokenVersion() == null ? 0 : user.getTokenVersion()) + 1);
+        }
         User updatedUser = userRepository.save(user);
 
         String message = newStatus == UserStatus.ACTIVE

@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 /**
  * Servicio de autenticación para los endpoints {@code AUTH-01} (login) y
@@ -81,12 +82,14 @@ public class AuthService {
      */
     @Transactional
     public LoginResponse login(LoginRequest request, AuditContext audit) {
+        String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
+
         // Deja que BadCredentialsException y DisabledException se propaguen;
         // el GlobalExceptionHandler (Fase 7) se encargará de traducirlas a 401 / 403.
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.email(), request.password()));
+                new UsernamePasswordAuthenticationToken(normalizedEmail, request.password()));
 
-        User user = userRepository.findByEmail(request.email())
+        User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Usuario autenticado no encontrado con email " + request.email()));
 
@@ -102,7 +105,7 @@ public class AuthService {
                 null,
                 LOGIN_DETAIL);
 
-        log.info("Login exitoso para userId={} email={}", savedUser.getId(), savedUser.getEmail());
+        log.info("Login exitoso para userId={} email={}", savedUser.getId(), normalizedEmail);
 
         UserSummary summary = UserMapper.toSummary(savedUser);
         return LoginResponse.bearer(token, expiresInSeconds, summary);
@@ -123,6 +126,12 @@ public class AuthService {
     @Transactional
     public MessageResponse logout(AuditContext audit) {
         AuditContext resolvedAudit = requireAuditWithActor(audit);
+
+        User user = userRepository.findById(resolvedAudit.actorUserId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Usuario no encontrado con id " + resolvedAudit.actorUserId()));
+        user.setTokenVersion((user.getTokenVersion() == null ? 0 : user.getTokenVersion()) + 1);
+        userRepository.save(user);
 
         activityLogService.record(
                 ActivityAction.LOGOUT,

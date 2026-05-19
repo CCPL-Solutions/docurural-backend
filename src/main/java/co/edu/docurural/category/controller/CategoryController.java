@@ -77,6 +77,7 @@ public class CategoryController {
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(implementation = ApiErrorResponse.class)))
     })
+    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
     @GetMapping
     public ResponseEntity<CategoryListResponse> list(
             @Parameter(name = "sortBy", description = "Campo de ordenamiento: name | createdAt", example = "name")
@@ -110,6 +111,7 @@ public class CategoryController {
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(implementation = ApiErrorResponse.class)))
     })
+    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
     @GetMapping("/{id}")
     public ResponseEntity<CategoryDetailResponse> getById(
             @Parameter(name = "id", description = "ID de la categoría a consultar", example = "1")

@@ -4,6 +4,7 @@ import co.edu.docurural.shared.config.SecurityConfig;
 import co.edu.docurural.shared.domain.entity.User;
 import co.edu.docurural.shared.domain.enums.UserStatus;
 import co.edu.docurural.shared.domain.repository.UserRepository;
+import co.edu.docurural.shared.util.MessageResolver;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.CredentialsExpiredException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
@@ -22,6 +24,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Objects;
 
 /**
  * Filtro que extrae y valida el token JWT del header {@code Authorization: Bearer <token>}
@@ -44,6 +47,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
+    private final MessageResolver messageResolver;
 
     @Override
     protected void doFilterInternal(
@@ -65,6 +69,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (user.getStatus() != UserStatus.ACTIVE) {
                 throw new DisabledException("Cuenta desactivada");
+            }
+
+            if (!Objects.equals(claims.getTokenVersion(), user.getTokenVersion())) {
+                throw new CredentialsExpiredException(messageResolver.get("auth.session.expired"));
             }
 
             CustomUserPrincipal principal = CustomUserPrincipal.fromEntity(user);
