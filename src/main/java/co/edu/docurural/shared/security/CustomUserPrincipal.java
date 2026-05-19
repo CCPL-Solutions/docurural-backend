@@ -1,5 +1,6 @@
 package co.edu.docurural.shared.security;
 
+import co.edu.docurural.shared.domain.entity.User;
 import co.edu.docurural.shared.domain.enums.UserRole;
 import co.edu.docurural.shared.domain.enums.UserStatus;
 import lombok.Getter;
@@ -44,9 +45,21 @@ public class CustomUserPrincipal implements UserDetails {
     }
 
     /**
+     * Construye un principal a partir de la entidad {@code User} recargada desde BD.
+     * Refleja el estado y rol vigentes en el momento de la petición.
+     */
+    public static CustomUserPrincipal fromEntity(User user) {
+        return new CustomUserPrincipal(user.getId(), user.getEmail(), user.getRole(), user.getStatus(), null);
+    }
+
+    /**
      * Construye un principal sin hash de contraseña; usado por el filtro JWT cuando
      * los claims ya fueron validados criptográficamente.
+     *
+     * @deprecated Usar {@link #fromEntity(User)} en el filtro para reflejar estado real
+     * del usuario. Este método permanece para uso en tests.
      */
+    @Deprecated
     public static CustomUserPrincipal fromJwtClaims(Long id, String email, UserRole role) {
         return new CustomUserPrincipal(id, email, role, UserStatus.ACTIVE, null);
     }

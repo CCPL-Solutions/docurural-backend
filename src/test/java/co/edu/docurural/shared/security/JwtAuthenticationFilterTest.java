@@ -1,10 +1,9 @@
 package co.edu.docurural.shared.security;
 
+import co.edu.docurural.shared.domain.entity.User;
 import co.edu.docurural.shared.domain.enums.UserRole;
-import co.edu.docurural.shared.security.CustomUserPrincipal;
-import co.edu.docurural.shared.security.JwtAuthenticationFilter;
-import co.edu.docurural.shared.security.JwtTokenProvider;
-import co.edu.docurural.shared.security.SecurityConstants;
+import co.edu.docurural.shared.domain.repository.UserRepository;
+import co.edu.docurural.support.TestFixtures;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,9 +16,12 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.CredentialsExpiredException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
@@ -31,6 +33,9 @@ class JwtAuthenticationFilterTest {
 
     @Mock
     JwtTokenProvider jwtTokenProvider;
+
+    @Mock
+    UserRepository userRepository;
 
     @Mock
     FilterChain filterChain;
@@ -88,8 +93,10 @@ class JwtAuthenticationFilterTest {
         request.addHeader("Authorization", "Bearer valid.jwt.token");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
+        User admin = TestFixtures.userAdmin(1L);
         when(jwtTokenProvider.parseAndValidate("valid.jwt.token"))
                 .thenReturn(new JwtTokenProvider.ParsedJwt(1L, "ana.admin@docurural.edu.co", UserRole.ADMIN));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(admin));
 
         filter.doFilter(request, response, filterChain);
 
@@ -111,8 +118,10 @@ class JwtAuthenticationFilterTest {
         request.addHeader("Authorization", "Bearer valid.jwt.token");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
+        User editor = TestFixtures.userEditor(2L);
         when(jwtTokenProvider.parseAndValidate("valid.jwt.token"))
                 .thenReturn(new JwtTokenProvider.ParsedJwt(2L, "erik.editor@docurural.edu.co", UserRole.EDITOR));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(editor));
 
         filter.doFilter(request, response, filterChain);
 
@@ -129,8 +138,10 @@ class JwtAuthenticationFilterTest {
         request.addHeader("Authorization", "Bearer   trimmed.token   ");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
+        User admin = TestFixtures.userAdmin(1L);
         when(jwtTokenProvider.parseAndValidate("trimmed.token"))
                 .thenReturn(new JwtTokenProvider.ParsedJwt(1L, "ana.admin@docurural.edu.co", UserRole.ADMIN));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(admin));
 
         filter.doFilter(request, response, filterChain);
 
@@ -187,5 +198,44 @@ class JwtAuthenticationFilterTest {
 
         verify(filterChain).doFilter(request, response);
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    }
+
+    @Test
+    void doFilter_whenUserIsInactive_clearsContextSetsDisabledExceptionAndContinuesChain() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer valid.jwt.token");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        User inactiveUser = TestFixtures.userInactive(5L);
+        when(jwtTokenProvider.parseAndValidate("valid.jwt.token"))
+                .thenReturn(new JwtTokenProvider.ParsedJwt(5L, inactiveUser.getEmail(), inactiveUser.getRole()));
+        when(userRepository.findById(5L)).thenReturn(Optional.of(inactiveUser));
+
+        filter.doFilter(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        assertThat(request.getAttribute(SecurityConstants.JWT_ERROR_ATTRIBUTE))
+                .isNotNull()
+                .isInstanceOf(DisabledException.class);
+    }
+
+    @Test
+    void doFilter_whenUserDoesNotExistInDb_clearsContextSetsBadCredentialsAndContinuesChain() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer valid.jwt.token");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        when(jwtTokenProvider.parseAndValidate("valid.jwt.token"))
+                .thenReturn(new JwtTokenProvider.ParsedJwt(99L, "deleted@docurural.edu.co", UserRole.READER));
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+
+        filter.doFilter(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        assertThat(request.getAttribute(SecurityConstants.JWT_ERROR_ATTRIBUTE))
+                .isNotNull()
+                .isInstanceOf(BadCredentialsException.class);
     }
 }

@@ -1,6 +1,9 @@
 package co.edu.docurural.shared.security;
 
 import co.edu.docurural.shared.config.SecurityConfig;
+import co.edu.docurural.shared.domain.entity.User;
+import co.edu.docurural.shared.domain.enums.UserStatus;
+import co.edu.docurural.shared.domain.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -8,6 +11,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -38,6 +43,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(
@@ -53,8 +59,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             JwtTokenProvider.ParsedJwt claims = jwtTokenProvider.parseAndValidate(token);
-            CustomUserPrincipal principal = CustomUserPrincipal.fromJwtClaims(
-                    claims.getUserId(), claims.getEmail(), claims.getRole());
+
+            User user = userRepository.findById(claims.getUserId())
+                    .orElseThrow(() -> new BadCredentialsException("Token inválido"));
+
+            if (user.getStatus() != UserStatus.ACTIVE) {
+                throw new DisabledException("Cuenta desactivada");
+            }
+
+            CustomUserPrincipal principal = CustomUserPrincipal.fromEntity(user);
 
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());

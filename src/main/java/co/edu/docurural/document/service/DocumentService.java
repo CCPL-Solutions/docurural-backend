@@ -287,15 +287,17 @@ public class DocumentService {
 
         StoredFile stored = fileStorageService.store(file, format);
 
-        // Limpieza compensatoria: si la transacción hace rollback, el archivo en
-        // disco quedaría huérfano. La comprobación previa evita el
-        // IllegalStateException en tests sin contexto transaccional activo.
+        // Limpieza compensatoria: elimina el archivo del disco si la transacción
+        // no confirma. Se cubre STATUS_ROLLED_BACK (rollback normal) y STATUS_UNKNOWN
+        // (commit lanzó excepción antes de confirmarse), evitando archivos huérfanos
+        // en ambos escenarios. La comprobación previa evita el IllegalStateException
+        // en tests sin contexto transaccional activo.
         String storedRelativePath = stored.relativePath();
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCompletion(int status) {
-                    if (status == STATUS_ROLLED_BACK) {
+                    if (status == STATUS_ROLLED_BACK || status == STATUS_UNKNOWN) {
                         fileStorageService.delete(storedRelativePath);
                     }
                 }

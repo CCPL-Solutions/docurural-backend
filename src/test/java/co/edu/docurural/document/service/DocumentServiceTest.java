@@ -41,6 +41,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.Optional;
@@ -665,5 +667,104 @@ class DocumentServiceTest {
         documentService.list(null, null, null, null);
 
         verify(activityLogService, never()).record(any(), any(), any(), any());
+    }
+
+    // ------------------------------------------------------------------
+    // upload() - compensación de archivo huérfano (C-2)
+    // ------------------------------------------------------------------
+
+    @Test
+    void upload_deletesStoredFile_whenTransactionIsRolledBack() throws Exception {
+        Category category = TestFixtures.categoryActive(1L, "Actas");
+        User uploader = TestFixtures.userAdmin(ACTOR_ID);
+        UploadDocumentRequest request = TestFixtures.uploadDocumentRequest(1L);
+        MockMultipartFile file = new MockMultipartFile("file", "acta.pdf", "application/pdf", new byte[100]);
+
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(fileValidationService.validate(file)).thenReturn(DocumentFormat.PDF);
+        when(fileStorageService.store(file, DocumentFormat.PDF)).thenReturn(new StoredFile("2026/05/uuid.pdf"));
+        when(userRepository.getReferenceById(ACTOR_ID)).thenReturn(uploader);
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> {
+            Document d = inv.getArgument(0);
+            d.setId(48L);
+            return d;
+        });
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            documentService.upload(request, file, AUDIT);
+
+            List<TransactionSynchronization> synchronizations =
+                    TransactionSynchronizationManager.getSynchronizations();
+            assertThat(synchronizations).isNotEmpty();
+            synchronizations.forEach(sync -> sync.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
+
+            verify(fileStorageService).delete("2026/05/uuid.pdf");
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    void upload_deletesStoredFile_whenTransactionCompletesWithUnknownStatus() throws Exception {
+        Category category = TestFixtures.categoryActive(1L, "Actas");
+        User uploader = TestFixtures.userAdmin(ACTOR_ID);
+        UploadDocumentRequest request = TestFixtures.uploadDocumentRequest(1L);
+        MockMultipartFile file = new MockMultipartFile("file", "acta.pdf", "application/pdf", new byte[100]);
+
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(fileValidationService.validate(file)).thenReturn(DocumentFormat.PDF);
+        when(fileStorageService.store(file, DocumentFormat.PDF)).thenReturn(new StoredFile("2026/05/uuid.pdf"));
+        when(userRepository.getReferenceById(ACTOR_ID)).thenReturn(uploader);
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> {
+            Document d = inv.getArgument(0);
+            d.setId(48L);
+            return d;
+        });
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            documentService.upload(request, file, AUDIT);
+
+            List<TransactionSynchronization> synchronizations =
+                    TransactionSynchronizationManager.getSynchronizations();
+            assertThat(synchronizations).isNotEmpty();
+            synchronizations.forEach(sync -> sync.afterCompletion(TransactionSynchronization.STATUS_UNKNOWN));
+
+            verify(fileStorageService).delete("2026/05/uuid.pdf");
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    void upload_keepsStoredFile_whenTransactionCommitsSuccessfully() throws Exception {
+        Category category = TestFixtures.categoryActive(1L, "Actas");
+        User uploader = TestFixtures.userAdmin(ACTOR_ID);
+        UploadDocumentRequest request = TestFixtures.uploadDocumentRequest(1L);
+        MockMultipartFile file = new MockMultipartFile("file", "acta.pdf", "application/pdf", new byte[100]);
+
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(fileValidationService.validate(file)).thenReturn(DocumentFormat.PDF);
+        when(fileStorageService.store(file, DocumentFormat.PDF)).thenReturn(new StoredFile("2026/05/uuid.pdf"));
+        when(userRepository.getReferenceById(ACTOR_ID)).thenReturn(uploader);
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> {
+            Document d = inv.getArgument(0);
+            d.setId(48L);
+            return d;
+        });
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            documentService.upload(request, file, AUDIT);
+
+            List<TransactionSynchronization> synchronizations =
+                    TransactionSynchronizationManager.getSynchronizations();
+            synchronizations.forEach(sync -> sync.afterCompletion(TransactionSynchronization.STATUS_COMMITTED));
+
+            verify(fileStorageService, never()).delete(anyString());
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 }
