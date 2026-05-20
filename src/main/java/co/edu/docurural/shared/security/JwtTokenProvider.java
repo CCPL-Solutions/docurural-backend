@@ -1,7 +1,7 @@
 package co.edu.docurural.shared.security;
 
-import co.edu.docurural.user.domain.entity.User;
-import co.edu.docurural.user.domain.enums.UserRole;
+import co.edu.docurural.user.entity.User;
+import co.edu.docurural.user.enums.UserRole;
 import co.edu.docurural.shared.util.MessageResolver;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;

@@ -1,6 +1,6 @@
 package co.edu.docurural.user.mapper;
 
-import co.edu.docurural.user.domain.entity.User;
+import co.edu.docurural.user.entity.User;
 import co.edu.docurural.support.TestFixtures;
 import co.edu.docurural.auth.dto.UserSummary;
 import co.edu.docurural.user.dto.CreateUserResponse;

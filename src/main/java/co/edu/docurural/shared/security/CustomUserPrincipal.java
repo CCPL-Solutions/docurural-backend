@@ -1,8 +1,8 @@
 package co.edu.docurural.shared.security;
 
-import co.edu.docurural.user.domain.entity.User;
-import co.edu.docurural.user.domain.enums.UserRole;
-import co.edu.docurural.user.domain.enums.UserStatus;
+import co.edu.docurural.user.entity.User;
+import co.edu.docurural.user.enums.UserRole;
+import co.edu.docurural.user.enums.UserStatus;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

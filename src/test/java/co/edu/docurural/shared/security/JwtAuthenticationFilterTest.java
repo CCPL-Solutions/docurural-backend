@@ -1,8 +1,8 @@
 package co.edu.docurural.shared.security;
 
-import co.edu.docurural.user.domain.entity.User;
-import co.edu.docurural.user.domain.enums.UserRole;
-import co.edu.docurural.user.domain.repository.UserRepository;
+import co.edu.docurural.user.entity.User;
+import co.edu.docurural.user.enums.UserRole;
+import co.edu.docurural.user.repository.UserRepository;
 import co.edu.docurural.shared.util.MessageResolver;
 import co.edu.docurural.support.TestFixtures;
 import jakarta.servlet.FilterChain;

@@ -18,7 +18,7 @@ import co.edu.docurural.document.enums.DocumentStatus;
 import co.edu.docurural.document.repository.DocumentRepository;
 import co.edu.docurural.document.repository.projection.CategoryDocumentCount;
 import co.edu.docurural.shared.audit.AuditContext;
-import co.edu.docurural.user.domain.repository.UserRepository;
+import co.edu.docurural.user.repository.UserRepository;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.exception.ConflictException;
@@ -34,7 +34,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;

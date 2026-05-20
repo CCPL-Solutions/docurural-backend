@@ -1,6 +1,6 @@
 package co.edu.docurural.category.entity;
 
-import co.edu.docurural.user.domain.entity.User;
+import co.edu.docurural.user.entity.User;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;

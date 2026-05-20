@@ -1,7 +1,7 @@
 package co.edu.docurural.document.entity;
 
 import co.edu.docurural.category.entity.Category;
-import co.edu.docurural.user.domain.entity.User;
+import co.edu.docurural.user.entity.User;
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.document.enums.DocumentStatus;
 import co.edu.docurural.shared.exception.BusinessErrorCode;

@@ -1,8 +1,8 @@
 package co.edu.docurural.shared.security;
 
-import co.edu.docurural.user.domain.entity.User;
-import co.edu.docurural.user.domain.enums.UserStatus;
-import co.edu.docurural.user.domain.repository.UserRepository;
+import co.edu.docurural.user.entity.User;
+import co.edu.docurural.user.enums.UserStatus;
+import co.edu.docurural.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.UserDetails;
