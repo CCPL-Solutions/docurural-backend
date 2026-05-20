@@ -186,12 +186,14 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Violación de regla de negocio. Solo aquí se mapea código de dominio a HTTP.
+     * Violación de regla de negocio. El mapeo HTTP vive en {@link BusinessErrorCode}.
      */
     @ExceptionHandler(BusinessRuleException.class)
     public ResponseEntity<ApiErrorResponse> handleBusinessRule(
             BusinessRuleException ex, HttpServletRequest request) {
-        HttpStatus status = mapBusinessErrorCode(ex.getCode());
+        HttpStatus status = ex.getCode() != null
+                ? ex.getCode().httpStatus()
+                : HttpStatus.BAD_REQUEST;
         log.warn("Regla de negocio violada en {} {} [{}]: {}",
                 request.getMethod(), request.getRequestURI(), status.value(), ex.getMessage());
         return buildResponse(status, ex.getMessage());
@@ -274,18 +276,6 @@ public class GlobalExceptionHandler {
                 status.getReasonPhrase(),
                 message);
         return ResponseEntity.status(status).body(body);
-    }
-
-    private HttpStatus mapBusinessErrorCode(BusinessErrorCode code) {
-        if (code == null) {
-            return HttpStatus.BAD_REQUEST;
-        }
-        return switch (code) {
-            case INVALID_ARGUMENT -> HttpStatus.BAD_REQUEST;
-            case FORBIDDEN -> HttpStatus.FORBIDDEN;
-            case PAYLOAD_TOO_LARGE -> HttpStatus.PAYLOAD_TOO_LARGE;
-            case UNSUPPORTED_MEDIA_TYPE -> HttpStatus.UNSUPPORTED_MEDIA_TYPE;
-        };
     }
 
     private String resolve(String key, Object... args) {

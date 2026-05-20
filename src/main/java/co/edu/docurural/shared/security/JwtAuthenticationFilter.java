@@ -1,9 +1,9 @@
 package co.edu.docurural.shared.security;
 
 import co.edu.docurural.shared.config.SecurityConfig;
-import co.edu.docurural.shared.domain.entity.User;
-import co.edu.docurural.shared.domain.enums.UserStatus;
-import co.edu.docurural.shared.domain.repository.UserRepository;
+import co.edu.docurural.user.domain.entity.User;
+import co.edu.docurural.user.domain.enums.UserStatus;
+import co.edu.docurural.user.domain.repository.UserRepository;
 import co.edu.docurural.shared.util.MessageResolver;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

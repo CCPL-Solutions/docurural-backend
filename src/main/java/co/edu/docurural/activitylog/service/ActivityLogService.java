@@ -2,12 +2,12 @@ package co.edu.docurural.activitylog.service;
 
 import co.edu.docurural.activitylog.entity.ActivityLog;
 import co.edu.docurural.document.entity.Document;
-import co.edu.docurural.shared.domain.entity.User;
+import co.edu.docurural.user.domain.entity.User;
 import co.edu.docurural.activitylog.enums.ActivityAction;
 import co.edu.docurural.activitylog.repository.ActivityLogRepository;
 import co.edu.docurural.document.repository.DocumentRepository;
 import co.edu.docurural.shared.audit.AuditContext;
-import co.edu.docurural.shared.domain.repository.UserRepository;
+import co.edu.docurural.user.domain.repository.UserRepository;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

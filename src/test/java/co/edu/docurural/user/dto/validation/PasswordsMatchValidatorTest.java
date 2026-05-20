@@ -1,6 +1,6 @@
 package co.edu.docurural.user.dto.validation;
 
-import co.edu.docurural.shared.domain.enums.UserRole;
+import co.edu.docurural.user.domain.enums.UserRole;
 import co.edu.docurural.user.dto.CreateUserRequest;
 import co.edu.docurural.user.dto.UpdateUserRequest;
 import jakarta.validation.ConstraintViolation;

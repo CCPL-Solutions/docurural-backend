@@ -21,19 +21,22 @@ import co.edu.docurural.document.repository.DocumentRepository;
 import co.edu.docurural.document.storage.FileStorageService;
 import co.edu.docurural.document.storage.StoredFile;
 import co.edu.docurural.shared.audit.AuditContext;
-import co.edu.docurural.shared.domain.entity.User;
-import co.edu.docurural.shared.domain.enums.UserRole;
-import co.edu.docurural.shared.domain.repository.UserRepository;
+import co.edu.docurural.user.domain.entity.User;
+import co.edu.docurural.user.domain.enums.UserRole;
+import co.edu.docurural.user.domain.repository.UserRepository;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
+import co.edu.docurural.shared.util.FieldUpdater;
 import co.edu.docurural.shared.util.FileNameSanitizer;
 import co.edu.docurural.shared.util.MessageResolver;
+import co.edu.docurural.shared.util.SortingValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -180,7 +183,7 @@ public class DocumentService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         messageResolver.get("document.not-found", id)));
 
-        document.setStatus(DocumentStatus.DELETED);
+        document.markAsDeleted();
         Document deleted = documentRepository.save(document);
 
         activityLogService.record(
@@ -240,33 +243,22 @@ public class DocumentService {
     private List<String> applyMetadataUpdates(Document document,
                                               UpdateDocumentMetadataRequest request,
                                               Category category) {
-        List<String> modifiedFields = new ArrayList<>();
+        List<String> modifiedFields = new java.util.ArrayList<>(
+                FieldUpdater.of(document)
+                        .setIfChanged("title", request.title(), document::getTitle, document::setTitle)
+                        .setIfChanged("responsibleArea", request.responsibleArea(),
+                                document::getResponsibleArea, document::setResponsibleArea)
+                        .setIfChanged("documentDate", request.documentDate(),
+                                document::getDocumentDate, document::setDocumentDate)
+                        .setIfPresent("description", request.description(),
+                                document::getDescription, document::setDescription)
+                        .changedFields());
 
-        if (!request.title().equals(document.getTitle())) {
-            document.setTitle(request.title());
-            modifiedFields.add("title");
-        }
-
+        // la categoría se compara por ID porque setIfChanged usaría igualdad de referencia
         if (!category.getId().equals(document.getCategory().getId())) {
             document.setCategory(category);
             modifiedFields.add("categoryId");
         }
-
-        if (!request.responsibleArea().equals(document.getResponsibleArea())) {
-            document.setResponsibleArea(request.responsibleArea());
-            modifiedFields.add("responsibleArea");
-        }
-
-        if (!request.documentDate().equals(document.getDocumentDate())) {
-            document.setDocumentDate(request.documentDate());
-            modifiedFields.add("documentDate");
-        }
-
-        if (request.description() != null && !request.description().equals(document.getDescription())) {
-            document.setDescription(request.description());
-            modifiedFields.add("description");
-        }
-
         return modifiedFields;
     }
 
@@ -342,37 +334,21 @@ public class DocumentService {
      */
     @Transactional(readOnly = true)
     public DocumentListResponse list(Integer page, Integer size, String sortBy, String sortDir) {
+        Pageable pageable = SortingValidator.resolvePageable(
+                page, size, sortBy, sortDir,
+                ALLOWED_SORT_FIELDS, DEFAULT_SORT_BY, DEFAULT_SORT_DIR,
+                DEFAULT_PAGE, DEFAULT_SIZE, MAX_SIZE,
+                messageResolver.get("document.page.invalid"),
+                messageResolver.get("document.page.size-invalid"),
+                messageResolver.get("document.sort.unsupported-field", sortBy),
+                messageResolver.get("document.sort.unsupported-direction", sortDir));
+
         int resolvedPage = (page == null) ? DEFAULT_PAGE : page;
         int resolvedSize = (size == null) ? DEFAULT_SIZE : size;
-        String resolvedSortBy = (sortBy == null || sortBy.isBlank()) ? DEFAULT_SORT_BY : sortBy;
-        String resolvedSortDir = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir;
-
-        if (resolvedPage < 1) {
-            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
-                    messageResolver.get("document.page.invalid"));
-        }
-        if (resolvedSize < 1 || resolvedSize > MAX_SIZE) {
-            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
-                    messageResolver.get("document.page.size-invalid"));
-        }
-        if (!ALLOWED_SORT_FIELDS.contains(resolvedSortBy)) {
-            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
-                    messageResolver.get("document.sort.unsupported-field", resolvedSortBy));
-        }
-
-        Sort.Direction direction;
-        try {
-            direction = Sort.Direction.fromString(resolvedSortDir.toLowerCase(Locale.ROOT));
-        } catch (IllegalArgumentException ex) {
-            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
-                    messageResolver.get("document.sort.unsupported-direction", resolvedSortDir));
-        }
-
-        PageRequest pageable = PageRequest.of(resolvedPage - 1, resolvedSize, Sort.by(direction, resolvedSortBy));
         Page<Document> pageResult = documentRepository.findByStatus(DocumentStatus.ACTIVE, pageable);
 
         log.debug("Listado de documentos: page={} size={} sortBy={} sortDir={} total={}",
-                resolvedPage, resolvedSize, resolvedSortBy, resolvedSortDir, pageResult.getTotalElements());
+                resolvedPage, resolvedSize, sortBy, sortDir, pageResult.getTotalElements());
 
         return DocumentMapper.toListResponse(pageResult, resolvedPage, resolvedSize);
     }
