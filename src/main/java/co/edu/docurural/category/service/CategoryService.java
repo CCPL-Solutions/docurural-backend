@@ -14,9 +14,7 @@ import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.mapper.CategoryMapper;
 import co.edu.docurural.category.repository.CategoryRepository;
-import co.edu.docurural.document.enums.DocumentStatus;
-import co.edu.docurural.document.repository.DocumentRepository;
-import co.edu.docurural.document.repository.projection.CategoryDocumentCount;
+import co.edu.docurural.document.service.DocumentQueryService;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.user.repository.UserRepository;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
@@ -36,7 +34,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Servicio de gestión de categorías documentales (CAT-01..CAT-05 / HU-16..HU-19).
@@ -51,7 +48,7 @@ public class CategoryService {
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("name", "createdAt");
 
     private final CategoryRepository categoryRepository;
-    private final DocumentRepository documentRepository;
+    private final DocumentQueryService documentQueryService;
     private final UserRepository userRepository;
     private final ActivityLogService activityLogService;
     private final MessageResolver messageResolver;
@@ -72,8 +69,7 @@ public class CategoryService {
                 messageResolver.get("category.sort.unsupported-direction", sortDir));
 
         List<Category> categories = categoryRepository.findAll(sort);
-        Map<Long, Long> counts = documentRepository.countActiveByCategoryId(DocumentStatus.ACTIVE).stream()
-                .collect(Collectors.toMap(CategoryDocumentCount::getCategoryId, CategoryDocumentCount::getCount));
+        Map<Long, Long> counts = documentQueryService.getActiveCountsByCategory();
 
         log.debug("Listado de categorías: total={} sortBy={} sortDir={}",
                 categories.size(), sortBy, sortDir);
@@ -92,12 +88,7 @@ public class CategoryService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         messageResolver.get("category.not-found", id)));
 
-        long count = documentRepository.countActiveByCategoryId(DocumentStatus.ACTIVE)
-                .stream()
-                .filter(p -> id.equals(p.getCategoryId()))
-                .map(CategoryDocumentCount::getCount)
-                .findFirst()
-                .orElse(0L);
+        long count = documentQueryService.getActiveCountsByCategory().getOrDefault(id, 0L);
 
         return CategoryMapper.toDetailResponse(category, count);
     }

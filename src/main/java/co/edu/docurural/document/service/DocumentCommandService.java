@@ -6,9 +6,6 @@ import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.repository.CategoryRepository;
 import co.edu.docurural.document.dto.DeleteDocumentResponse;
-import co.edu.docurural.document.dto.DocumentDetailResponse;
-import co.edu.docurural.document.dto.DocumentFileContent;
-import co.edu.docurural.document.dto.DocumentListResponse;
 import co.edu.docurural.document.dto.UpdateDocumentMetadataRequest;
 import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
 import co.edu.docurural.document.dto.UploadDocumentRequest;
@@ -21,21 +18,17 @@ import co.edu.docurural.document.repository.DocumentRepository;
 import co.edu.docurural.document.storage.FileStorageService;
 import co.edu.docurural.document.storage.StoredFile;
 import co.edu.docurural.shared.audit.AuditContext;
-import co.edu.docurural.user.entity.User;
-import co.edu.docurural.user.enums.UserRole;
-import co.edu.docurural.user.repository.UserRepository;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.shared.util.FieldUpdater;
 import co.edu.docurural.shared.util.FileNameSanitizer;
 import co.edu.docurural.shared.util.MessageResolver;
-import co.edu.docurural.shared.util.SortingValidator;
+import co.edu.docurural.user.entity.User;
+import co.edu.docurural.user.enums.UserRole;
+import co.edu.docurural.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.Resource;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -43,24 +36,16 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-import java.util.function.Function;
 
 /**
- * Servicio del módulo de documentos (DOC-01..DOC-08 / HU-09..HU-15).
+ * Operaciones de escritura sobre documentos (DOC-03..DOC-06 / HU-09..HU-14).
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class DocumentService {
-
-    private static final int DEFAULT_PAGE = 1;
-    private static final int DEFAULT_SIZE = 20;
-    private static final int MAX_SIZE = 50;
-    private static final String DEFAULT_SORT_BY = "createdAt";
-    private static final String DEFAULT_SORT_DIR = "desc";
-    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("createdAt", "title", "documentDate");
+public class DocumentCommandService {
 
     private final DocumentRepository documentRepository;
     private final CategoryRepository categoryRepository;
@@ -71,12 +56,7 @@ public class DocumentService {
     private final MessageResolver messageResolver;
 
     /**
-     * Carga un documento individual al repositorio (DOC-03 / HU-09).
-     *
-     * @throws BusinessRuleException     {@code INVALID_ARGUMENT (400)} si el archivo está vacío.
-     * @throws ResourceNotFoundException {@code 404} si la categoría no existe o está INACTIVE.
-     * @throws BusinessRuleException     {@code PAYLOAD_TOO_LARGE (413)} si supera 10 MB.
-     * @throws BusinessRuleException     {@code UNSUPPORTED_MEDIA_TYPE (415)} si el MIME no está permitido.
+     * Carga un documento individual (DOC-03 / HU-09).
      */
     @Transactional
     public UploadDocumentResponse upload(UploadDocumentRequest request, MultipartFile file, AuditContext audit) {
@@ -88,15 +68,9 @@ public class DocumentService {
                         messageResolver.get("document.category.not-found")));
 
         Document saved = processSingleFile(
-                file,
-                request.title(),
-                category,
-                request.responsibleArea(),
-                request.documentDate(),
-                request.description(),
-                "Archivo: ",
-                actorId,
-                audit);
+                file, request.title(), category,
+                request.responsibleArea(), request.documentDate(), request.description(),
+                "Archivo: ", actorId, audit);
 
         log.info("Documento cargado: id={} title='{}' format={} uploadedBy={}",
                 saved.getId(), saved.getTitle(), saved.getFileFormat(), actorId);
@@ -107,17 +81,8 @@ public class DocumentService {
     /**
      * Edita metadatos de un documento activo (DOC-05 / HU-13).
      *
-     * <p>Reglas de permiso:
-     * <ul>
-     *   <li>{@code ADMIN}: puede editar cualquier documento.</li>
-     *   <li>{@code EDITOR}: solo documentos cargados por el mismo usuario.</li>
-     * </ul>
-     *
-     * <p>Reglas de actualización:
-     * <ul>
-     *   <li>Si {@code description} llega en {@code null}, se conserva la actual.</li>
-     *   <li>Si no hay cambios efectivos, retorna 200 y no registra actividad.</li>
-     * </ul>
+     * <p>ADMIN edita cualquier documento; EDITOR solo los propios.
+     * Si no hay cambios efectivos, retorna 200 sin registrar actividad.
      */
     @Transactional
     public UpdateDocumentMetadataResponse updateMetadata(Long id, UpdateDocumentMetadataRequest request, AuditContext audit) {
@@ -152,24 +117,17 @@ public class DocumentService {
         }
 
         Document updated = documentRepository.save(document);
-        activityLogService.record(
-                ActivityAction.EDIT_DOC,
-                audit,
-                updated.getId(),
+        activityLogService.record(ActivityAction.EDIT_DOC, audit, updated.getId(),
                 "Campos modificados: " + modifiedFields);
 
         log.info("Metadatos actualizados: documentId={} modifiedFields={} requestedBy={}",
                 updated.getId(), modifiedFields, actorId);
 
-        return DocumentMapper.toUpdateMetadataResponse(
-                updated, messageResolver.get("document.updated.success"));
+        return DocumentMapper.toUpdateMetadataResponse(updated, messageResolver.get("document.updated.success"));
     }
 
     /**
      * Elimina lógicamente un documento activo (DOC-06 / HU-14).
-     *
-     * <p>No elimina el archivo físico del almacenamiento local del MVP.
-     * Si el documento no existe o ya está {@code DELETED}, retorna 404 (no idempotente).
      */
     @Transactional
     public DeleteDocumentResponse deleteLogical(Long id, AuditContext audit) {
@@ -182,10 +140,7 @@ public class DocumentService {
         document.markAsDeleted();
         Document deleted = documentRepository.save(document);
 
-        activityLogService.record(
-                ActivityAction.DELETE_DOC,
-                audit,
-                deleted.getId(),
+        activityLogService.record(ActivityAction.DELETE_DOC, audit, deleted.getId(),
                 "Título: " + deleted.getTitle());
 
         log.info("Documento eliminado lógicamente: documentId={} requestedBy={}", deleted.getId(), actorId);
@@ -196,14 +151,8 @@ public class DocumentService {
     /**
      * Carga un archivo individual dentro de un lote (DOC-04 / HU-10).
      *
-     * <p>Invocado desde {@link DocumentBatchService} — al cruzar el límite del bean, el proxy de
-     * Spring aplica la transacción aislada por archivo, lo que permite el comportamiento best-effort.
-     *
-     * @param categoryId ya fue validado como ACTIVE por el orquestador; se vuelve a leer aquí
-     *                   para tenerlo en el contexto transaccional propio.
-     * @return la entidad {@link Document} persistida.
-     * @throws BusinessRuleException     si el archivo está vacío, supera el tamaño o el MIME no está permitido.
-     * @throws ResourceNotFoundException si la categoría dejó de estar ACTIVE entre la validación del orquestador y esta TX.
+     * <p>Invocado desde {@link DocumentBatchService}. Al cruzar el límite del bean,
+     * Spring aplica la transacción aislada por archivo (best-effort).
      */
     @Transactional
     public Document uploadSingleForBatch(MultipartFile file,
@@ -220,15 +169,8 @@ public class DocumentService {
                         messageResolver.get("document.category.not-found")));
 
         Document saved = processSingleFile(
-                file,
-                title,
-                category,
-                responsibleArea,
-                documentDate,
-                null,
-                "Carga múltiple — Archivo: ",
-                actorId,
-                audit);
+                file, title, category, responsibleArea, documentDate,
+                null, "Carga múltiple — Archivo: ", actorId, audit);
 
         log.info("Documento cargado (lote): id={} title='{}' format={} uploadedBy={}",
                 saved.getId(), saved.getTitle(), saved.getFileFormat(), actorId);
@@ -239,7 +181,7 @@ public class DocumentService {
     private List<String> applyMetadataUpdates(Document document,
                                               UpdateDocumentMetadataRequest request,
                                               Category category) {
-        List<String> modifiedFields = new java.util.ArrayList<>(
+        List<String> modifiedFields = new ArrayList<>(
                 FieldUpdater.of(document)
                         .setIfChanged("title", request.title(), document::getTitle, document::setTitle)
                         .setIfChanged("responsibleArea", request.responsibleArea(),
@@ -250,7 +192,6 @@ public class DocumentService {
                                 document::getDescription, document::setDescription)
                         .changedFields());
 
-        // la categoría se compara por ID porque setIfChanged usaría igualdad de referencia
         if (!category.getId().equals(document.getCategory().getId())) {
             document.setCategory(category);
             modifiedFields.add("categoryId");
@@ -273,14 +214,10 @@ public class DocumentService {
         }
 
         DocumentFormat format = fileValidationService.validate(file);
-
         StoredFile stored = fileStorageService.store(file, format);
 
-        // Limpieza compensatoria: elimina el archivo del disco si la transacción
-        // no confirma. Se cubre STATUS_ROLLED_BACK (rollback normal) y STATUS_UNKNOWN
-        // (commit lanzó excepción antes de confirmarse), evitando archivos huérfanos
-        // en ambos escenarios. La comprobación previa evita el IllegalStateException
-        // en tests sin contexto transaccional activo.
+        // Limpieza compensatoria: elimina el archivo del disco si la TX no confirma.
+        // Cubre STATUS_ROLLED_BACK y STATUS_UNKNOWN para evitar archivos huérfanos.
         String storedRelativePath = stored.relativePath();
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -307,114 +244,15 @@ public class DocumentService {
                 .build();
 
         Document saved = documentRepository.save(document);
-
-        activityLogService.record(
-                ActivityAction.UPLOAD,
-                audit,
-                saved.getId(),
+        activityLogService.record(ActivityAction.UPLOAD, audit, saved.getId(),
                 activityDetailPrefix + saved.getOriginalFileName());
 
         return saved;
     }
 
     /**
-     * DOC-01 / HU-15 — lista paginada de documentos ACTIVE ordenada según los parámetros recibidos.
-     *
-     * <p>Los parámetros nulos se resuelven a sus valores por defecto antes de validar.
-     * Los errores de validación lanzan {@link BusinessRuleException}{@code (INVALID_ARGUMENT)}.
-     *
-     * @param page    número de página 1-based (default 1)
-     * @param size    documentos por página (default 20, máx 50)
-     * @param sortBy  campo de orden: createdAt | title | documentDate (default createdAt)
-     * @param sortDir dirección: asc | desc (default desc)
+     * Valida que el contexto de auditoría tenga un actor válido.
      */
-    @Transactional(readOnly = true)
-    public DocumentListResponse list(Integer page, Integer size, String sortBy, String sortDir) {
-        Pageable pageable = SortingValidator.resolvePageable(
-                page, size, sortBy, sortDir,
-                ALLOWED_SORT_FIELDS, DEFAULT_SORT_BY, DEFAULT_SORT_DIR,
-                DEFAULT_PAGE, DEFAULT_SIZE, MAX_SIZE,
-                messageResolver.get("document.page.invalid"),
-                messageResolver.get("document.page.size-invalid"),
-                messageResolver.get("document.sort.unsupported-field", sortBy),
-                messageResolver.get("document.sort.unsupported-direction", sortDir));
-
-        int resolvedPage = (page == null) ? DEFAULT_PAGE : page;
-        int resolvedSize = (size == null) ? DEFAULT_SIZE : size;
-        Page<Document> pageResult = documentRepository.findByStatus(DocumentStatus.ACTIVE, pageable);
-
-        log.debug("Listado de documentos: page={} size={} sortBy={} sortDir={} total={}",
-                resolvedPage, resolvedSize, sortBy, sortDir, pageResult.getTotalElements());
-
-        return DocumentMapper.toListResponse(pageResult, resolvedPage, resolvedSize);
-    }
-
-    /**
-     * Retorna la ficha completa de metadatos de un documento activo (DOC-02 / HU-11).
-     *
-     * @throws ResourceNotFoundException {@code 404} si el documento no existe o tiene estado DELETED.
-     */
-    @Transactional(readOnly = true)
-    public DocumentDetailResponse findDetailById(Long id) {
-        Document document = documentRepository.findByIdAndStatus(id, DocumentStatus.ACTIVE)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        messageResolver.get("document.not-found", id)));
-        return DocumentMapper.toDetailResponse(document);
-    }
-
-    /**
-     * Carga el archivo binario de un documento para visualización en línea (DOC-07 / HU-11).
-     *
-     * <p>El registro de actividad {@code VIEW} se genera sólo si el archivo existe en disco.
-     * Si el archivo físico no se encuentra, se lanza {@link ResourceNotFoundException} antes de registrar.
-     *
-     * @throws IllegalArgumentException  si {@code audit} o {@code audit.actorUserId()} es null.
-     * @throws ResourceNotFoundException {@code 404} si el documento no existe, está DELETED o el archivo físico no está disponible.
-     */
-    @Transactional
-    public DocumentFileContent openForView(Long id, AuditContext audit) {
-        return loadAndAudit(id, audit, ActivityAction.VIEW,
-                doc -> "Formato: " + doc.getFileFormat().name(),
-                "visualizado");
-    }
-
-    /**
-     * Carga el archivo binario de un documento para descarga (DOC-08 / HU-12).
-     *
-     * <p>El registro de actividad {@code DOWNLOAD} se genera sólo si el archivo existe en disco.
-     * Si el archivo físico no se encuentra, se lanza {@link ResourceNotFoundException} antes de registrar.
-     *
-     * @throws IllegalArgumentException  si {@code audit} o {@code audit.actorUserId()} es null.
-     * @throws ResourceNotFoundException {@code 404} si el documento no existe, está DELETED o el archivo físico no está disponible.
-     */
-    @Transactional
-    public DocumentFileContent openForDownload(Long id, AuditContext audit) {
-        return loadAndAudit(id, audit, ActivityAction.DOWNLOAD,
-                doc -> "Archivo: " + doc.getOriginalFileName(),
-                "descargado");
-    }
-
-    private DocumentFileContent loadAndAudit(Long id, AuditContext audit,
-                                             ActivityAction action,
-                                             Function<Document, String> detailBuilder,
-                                             String logVerb) {
-        requireActorUserId(audit);
-
-        Document document = documentRepository.findByIdAndStatus(id, DocumentStatus.ACTIVE)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        messageResolver.get("document.not-found", id)));
-
-        Resource resource = fileStorageService.load(document.getFilePath());
-
-        activityLogService.record(action, audit, document.getId(), detailBuilder.apply(document));
-
-        log.debug("Documento {}: id={} format={} actor={}",
-                logVerb, document.getId(), document.getFileFormat(), audit.actorUserId());
-
-        return new DocumentFileContent(resource, document.getFileFormat(),
-                document.getOriginalFileName(), document.getFileSizeBytes());
-    }
-
     Long requireActorUserId(AuditContext audit) {
         if (audit == null) {
             throw new IllegalArgumentException("audit no puede ser null");

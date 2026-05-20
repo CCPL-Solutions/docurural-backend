@@ -3,7 +3,9 @@ package co.edu.docurural.document.controller;
 import co.edu.docurural.document.dto.BatchUploadDocumentResponse;
 import co.edu.docurural.document.dto.BatchUploadItemResult;
 import co.edu.docurural.document.service.DocumentBatchService;
-import co.edu.docurural.document.service.DocumentService;
+import co.edu.docurural.document.service.DocumentCommandService;
+import co.edu.docurural.document.service.DocumentContentService;
+import co.edu.docurural.document.service.DocumentQueryService;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.audit.AuditContextResolver;
 import co.edu.docurural.shared.config.SecurityConfig;
@@ -47,7 +49,11 @@ class DocumentBatchControllerWebMvcTest {
     MockMvc mockMvc;
 
     @MockitoBean
-    DocumentService documentService;
+    DocumentCommandService documentCommandService;
+    @MockitoBean
+    DocumentQueryService documentQueryService;
+    @MockitoBean
+    DocumentContentService documentContentService;
     @MockitoBean
     DocumentBatchService documentBatchService;
     @MockitoBean

@@ -9,7 +9,9 @@ import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.document.service.DocumentBatchService;
-import co.edu.docurural.document.service.DocumentService;
+import co.edu.docurural.document.service.DocumentCommandService;
+import co.edu.docurural.document.service.DocumentContentService;
+import co.edu.docurural.document.service.DocumentQueryService;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.audit.AuditContextResolver;
 import co.edu.docurural.shared.config.SecurityConfig;
@@ -68,7 +70,11 @@ class DocumentControllerWebMvcTest {
     MockMvc mockMvc;
 
     @MockitoBean
-    DocumentService documentService;
+    DocumentCommandService documentCommandService;
+    @MockitoBean
+    DocumentQueryService documentQueryService;
+    @MockitoBean
+    DocumentContentService documentContentService;
     @MockitoBean
     DocumentBatchService documentBatchService;
     @MockitoBean
@@ -90,7 +96,7 @@ class DocumentControllerWebMvcTest {
                 LocalDateTime.of(2026, 4, 17, 10, 20),
                 "Documento cargado exitosamente");
 
-        when(documentService.upload(any(), any(), any())).thenReturn(response);
+        when(documentCommandService.upload(any(), any(), any())).thenReturn(response);
 
         MockMultipartFile file = new MockMultipartFile("file", "acta.pdf", "application/pdf", new byte[100]);
 
@@ -143,7 +149,7 @@ class DocumentControllerWebMvcTest {
     @Test
     void upload_returns404_whenCategoryNotFoundOrInactive() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
-        when(documentService.upload(any(), any(), any()))
+        when(documentCommandService.upload(any(), any(), any()))
                 .thenThrow(new ResourceNotFoundException("document.category.not-found"));
 
         MockMultipartFile file = new MockMultipartFile("file", "acta.pdf", "application/pdf", new byte[100]);
@@ -160,7 +166,7 @@ class DocumentControllerWebMvcTest {
     @Test
     void upload_returns413_whenFileTooLarge() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
-        when(documentService.upload(any(), any(), any()))
+        when(documentCommandService.upload(any(), any(), any()))
                 .thenThrow(new BusinessRuleException(BusinessErrorCode.PAYLOAD_TOO_LARGE, "too large"));
 
         MockMultipartFile file = new MockMultipartFile("file", "big.pdf", "application/pdf", new byte[100]);
@@ -177,7 +183,7 @@ class DocumentControllerWebMvcTest {
     @Test
     void upload_returns415_whenMimeNotAllowed() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
-        when(documentService.upload(any(), any(), any()))
+        when(documentCommandService.upload(any(), any(), any()))
                 .thenThrow(new BusinessRuleException(BusinessErrorCode.UNSUPPORTED_MEDIA_TYPE, "bad mime"));
 
         MockMultipartFile file = new MockMultipartFile("file", "hack.txt", "text/plain", new byte[100]);
@@ -194,7 +200,7 @@ class DocumentControllerWebMvcTest {
     @Test
     void upload_returns500WithContractualMessage_whenStorageFails() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
-        when(documentService.upload(any(), any(), any()))
+        when(documentCommandService.upload(any(), any(), any()))
                 .thenThrow(new FileStorageException("No se pudo almacenar el archivo en el servidor"));
 
         MockMultipartFile file = new MockMultipartFile("file", "acta.pdf", "application/pdf", new byte[100]);
@@ -240,7 +246,7 @@ class DocumentControllerWebMvcTest {
                 "Descripción",
                 "Documento actualizado exitosamente");
 
-        when(documentService.updateMetadata(eq(47L), any(), any())).thenReturn(response);
+        when(documentCommandService.updateMetadata(eq(47L), any(), any())).thenReturn(response);
 
         mockMvc.perform(put("/documents/47")
                         .contentType("application/json")
@@ -281,7 +287,7 @@ class DocumentControllerWebMvcTest {
     @Test
     void updateMetadata_returns403_whenEditorTriesToEditForeignDocument() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
-        when(documentService.updateMetadata(eq(47L), any(), any()))
+        when(documentCommandService.updateMetadata(eq(47L), any(), any()))
                 .thenThrow(new BusinessRuleException(BusinessErrorCode.FORBIDDEN,
                         "No tiene permisos para editar este documento"));
 
@@ -311,7 +317,7 @@ class DocumentControllerWebMvcTest {
                 47L,
                 "Documento eliminado exitosamente");
 
-        when(documentService.deleteLogical(eq(47L), any())).thenReturn(response);
+        when(documentCommandService.deleteLogical(eq(47L), any())).thenReturn(response);
 
         mockMvc.perform(delete("/documents/47"))
                 .andExpect(status().isOk())
@@ -322,7 +328,7 @@ class DocumentControllerWebMvcTest {
     @Test
     void deleteLogical_returns404_whenDocumentNotFoundOrAlreadyDeleted() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
-        when(documentService.deleteLogical(eq(99L), any()))
+        when(documentCommandService.deleteLogical(eq(99L), any()))
                 .thenThrow(new ResourceNotFoundException("document.not-found"));
 
         mockMvc.perform(delete("/documents/99"))
@@ -348,7 +354,7 @@ class DocumentControllerWebMvcTest {
                 new DocumentDetailResponse.UploadedByRef(10L, "Ana Admin"),
                 LocalDateTime.of(2026, 4, 10, 9, 30));
 
-        when(documentService.findDetailById(48L)).thenReturn(response);
+        when(documentQueryService.findDetailById(48L)).thenReturn(response);
 
         mockMvc.perform(get("/documents/48"))
                 .andExpect(status().isOk())
@@ -363,7 +369,7 @@ class DocumentControllerWebMvcTest {
 
     @Test
     void getById_returns404_whenDocumentNotFound() throws Exception {
-        when(documentService.findDetailById(99L))
+        when(documentQueryService.findDetailById(99L))
                 .thenThrow(new ResourceNotFoundException("document.not-found"));
 
         mockMvc.perform(get("/documents/99"))
@@ -381,7 +387,7 @@ class DocumentControllerWebMvcTest {
         DocumentFileContent content = new DocumentFileContent(
                 new ByteArrayResource(pdfBytes), DocumentFormat.PDF, "acta.pdf", pdfBytes.length);
 
-        when(documentService.openForView(eq(48L), any())).thenReturn(content);
+        when(documentContentService.openForView(eq(48L), any())).thenReturn(content);
 
         mockMvc.perform(get("/documents/48/view"))
                 .andExpect(status().isOk())
@@ -399,7 +405,7 @@ class DocumentControllerWebMvcTest {
         DocumentFileContent content = new DocumentFileContent(
                 new ByteArrayResource(docxBytes), DocumentFormat.DOCX, "informe.docx", docxBytes.length);
 
-        when(documentService.openForView(eq(48L), any())).thenReturn(content);
+        when(documentContentService.openForView(eq(48L), any())).thenReturn(content);
 
         mockMvc.perform(get("/documents/48/view"))
                 .andExpect(status().isOk())
@@ -411,7 +417,7 @@ class DocumentControllerWebMvcTest {
     @Test
     void view_returns404_whenDocumentNotFound() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
-        when(documentService.openForView(eq(99L), any()))
+        when(documentContentService.openForView(eq(99L), any()))
                 .thenThrow(new ResourceNotFoundException("document.not-found"));
 
         mockMvc.perform(get("/documents/99/view"))
@@ -421,7 +427,7 @@ class DocumentControllerWebMvcTest {
     @Test
     void view_returns404_whenFileMissingOnDisk() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
-        when(documentService.openForView(eq(48L), any()))
+        when(documentContentService.openForView(eq(48L), any()))
                 .thenThrow(new ResourceNotFoundException("document.file.not-available"));
 
         mockMvc.perform(get("/documents/48/view"))
@@ -432,7 +438,7 @@ class DocumentControllerWebMvcTest {
     @Test
     void view_returns500_whenFileStorageFails() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
-        when(documentService.openForView(eq(48L), any()))
+        when(documentContentService.openForView(eq(48L), any()))
                 .thenThrow(new FileStorageException("document.file.not-available"));
 
         mockMvc.perform(get("/documents/48/view"))
@@ -451,7 +457,7 @@ class DocumentControllerWebMvcTest {
         DocumentFileContent content = new DocumentFileContent(
                 new ByteArrayResource(pdfBytes), DocumentFormat.PDF, "acta.pdf", pdfBytes.length);
 
-        when(documentService.openForDownload(eq(48L), any())).thenReturn(content);
+        when(documentContentService.openForDownload(eq(48L), any())).thenReturn(content);
 
         mockMvc.perform(get("/documents/48/download"))
                 .andExpect(status().isOk())
@@ -469,7 +475,7 @@ class DocumentControllerWebMvcTest {
         DocumentFileContent content = new DocumentFileContent(
                 new ByteArrayResource(pngBytes), DocumentFormat.PNG, "imagen.png", pngBytes.length);
 
-        when(documentService.openForDownload(eq(48L), any())).thenReturn(content);
+        when(documentContentService.openForDownload(eq(48L), any())).thenReturn(content);
 
         mockMvc.perform(get("/documents/48/download"))
                 .andExpect(status().isOk())
@@ -480,7 +486,7 @@ class DocumentControllerWebMvcTest {
     @Test
     void download_returns404_whenDocumentNotFound() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
-        when(documentService.openForDownload(eq(99L), any()))
+        when(documentContentService.openForDownload(eq(99L), any()))
                 .thenThrow(new ResourceNotFoundException("document.not-found"));
 
         mockMvc.perform(get("/documents/99/download"))
@@ -490,7 +496,7 @@ class DocumentControllerWebMvcTest {
     @Test
     void download_returns404_whenFileMissingOnDisk() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
-        when(documentService.openForDownload(eq(48L), any()))
+        when(documentContentService.openForDownload(eq(48L), any()))
                 .thenThrow(new ResourceNotFoundException("document.file.not-available"));
 
         mockMvc.perform(get("/documents/48/download"))
@@ -501,7 +507,7 @@ class DocumentControllerWebMvcTest {
     @Test
     void download_returns500_whenFileStorageFails() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
-        when(documentService.openForDownload(eq(48L), any()))
+        when(documentContentService.openForDownload(eq(48L), any()))
                 .thenThrow(new FileStorageException("document.file.load-failed"));
 
         mockMvc.perform(get("/documents/48/download"))
@@ -516,7 +522,7 @@ class DocumentControllerWebMvcTest {
         DocumentFileContent content = new DocumentFileContent(
                 new ByteArrayResource(pdfBytes), DocumentFormat.PDF, "malo\r\nInjected: bad", pdfBytes.length);
 
-        when(documentService.openForDownload(eq(48L), any())).thenReturn(content);
+        when(documentContentService.openForDownload(eq(48L), any())).thenReturn(content);
 
         mockMvc.perform(get("/documents/48/download"))
                 .andExpect(status().isOk())
@@ -541,7 +547,7 @@ class DocumentControllerWebMvcTest {
                 LocalDateTime.of(2026, 4, 10, 9, 30));
 
         DocumentListResponse listResponse = new DocumentListResponse(47, 3, 1, 20, List.of(summary));
-        when(documentService.list(isNull(), isNull(), isNull(), isNull())).thenReturn(listResponse);
+        when(documentQueryService.list(isNull(), isNull(), isNull(), isNull())).thenReturn(listResponse);
 
         mockMvc.perform(get("/documents"))
                 .andExpect(status().isOk())
@@ -558,7 +564,7 @@ class DocumentControllerWebMvcTest {
     @Test
     void list_passesQueryParamsToService() throws Exception {
         DocumentListResponse listResponse = new DocumentListResponse(0, 0, 2, 10, List.of());
-        when(documentService.list(eq(2), eq(10), eq("title"), eq("asc"))).thenReturn(listResponse);
+        when(documentQueryService.list(eq(2), eq(10), eq("title"), eq("asc"))).thenReturn(listResponse);
 
         mockMvc.perform(get("/documents")
                         .param("page", "2")
@@ -571,7 +577,7 @@ class DocumentControllerWebMvcTest {
         ArgumentCaptor<Integer> sizeCaptor = ArgumentCaptor.forClass(Integer.class);
         ArgumentCaptor<String> sortByCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> sortDirCaptor = ArgumentCaptor.forClass(String.class);
-        verify(documentService).list(pageCaptor.capture(), sizeCaptor.capture(),
+        verify(documentQueryService).list(pageCaptor.capture(), sizeCaptor.capture(),
                 sortByCaptor.capture(), sortDirCaptor.capture());
         assertThat(pageCaptor.getValue()).isEqualTo(2);
         assertThat(sizeCaptor.getValue()).isEqualTo(10);
@@ -581,7 +587,7 @@ class DocumentControllerWebMvcTest {
 
     @Test
     void list_returns400_whenServiceThrowsInvalidArgument() throws Exception {
-        when(documentService.list(any(), any(), any(), any()))
+        when(documentQueryService.list(any(), any(), any(), any()))
                 .thenThrow(new BusinessRuleException(
                         BusinessErrorCode.INVALID_ARGUMENT,
                         "El campo de ordenamiento ''fileSize'' no es soportado. Use createdAt, title o documentDate"));

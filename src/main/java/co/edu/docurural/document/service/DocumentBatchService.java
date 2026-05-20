@@ -38,7 +38,7 @@ public class DocumentBatchService {
 
     static final int MAX_FILES_PER_BATCH = 5;
 
-    private final DocumentService documentService;
+    private final DocumentCommandService documentService;
     private final CategoryRepository categoryRepository;
     private final MessageResolver messageResolver;
 
