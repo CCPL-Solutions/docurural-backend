@@ -57,7 +57,7 @@ relacionados: controller, service, repository, entidades, DTOs y mapper.
 co.edu.docurural/
 ├── auth/           Autenticación: login y logout con JWT
 ├── user/           CRUD de usuarios del sistema
-├── document/       Metadatos de documentos (Sprint 2)
+├── document/       Gestión, búsqueda y filtrado de documentos
 ├── category/       Categorías documentales
 ├── activitylog/    Log de auditoría de acciones
 └── shared/         Infraestructura transversal a todos los módulos
@@ -67,7 +67,7 @@ co.edu.docurural/
     ├── exception/  Manejador global de excepciones
     ├── audit/      Contexto de auditoría por solicitud
     ├── dto/        DTOs de uso general (ApiErrorResponse, MessageResponse)
-    └── util/       Utilidades transversales (MessageResolver)
+    └── util/       Utilidades transversales (MessageResolver, SortingValidator)
 ```
 
 ### Ventajas de package-by-feature
@@ -249,21 +249,22 @@ Cada acción relevante del sistema queda registrada en la tabla `activity_log` a
 
 ### Acciones auditables
 
-| Acción                | Cuándo se registra                        |
-|-----------------------|-------------------------------------------|
-| `LOGIN`               | Login exitoso.                            |
-| `LOGOUT`              | Cierre de sesión.                         |
-| `CREATE_USER`         | Creación de un nuevo usuario.             |
-| `EDIT_USER`           | Actualización de datos de un usuario.     |
-| `DEACTIVATE_USER`     | Cambio de estado (activar o desactivar).  |
-| `UPLOAD`              | Carga de un documento (Sprint 2).         |
-| `DOWNLOAD`            | Descarga de un documento (Sprint 2).      |
-| `VIEW`                | Visualización de un documento (Sprint 2). |
-| `EDIT_DOC`            | Edición de metadatos de un documento.     |
-| `DELETE_DOC`          | Eliminación lógica de un documento.       |
-| `CREATE_CATEGORY`     | Creación de una categoría.                |
-| `EDIT_CATEGORY`       | Edición de una categoría.                 |
-| `DEACTIVATE_CATEGORY` | Desactivación de una categoría.           |
+| Acción                | Cuándo se registra                                                                                                                                                                                                                                                                                    |
+|-----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `LOGIN`               | Login exitoso.                                                                                                                                                                                                                                                                                        |
+| `LOGOUT`              | Cierre de sesión.                                                                                                                                                                                                                                                                                     |
+| `CREATE_USER`         | Creación de un nuevo usuario.                                                                                                                                                                                                                                                                         |
+| `EDIT_USER`           | Actualización de datos de un usuario.                                                                                                                                                                                                                                                                 |
+| `DEACTIVATE_USER`     | Cambio de estado (activar o desactivar).                                                                                                                                                                                                                                                              |
+| `UPLOAD`              | Carga de un documento.                                                                                                                                                                                                                                                                                |
+| `DOWNLOAD`            | Descarga de un documento.                                                                                                                                                                                                                                                                             |
+| `VIEW`                | Visualización de un documento.                                                                                                                                                                                                                                                                        |
+| `EDIT_DOC`            | Edición de metadatos de un documento.                                                                                                                                                                                                                                                                 |
+| `DELETE_DOC`          | Eliminación lógica de un documento.                                                                                                                                                                                                                                                                   |
+| `CREATE_CATEGORY`     | Creación de una categoría.                                                                                                                                                                                                                                                                            |
+| `EDIT_CATEGORY`       | Edición de una categoría.                                                                                                                                                                                                                                                                             |
+| `DEACTIVATE_CATEGORY` | Desactivación de una categoría.                                                                                                                                                                                                                                                                       |
+| `SEARCH`              | Búsqueda por texto libre (Sprint 3, HU-20/HU-22). **Solo se registra cuando el parámetro `q` está presente**; las consultas de solo filtros (HU-21) no generan registro. `document_id` es siempre `null`. El campo `detail` incluye el término buscado, los filtros activos y el total de resultados. |
 
 ---
 

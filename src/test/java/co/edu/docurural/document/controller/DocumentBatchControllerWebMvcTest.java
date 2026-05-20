@@ -6,6 +6,7 @@ import co.edu.docurural.document.service.DocumentBatchService;
 import co.edu.docurural.document.service.DocumentCommandService;
 import co.edu.docurural.document.service.DocumentContentService;
 import co.edu.docurural.document.service.DocumentQueryService;
+import co.edu.docurural.document.service.DocumentSearchService;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.audit.AuditContextResolver;
 import co.edu.docurural.shared.config.SecurityConfig;
@@ -52,6 +53,8 @@ class DocumentBatchControllerWebMvcTest {
     DocumentCommandService documentCommandService;
     @MockitoBean
     DocumentQueryService documentQueryService;
+    @MockitoBean
+    DocumentSearchService documentSearchService;
     @MockitoBean
     DocumentContentService documentContentService;
     @MockitoBean

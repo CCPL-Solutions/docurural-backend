@@ -144,10 +144,12 @@ Metadatos de los documentos cargados al sistema.
 - `fk_documents_uploaded_by`: referencia al usuario que lo cargó.
 
 **Índices:** `idx_documents_category_id`, `idx_documents_responsible_area`, `idx_documents_uploaded_by`,
-`idx_documents_created_at`, `idx_documents_status`
+`idx_documents_created_at`, `idx_documents_status`, `idx_documents_document_date`
 
-> **Sprint 3 (planificado):** se añadirá un índice GIN con `pg_trgm` sobre `title` y `description` para búsqueda
-> full-text eficiente.
+> **Sprint 3:** se añadió `idx_documents_document_date` (migración `V5`) para acelerar los filtros por rango de fecha
+> (`dateFrom` / `dateTo`) del endpoint SRC-01. La búsqueda por texto libre se implementa con `ILIKE` (sin `pg_trgm`);
+> si en el futuro el volumen de documentos supera los 10 000 registros se recomienda agregar un índice GIN con
+> `pg_trgm` sobre `title` y `description`.
 
 ---
 
@@ -174,7 +176,7 @@ Registro de auditoría de todas las acciones realizadas por los usuarios.
 `idx_activity_log_action`
 
 > `document_id` es `NULL` para acciones que no están relacionadas con un documento específico: `LOGIN`, `LOGOUT`,
-`CREATE_USER`, `EDIT_USER`, `DEACTIVATE_USER`, `CREATE_CATEGORY`, `EDIT_CATEGORY`, `DEACTIVATE_CATEGORY`.
+`CREATE_USER`, `EDIT_USER`, `DEACTIVATE_USER`, `CREATE_CATEGORY`, `EDIT_CATEGORY`, `DEACTIVATE_CATEGORY`, `SEARCH`.
 
 ---
 
@@ -192,21 +194,22 @@ Registro de auditoría de todas las acciones realizadas por los usuarios.
 
 ## Índices
 
-| Índice                              | Tabla          | Columna(s)         | Propósito                                 |
-|-------------------------------------|----------------|--------------------|-------------------------------------------|
-| `idx_users_role`                    | `users`        | `role`             | Filtrar usuarios por rol.                 |
-| `idx_users_status`                  | `users`        | `status`           | Filtrar usuarios activos/inactivos.       |
-| `idx_categories_name`               | `categories`   | `name`             | Búsqueda y ordenamiento por nombre.       |
-| `idx_categories_status`             | `categories`   | `status`           | Filtrar categorías activas/inactivas.     |
-| `idx_documents_category_id`         | `documents`    | `category_id`      | Filtrar documentos por categoría.         |
-| `idx_documents_responsible_area`    | `documents`    | `responsible_area` | Filtrar por área responsable.             |
-| `idx_documents_uploaded_by`         | `documents`    | `uploaded_by`      | Documentos cargados por un usuario.       |
-| `idx_documents_created_at`          | `documents`    | `created_at`       | Ordenamiento cronológico.                 |
-| `idx_documents_status`              | `documents`    | `status`           | Filtrar documentos activos/eliminados.    |
-| `idx_activity_log_user_id`          | `activity_log` | `user_id`          | Historial de acciones de un usuario.      |
-| `idx_activity_log_document_id`      | `activity_log` | `document_id`      | Historial de acciones sobre un documento. |
-| `idx_activity_log_action_timestamp` | `activity_log` | `action_timestamp` | Consultas cronológicas del log.           |
-| `idx_activity_log_action`           | `activity_log` | `action`           | Filtrar por tipo de acción.               |
+| Índice                              | Tabla          | Columna(s)         | Migración | Propósito                                               |
+|-------------------------------------|----------------|--------------------|-----------|---------------------------------------------------------|
+| `idx_users_role`                    | `users`        | `role`             | V1        | Filtrar usuarios por rol.                               |
+| `idx_users_status`                  | `users`        | `status`           | V1        | Filtrar usuarios activos/inactivos.                     |
+| `idx_categories_name`               | `categories`   | `name`             | V1        | Búsqueda y ordenamiento por nombre.                     |
+| `idx_categories_status`             | `categories`   | `status`           | V1        | Filtrar categorías activas/inactivas.                   |
+| `idx_documents_category_id`         | `documents`    | `category_id`      | V1        | Filtrar documentos por categoría (SRC-01).              |
+| `idx_documents_responsible_area`    | `documents`    | `responsible_area` | V1        | Filtrar por área responsable.                           |
+| `idx_documents_uploaded_by`         | `documents`    | `uploaded_by`      | V1        | Documentos cargados por un usuario (SRC-01).            |
+| `idx_documents_created_at`          | `documents`    | `created_at`       | V1        | Ordenamiento cronológico (default sort de SRC-01).      |
+| `idx_documents_status`              | `documents`    | `status`           | V1        | Filtrar documentos activos/eliminados.                  |
+| `idx_documents_document_date`       | `documents`    | `document_date`    | V5        | Filtros por rango de fecha en SRC-01 (HU-21, Sprint 3). |
+| `idx_activity_log_user_id`          | `activity_log` | `user_id`          | V1        | Historial de acciones de un usuario.                    |
+| `idx_activity_log_document_id`      | `activity_log` | `document_id`      | V1        | Historial de acciones sobre un documento.               |
+| `idx_activity_log_action_timestamp` | `activity_log` | `action_timestamp` | V1        | Consultas cronológicas del log.                         |
+| `idx_activity_log_action`           | `activity_log` | `action`           | V1        | Filtrar por tipo de acción.                             |
 
 ---
 
@@ -246,21 +249,22 @@ Registro de auditoría de todas las acciones realizadas por los usuarios.
 
 ### `ActivityAction`
 
-| Valor                 | Descripción                                        |
-|-----------------------|----------------------------------------------------|
-| `LOGIN`               | Inicio de sesión del usuario.                      |
-| `LOGOUT`              | Cierre de sesión del usuario.                      |
-| `UPLOAD`              | Carga de un nuevo documento.                       |
-| `DOWNLOAD`            | Descarga de un documento.                          |
-| `VIEW`                | Visualización de un documento.                     |
-| `EDIT_DOC`            | Edición de metadatos de un documento.              |
-| `DELETE_DOC`          | Eliminación lógica de un documento.                |
-| `CREATE_USER`         | Creación de un nuevo usuario.                      |
-| `EDIT_USER`           | Edición de datos de un usuario existente.          |
-| `DEACTIVATE_USER`     | Cambio de estado de un usuario (activa/desactiva). |
-| `CREATE_CATEGORY`     | Creación de una nueva categoría.                   |
-| `EDIT_CATEGORY`       | Edición de una categoría existente.                |
-| `DEACTIVATE_CATEGORY` | Desactivación de una categoría.                    |
+| Valor                 | Descripción                                                                                   |
+|-----------------------|-----------------------------------------------------------------------------------------------|
+| `LOGIN`               | Inicio de sesión del usuario.                                                                 |
+| `LOGOUT`              | Cierre de sesión del usuario.                                                                 |
+| `UPLOAD`              | Carga de un nuevo documento.                                                                  |
+| `DOWNLOAD`            | Descarga de un documento.                                                                     |
+| `VIEW`                | Visualización de un documento.                                                                |
+| `EDIT_DOC`            | Edición de metadatos de un documento.                                                         |
+| `DELETE_DOC`          | Eliminación lógica de un documento.                                                           |
+| `CREATE_USER`         | Creación de un nuevo usuario.                                                                 |
+| `EDIT_USER`           | Edición de datos de un usuario existente.                                                     |
+| `DEACTIVATE_USER`     | Cambio de estado de un usuario (activa/desactiva).                                            |
+| `CREATE_CATEGORY`     | Creación de una nueva categoría.                                                              |
+| `EDIT_CATEGORY`       | Edición de una categoría existente.                                                           |
+| `DEACTIVATE_CATEGORY` | Desactivación de una categoría.                                                               |
+| `SEARCH`              | Búsqueda de documentos por texto libre (Sprint 3). Solo se registra cuando `q` está presente. |
 
 ---
 

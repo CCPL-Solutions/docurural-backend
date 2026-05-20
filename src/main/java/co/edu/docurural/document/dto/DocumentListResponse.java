@@ -5,11 +5,16 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 
 /**
- * Envelope de la respuesta paginada del listado de documentos activos (DOC-01 / HU-15).
+ * Envelope de la respuesta paginada del listado y búsqueda de documentos activos
+ * (DOC-01 / HU-15, HU-20, HU-21, HU-22).
+ *
+ * <p>{@code searchTerm} y {@code activeFilters} son {@code null} cuando no se
+ * proporciona ningún criterio de búsqueda o filtrado.
  */
-@Schema(description = "Respuesta paginada del listado de documentos — DOC-01")
+@Schema(description = "Respuesta paginada del listado o búsqueda de documentos — DOC-01 / SRC-01")
 public record DocumentListResponse(
-        @Schema(description = "Total de documentos activos en el sistema", example = "47")
+
+        @Schema(description = "Total de documentos que cumplen los criterios de búsqueda", example = "47")
         Integer totalDocuments,
 
         @Schema(description = "Total de páginas dado el tamaño solicitado", example = "3")
@@ -20,6 +25,12 @@ public record DocumentListResponse(
 
         @Schema(description = "Tamaño de página aplicado", example = "20")
         Integer pageSize,
+
+        @Schema(description = "Término de búsqueda por texto libre aplicado. Null si no se realizó búsqueda por texto.", example = "acta", nullable = true)
+        String searchTerm,
+
+        @Schema(description = "Filtros estructurados activos. Null si no se aplicaron filtros.", nullable = true)
+        ActiveFiltersResponse activeFilters,
 
         @Schema(description = "Lista de documentos en la página actual")
         List<DocumentSummaryResponse> documents
