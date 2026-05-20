@@ -19,6 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.CredentialsExpiredException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -73,7 +74,7 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(10);
+        return new BCryptPasswordEncoder(12);
     }
 
     @Bean
@@ -127,8 +128,12 @@ public class SecurityConfig {
     public AuthenticationEntryPoint authenticationEntryPoint() {
         return (request, response, authException) -> {
             AuthenticationException cause = resolveCause(request, authException);
-            String message = resolveUnauthorizedMessage(cause);
-            writeJsonError(response, HttpStatus.UNAUTHORIZED, message);
+            if (cause instanceof DisabledException) {
+                writeJsonError(response, HttpStatus.FORBIDDEN,
+                        messageResolver.get("auth.login.account-disabled"));
+            } else {
+                writeJsonError(response, HttpStatus.UNAUTHORIZED, resolveUnauthorizedMessage(cause));
+            }
         };
     }
 

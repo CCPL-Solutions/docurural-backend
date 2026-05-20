@@ -12,7 +12,9 @@ import co.edu.docurural.document.dto.UploadDocumentRequest;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.document.service.DocumentBatchService;
-import co.edu.docurural.document.service.DocumentService;
+import co.edu.docurural.document.service.DocumentCommandService;
+import co.edu.docurural.document.service.DocumentContentService;
+import co.edu.docurural.document.service.DocumentQueryService;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.audit.AuditContextResolver;
 import co.edu.docurural.shared.dto.ApiErrorResponse;
@@ -64,7 +66,9 @@ import java.util.EnumSet;
 @SecurityRequirement(name = "bearerAuth")
 public class DocumentController {
 
-    private final DocumentService documentService;
+    private final DocumentCommandService documentCommandService;
+    private final DocumentQueryService documentQueryService;
+    private final DocumentContentService documentContentService;
     private final DocumentBatchService documentBatchService;
     private final AuditContextResolver auditContextResolver;
 
@@ -104,7 +108,7 @@ public class DocumentController {
             @Parameter(name = "sortDir", description = "Dirección: asc | desc", example = "desc")
             @RequestParam(value = "sortDir", required = false) String sortDir) {
         log.debug("GET /documents page={} size={} sortBy={} sortDir={}", page, size, sortBy, sortDir);
-        return ResponseEntity.ok(documentService.list(page, size, sortBy, sortDir));
+        return ResponseEntity.ok(documentQueryService.list(page, size, sortBy, sortDir));
     }
 
     /**
@@ -131,7 +135,7 @@ public class DocumentController {
     @GetMapping("/{id}")
     public ResponseEntity<DocumentDetailResponse> getById(@PathVariable Long id) {
         log.debug("GET /documents/{}", id);
-        return ResponseEntity.ok(documentService.findDetailById(id));
+        return ResponseEntity.ok(documentQueryService.findDetailById(id));
     }
 
     /**
@@ -168,7 +172,7 @@ public class DocumentController {
             @Valid @RequestBody UpdateDocumentMetadataRequest request,
             HttpServletRequest httpRequest) {
         log.debug("PUT /documents/{}", id);
-        UpdateDocumentMetadataResponse response = documentService.updateMetadata(
+        UpdateDocumentMetadataResponse response = documentCommandService.updateMetadata(
                 id, request, auditContextResolver.resolve(httpRequest));
         return ResponseEntity.ok(response);
     }
@@ -203,7 +207,7 @@ public class DocumentController {
             @PathVariable Long id,
             HttpServletRequest httpRequest) {
         log.debug("DELETE /documents/{}", id);
-        DeleteDocumentResponse response = documentService.deleteLogical(
+        DeleteDocumentResponse response = documentCommandService.deleteLogical(
                 id, auditContextResolver.resolve(httpRequest));
         return ResponseEntity.ok(response);
     }
@@ -248,7 +252,7 @@ public class DocumentController {
     public ResponseEntity<Resource> view(@PathVariable Long id, HttpServletRequest httpRequest) {
         log.debug("GET /documents/{}/view", id);
         AuditContext audit = auditContextResolver.resolve(httpRequest);
-        DocumentFileContent content = documentService.openForView(id, audit);
+        DocumentFileContent content = documentContentService.openForView(id, audit);
 
         MediaType mediaType = mediaTypeFor(content.format());
         ContentDisposition disposition = INLINE_FORMATS.contains(content.format())
@@ -334,7 +338,7 @@ public class DocumentController {
     public ResponseEntity<Resource> download(@PathVariable Long id, HttpServletRequest httpRequest) {
         log.debug("GET /documents/{}/download", id);
         AuditContext audit = auditContextResolver.resolve(httpRequest);
-        DocumentFileContent content = documentService.openForDownload(id, audit);
+        DocumentFileContent content = documentContentService.openForDownload(id, audit);
 
         ContentDisposition disposition = ContentDisposition.attachment()
                 .filename(content.originalFileName(), StandardCharsets.UTF_8).build();
@@ -387,7 +391,7 @@ public class DocumentController {
             @RequestPart("file") MultipartFile file,
             HttpServletRequest httpRequest) {
         log.debug("POST /documents title='{}' categoryId={}", request.title(), request.categoryId());
-        UploadDocumentResponse response = documentService.upload(
+        UploadDocumentResponse response = documentCommandService.upload(
                 request, file, auditContextResolver.resolve(httpRequest));
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

@@ -1,9 +1,9 @@
 package co.edu.docurural.shared.config;
 
-import co.edu.docurural.shared.domain.entity.User;
-import co.edu.docurural.shared.domain.enums.UserRole;
-import co.edu.docurural.shared.domain.enums.UserStatus;
-import co.edu.docurural.shared.domain.repository.UserRepository;
+import co.edu.docurural.user.entity.User;
+import co.edu.docurural.user.enums.UserRole;
+import co.edu.docurural.user.enums.UserStatus;
+import co.edu.docurural.user.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;

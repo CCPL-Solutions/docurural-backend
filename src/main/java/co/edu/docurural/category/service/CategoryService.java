@@ -14,16 +14,16 @@ import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.mapper.CategoryMapper;
 import co.edu.docurural.category.repository.CategoryRepository;
-import co.edu.docurural.document.enums.DocumentStatus;
-import co.edu.docurural.document.repository.DocumentRepository;
-import co.edu.docurural.document.repository.projection.CategoryDocumentCount;
+import co.edu.docurural.document.service.DocumentQueryService;
 import co.edu.docurural.shared.audit.AuditContext;
-import co.edu.docurural.shared.domain.repository.UserRepository;
+import co.edu.docurural.user.repository.UserRepository;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.exception.ConflictException;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
+import co.edu.docurural.shared.util.FieldUpdater;
 import co.edu.docurural.shared.util.MessageResolver;
+import co.edu.docurural.shared.util.SortingValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
@@ -32,10 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Servicio de gestión de categorías documentales (CAT-01..CAT-05 / HU-16..HU-19).
@@ -50,7 +48,7 @@ public class CategoryService {
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("name", "createdAt");
 
     private final CategoryRepository categoryRepository;
-    private final DocumentRepository documentRepository;
+    private final DocumentQueryService documentQueryService;
     private final UserRepository userRepository;
     private final ActivityLogService activityLogService;
     private final MessageResolver messageResolver;
@@ -64,28 +62,17 @@ public class CategoryService {
      */
     @Transactional(readOnly = true)
     public CategoryListResponse list(String sortBy, String sortDir) {
-        String resolvedSortBy = (sortBy == null || sortBy.isBlank()) ? DEFAULT_SORT_BY : sortBy;
-        String resolvedSortDir = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir;
+        Sort sort = SortingValidator.resolveSort(
+                sortBy, sortDir,
+                ALLOWED_SORT_FIELDS, DEFAULT_SORT_BY, DEFAULT_SORT_DIR,
+                messageResolver.get("category.sort.unsupported-field", sortBy),
+                messageResolver.get("category.sort.unsupported-direction", sortDir));
 
-        if (!ALLOWED_SORT_FIELDS.contains(resolvedSortBy)) {
-            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
-                    messageResolver.get("category.sort.unsupported-field", resolvedSortBy));
-        }
-
-        Sort.Direction direction;
-        try {
-            direction = Sort.Direction.fromString(resolvedSortDir.toLowerCase(Locale.ROOT));
-        } catch (IllegalArgumentException ex) {
-            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
-                    messageResolver.get("category.sort.unsupported-direction", resolvedSortDir));
-        }
-
-        List<Category> categories = categoryRepository.findAll(Sort.by(direction, resolvedSortBy));
-        Map<Long, Long> counts = documentRepository.countActiveByCategoryId(DocumentStatus.ACTIVE).stream()
-                .collect(Collectors.toMap(CategoryDocumentCount::getCategoryId, CategoryDocumentCount::getCount));
+        List<Category> categories = categoryRepository.findAll(sort);
+        Map<Long, Long> counts = documentQueryService.getActiveCountsByCategory();
 
         log.debug("Listado de categorías: total={} sortBy={} sortDir={}",
-                categories.size(), resolvedSortBy, direction);
+                categories.size(), sortBy, sortDir);
         return CategoryMapper.toListResponse(categories, counts);
     }
 
@@ -101,12 +88,7 @@ public class CategoryService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         messageResolver.get("category.not-found", id)));
 
-        long count = documentRepository.countActiveByCategoryId(DocumentStatus.ACTIVE)
-                .stream()
-                .filter(p -> id.equals(p.getCategoryId()))
-                .map(CategoryDocumentCount::getCount)
-                .findFirst()
-                .orElse(0L);
+        long count = documentQueryService.getActiveCountsByCategory().getOrDefault(id, 0L);
 
         return CategoryMapper.toDetailResponse(category, count);
     }
@@ -174,10 +156,7 @@ public class CategoryService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         messageResolver.get("category.not-found", id)));
 
-        if (category.getStatus() == CategoryStatus.INACTIVE) {
-            throw new BusinessRuleException(BusinessErrorCode.FORBIDDEN,
-                    messageResolver.get("category.inactive.cannot-edit"));
-        }
+        category.assertEditable(messageResolver.get("category.inactive.cannot-edit"));
 
         boolean nameChanged = !request.name().equals(category.getName());
         if (nameChanged && categoryRepository.existsByNameAndIdNot(request.name(), id)) {
@@ -247,16 +226,16 @@ public class CategoryService {
     }
 
     private List<String> applyUpdates(Category category, UpdateCategoryRequest request, boolean nameChanged) {
-        List<String> modifiedFields = new ArrayList<>();
+        List<String> modifiedFields = new ArrayList<>(
+                FieldUpdater.of(category)
+                        .setIfPresent("description", request.description(),
+                                category::getDescription, category::setDescription)
+                        .changedFields());
 
+        // el nombre se valida externamente (unicidad), por eso se aplica por separado
         if (nameChanged) {
             category.setName(request.name());
-            modifiedFields.add("name");
-        }
-
-        if (request.description() != null && !request.description().equals(category.getDescription())) {
-            category.setDescription(request.description());
-            modifiedFields.add("description");
+            modifiedFields.add(0, "name");
         }
 
         return modifiedFields;

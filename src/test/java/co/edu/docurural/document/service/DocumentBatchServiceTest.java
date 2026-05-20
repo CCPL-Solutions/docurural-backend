@@ -44,7 +44,7 @@ class DocumentBatchServiceTest {
     private static final AuditContext AUDIT = new AuditContext(ACTOR_ID, "127.0.0.1");
     private static final LocalDate DOC_DATE = LocalDate.of(2026, 3, 15);
 
-    @Mock DocumentService documentService;
+    @Mock DocumentCommandService documentService;
     @Mock CategoryRepository categoryRepository;
     @Mock MessageResolver messageResolver;
 

@@ -1,7 +1,7 @@
 package co.edu.docurural.activitylog.entity;
 
 import co.edu.docurural.document.entity.Document;
-import co.edu.docurural.shared.domain.entity.User;
+import co.edu.docurural.user.entity.User;
 import co.edu.docurural.activitylog.enums.ActivityAction;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

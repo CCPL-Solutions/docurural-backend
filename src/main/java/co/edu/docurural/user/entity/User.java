@@ -1,7 +1,7 @@
-package co.edu.docurural.shared.domain.entity;
+package co.edu.docurural.user.entity;
 
-import co.edu.docurural.shared.domain.enums.UserRole;
-import co.edu.docurural.shared.domain.enums.UserStatus;
+import co.edu.docurural.user.enums.UserRole;
+import co.edu.docurural.user.enums.UserStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -64,6 +64,10 @@ public class User {
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
 
+    @Builder.Default
+    @Column(name = "token_version", nullable = false)
+    private Integer tokenVersion = 0;
+
     @PrePersist
     void onCreate() {
         if (createdAt == null) {
@@ -71,6 +75,9 @@ public class User {
         }
         if (status == null) {
             status = UserStatus.ACTIVE;
+        }
+        if (tokenVersion == null) {
+            tokenVersion = 0;
         }
     }
 }

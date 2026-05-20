@@ -1,7 +1,7 @@
 package co.edu.docurural.shared.security;
 
-import co.edu.docurural.shared.domain.entity.User;
-import co.edu.docurural.shared.domain.enums.UserRole;
+import co.edu.docurural.user.entity.User;
+import co.edu.docurural.user.enums.UserRole;
 import co.edu.docurural.shared.util.MessageResolver;
 import co.edu.docurural.support.TestFixtures;
 import com.auth0.jwt.JWT;
@@ -63,6 +63,7 @@ class JwtTokenProviderTest {
         assertThat(decoded.getSubject()).isEqualTo("1");
         assertThat(decoded.getClaim("email").asString()).isEqualTo("ana.admin@docurural.edu.co");
         assertThat(decoded.getClaim("role").asString()).isEqualTo("ADMIN");
+        assertThat(decoded.getClaim("tokver").asInt()).isEqualTo(0);
         assertThat(decoded.getIssuer()).isEqualTo(ISSUER);
         assertThat(decoded.getIssuedAt()).isNotNull();
         assertThat(decoded.getExpiresAt()).isNotNull();
@@ -88,6 +89,7 @@ class JwtTokenProviderTest {
         assertThat(parsed.getUserId()).isEqualTo(2L);
         assertThat(parsed.getEmail()).isEqualTo("erik.editor@docurural.edu.co");
         assertThat(parsed.getRole()).isEqualTo(UserRole.EDITOR);
+        assertThat(parsed.getTokenVersion()).isEqualTo(0);
 
         verify(jwtProperties, atLeastOnce()).getExpirationMs();
         verify(jwtProperties, atLeastOnce()).getIssuer();

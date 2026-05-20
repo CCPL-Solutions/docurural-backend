@@ -7,7 +7,7 @@ import co.edu.docurural.category.dto.UpdateCategoryResponse;
 import co.edu.docurural.category.dto.UpdateCategoryStatusResponse;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
-import co.edu.docurural.shared.domain.entity.User;
+import co.edu.docurural.user.entity.User;
 import co.edu.docurural.support.TestFixtures;
 import org.junit.jupiter.api.Test;
 

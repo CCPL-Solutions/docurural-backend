@@ -1,7 +1,9 @@
 package co.edu.docurural.category.entity;
 
-import co.edu.docurural.shared.domain.entity.User;
+import co.edu.docurural.user.entity.User;
 import co.edu.docurural.category.enums.CategoryStatus;
+import co.edu.docurural.shared.exception.BusinessErrorCode;
+import co.edu.docurural.shared.exception.BusinessRuleException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -58,6 +60,13 @@ public class Category {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     private User createdBy;
+
+    /** Garantiza que la categoría está ACTIVE antes de permitir edición. */
+    public void assertEditable(String errorMessage) {
+        if (this.status == CategoryStatus.INACTIVE) {
+            throw new BusinessRuleException(BusinessErrorCode.FORBIDDEN, errorMessage);
+        }
+    }
 
     @PrePersist
     void onCreate() {

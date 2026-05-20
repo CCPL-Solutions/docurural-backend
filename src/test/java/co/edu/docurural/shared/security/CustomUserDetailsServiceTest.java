@@ -1,7 +1,7 @@
 package co.edu.docurural.shared.security;
 
-import co.edu.docurural.shared.domain.entity.User;
-import co.edu.docurural.shared.domain.repository.UserRepository;
+import co.edu.docurural.user.entity.User;
+import co.edu.docurural.user.repository.UserRepository;
 import co.edu.docurural.support.TestFixtures;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

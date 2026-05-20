@@ -5,6 +5,7 @@ import co.edu.docurural.document.enums.DocumentStatus;
 import co.edu.docurural.document.repository.projection.CategoryDocumentCount;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,8 +17,10 @@ import java.util.Optional;
 @Repository
 public interface DocumentRepository extends JpaRepository<Document, Long> {
 
+    @EntityGraph(attributePaths = {"category", "uploadedBy"})
     Optional<Document> findByIdAndStatus(Long id, DocumentStatus status);
 
+    @EntityGraph(attributePaths = {"category", "uploadedBy"})
     Page<Document> findByStatus(DocumentStatus status, Pageable pageable);
 
     @Query("""

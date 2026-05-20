@@ -1,7 +1,7 @@
 package co.edu.docurural.shared.security;
 
-import co.edu.docurural.shared.domain.entity.User;
-import co.edu.docurural.shared.domain.enums.UserRole;
+import co.edu.docurural.user.entity.User;
+import co.edu.docurural.user.enums.UserRole;
 import co.edu.docurural.shared.util.MessageResolver;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
@@ -44,6 +44,7 @@ public class JwtTokenProvider {
 
     private static final String CLAIM_EMAIL = "email";
     private static final String CLAIM_ROLE = "role";
+    private static final String CLAIM_TOKEN_VERSION = "tokver";
 
     private final JwtProperties jwtProperties;
     private final MessageResolver messageResolver;
@@ -58,11 +59,13 @@ public class JwtTokenProvider {
         Instant now = Instant.now();
         Instant expiresAt = now.plusMillis(jwtProperties.getExpirationMs());
 
+        int version = user.getTokenVersion() == null ? 0 : user.getTokenVersion();
         return JWT.create()
                 .withIssuer(jwtProperties.getIssuer())
                 .withSubject(String.valueOf(user.getId()))
                 .withClaim(CLAIM_EMAIL, user.getEmail())
                 .withClaim(CLAIM_ROLE, user.getRole().name())
+                .withClaim(CLAIM_TOKEN_VERSION, version)
                 .withIssuedAt(Date.from(now))
                 .withExpiresAt(Date.from(expiresAt))
                 .sign(buildAlgorithm());
@@ -85,8 +88,9 @@ public class JwtTokenProvider {
             String email = decoded.getClaim(CLAIM_EMAIL).asString();
             String roleName = decoded.getClaim(CLAIM_ROLE).asString();
             UserRole role = UserRole.valueOf(roleName);
+            Integer tokenVersion = decoded.getClaim(CLAIM_TOKEN_VERSION).asInt();
 
-            return new ParsedJwt(userId, email, role);
+            return new ParsedJwt(userId, email, role, tokenVersion);
         } catch (TokenExpiredException ex) {
             log.debug("JWT expirado: {}", ex.getMessage());
             throw new CredentialsExpiredException(messageResolver.get("auth.session.expired"), ex);
@@ -113,11 +117,13 @@ public class JwtTokenProvider {
         private final Long userId;
         private final String email;
         private final UserRole role;
+        private final Integer tokenVersion;
 
-        public ParsedJwt(Long userId, String email, UserRole role) {
+        public ParsedJwt(Long userId, String email, UserRole role, Integer tokenVersion) {
             this.userId = userId;
             this.email = email;
             this.role = role;
+            this.tokenVersion = tokenVersion;
         }
     }
 }
