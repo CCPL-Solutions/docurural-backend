@@ -91,8 +91,7 @@ public class DocumentSearchService {
      * @param audit           contexto de auditoría con actor y dirección IP
      * @return envelope paginado con los documentos encontrados y la metadata de búsqueda/filtros
      */
-    //@Transactional(readOnly = true)
-    @Transactional()
+    @Transactional
     public DocumentListResponse search(
             String q, Long categoryId, String responsibleArea,
             LocalDate dateFrom, LocalDate dateTo, Long uploadedBy,
