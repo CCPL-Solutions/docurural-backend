@@ -74,9 +74,10 @@ co.edu.docurural/
 #### Módulo dashboard — patrón aggregator
 
 El módulo `dashboard` es una excepción deliberada al patrón estándar: no posee entidad ni repositorio propios.
-`DashboardService` es un **aggregator read-only** que ejecuta 3 consultas en una sola transacción sobre
-`DocumentRepository` y `CategoryRepository` para componer la respuesta de `GET /api/dashboard/stats` (DSH-01).
-Este diseño minimiza los roundtrips al servidor, requisito clave para conexiones lentas del entorno rural.
+`DashboardService` es un **aggregator read-only** que compone 3 bloques de datos en una sola transacción de lectura,
+realizando las consultas necesarias sobre `DocumentRepository` y `CategoryRepository` para construir la respuesta de
+`GET /api/dashboard/stats` (DSH-01). Este diseño minimiza los roundtrips al servidor, requisito clave para conexiones
+lentas del entorno rural.
 
 ### Ventajas de package-by-feature
 
