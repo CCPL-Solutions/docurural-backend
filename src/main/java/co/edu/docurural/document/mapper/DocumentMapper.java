@@ -1,5 +1,6 @@
 package co.edu.docurural.document.mapper;
 
+import co.edu.docurural.document.dto.ActiveFiltersResponse;
 import co.edu.docurural.document.dto.DeleteDocumentResponse;
 import co.edu.docurural.document.dto.DocumentDetailResponse;
 import co.edu.docurural.document.dto.DocumentListResponse;
@@ -95,6 +96,21 @@ public final class DocumentMapper {
      * @param requestedSize tamaño de página pedido por el cliente
      */
     public static DocumentListResponse toListResponse(Page<Document> page, int requestedPage, int requestedSize) {
+        return toListResponse(page, requestedPage, requestedSize, null, null);
+    }
+
+    /**
+     * Construye la respuesta paginada de búsqueda y filtrado de documentos (SRC-01 / HU-20, HU-21, HU-22).
+     *
+     * @param page          resultado de Spring Data con los documentos de la página solicitada
+     * @param requestedPage número de página 1-based pedido por el cliente
+     * @param requestedSize tamaño de página pedido por el cliente
+     * @param searchTerm    término de búsqueda por texto aplicado; {@code null} si no hubo búsqueda
+     * @param activeFilters filtros estructurados activos; {@code null} si no hubo filtros
+     */
+    public static DocumentListResponse toListResponse(
+            Page<Document> page, int requestedPage, int requestedSize,
+            String searchTerm, ActiveFiltersResponse activeFilters) {
         Objects.requireNonNull(page, "page no puede ser null");
 
         List<DocumentSummaryResponse> documents = page.getContent().stream()
@@ -106,6 +122,8 @@ public final class DocumentMapper {
                 page.getTotalPages(),
                 requestedPage,
                 requestedSize,
+                searchTerm,
+                activeFilters,
                 documents
         );
     }

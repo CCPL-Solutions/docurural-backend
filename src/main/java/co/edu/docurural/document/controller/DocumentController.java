@@ -6,6 +6,7 @@ import co.edu.docurural.document.dto.DeleteDocumentResponse;
 import co.edu.docurural.document.dto.DocumentDetailResponse;
 import co.edu.docurural.document.dto.DocumentFileContent;
 import co.edu.docurural.document.dto.DocumentListResponse;
+import co.edu.docurural.document.dto.FilterOptionsResponse;
 import co.edu.docurural.document.dto.UpdateDocumentMetadataRequest;
 import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
 import co.edu.docurural.document.dto.UploadDocumentRequest;
@@ -15,6 +16,7 @@ import co.edu.docurural.document.service.DocumentBatchService;
 import co.edu.docurural.document.service.DocumentCommandService;
 import co.edu.docurural.document.service.DocumentContentService;
 import co.edu.docurural.document.service.DocumentQueryService;
+import co.edu.docurural.document.service.DocumentSearchService;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.audit.AuditContextResolver;
 import co.edu.docurural.shared.dto.ApiErrorResponse;
@@ -31,12 +33,14 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -51,10 +55,11 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.EnumSet;
 
 /**
- * Controlador REST del módulo de Documentos (DOC-01..DOC-08 / HU-09..HU-14).
+ * Controlador REST del módulo de Documentos (DOC-01..DOC-08 / HU-09..HU-14, HU-20..HU-22).
  *
  * <p>El {@code context-path} {@code /api} se configura globalmente; el mapping incluye {@code /documents}.
  */
@@ -68,6 +73,7 @@ public class DocumentController {
 
     private final DocumentCommandService documentCommandService;
     private final DocumentQueryService documentQueryService;
+    private final DocumentSearchService documentSearchService;
     private final DocumentContentService documentContentService;
     private final DocumentBatchService documentBatchService;
     private final AuditContextResolver auditContextResolver;
@@ -76,17 +82,23 @@ public class DocumentController {
             EnumSet.of(DocumentFormat.PDF, DocumentFormat.JPG, DocumentFormat.PNG);
 
     /**
-     * DOC-01 / HU-15: lista paginada de documentos activos con ordenamiento configurable.
+     * DOC-01 / SRC-01 — HU-15, HU-20, HU-21, HU-22: lista y búsqueda paginada de documentos activos.
+     *
+     * <p>Todos los parámetros son opcionales y se combinan con AND. El parámetro {@code uploadedBy}
+     * es ignorado silenciosamente para roles EDITOR y READER.
      */
     @Operation(
-            summary = "Listar documentos activos",
-            description = "DOC-01 — HU-15. Devuelve los documentos con status=ACTIVE paginados y ordenados. "
+            summary = "Buscar y listar documentos activos",
+            description = "DOC-01 / SRC-01 — HU-15, HU-20, HU-21, HU-22. Lista paginada de documentos con "
+                    + "status=ACTIVE, con soporte de búsqueda por texto libre (q) y filtros opcionales "
+                    + "combinables con AND. El parámetro uploadedBy solo aplica para ADMIN. "
                     + "Accesible para todos los roles autenticados.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Lista de documentos retornada exitosamente",
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(implementation = DocumentListResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Parámetros de paginación u ordenamiento inválidos",
+            @ApiResponse(responseCode = "400", description = "Parámetros inválidos: q < 2 caracteres, "
+                    + "dateFrom posterior a dateTo, size > 50, o campo/dirección de ordenamiento no soportados",
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(implementation = ApiErrorResponse.class))),
             @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
@@ -99,6 +111,18 @@ public class DocumentController {
     @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'READER')")
     @GetMapping
     public ResponseEntity<DocumentListResponse> list(
+            @Parameter(name = "q", description = "Texto libre de búsqueda (2–100 caracteres). Busca en título, descripción y nombre del archivo.", example = "acta")
+            @RequestParam(value = "q", required = false) String q,
+            @Parameter(name = "categoryId", description = "ID de categoría para filtrar documentos", example = "3")
+            @RequestParam(value = "categoryId", required = false) Long categoryId,
+            @Parameter(name = "responsibleArea", description = "Área responsable (búsqueda parcial, insensible a mayúsculas)", example = "Rectoría")
+            @RequestParam(value = "responsibleArea", required = false) String responsibleArea,
+            @Parameter(name = "dateFrom", description = "Fecha mínima del documento (YYYY-MM-DD)", example = "2026-01-01")
+            @RequestParam(value = "dateFrom", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+            @Parameter(name = "dateTo", description = "Fecha máxima del documento (YYYY-MM-DD)", example = "2026-05-31")
+            @RequestParam(value = "dateTo", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
+            @Parameter(name = "uploadedBy", description = "ID del usuario que cargó el documento. Solo aplica para ADMIN; ignorado para otros roles.", example = "1")
+            @RequestParam(value = "uploadedBy", required = false) Long uploadedBy,
             @Parameter(name = "page", description = "Número de página (default 1)", example = "1")
             @RequestParam(value = "page", required = false) Integer page,
             @Parameter(name = "size", description = "Documentos por página (default 20, máx 50)", example = "20")
@@ -106,9 +130,51 @@ public class DocumentController {
             @Parameter(name = "sortBy", description = "Campo de ordenamiento: createdAt | title | documentDate", example = "createdAt")
             @RequestParam(value = "sortBy", required = false) String sortBy,
             @Parameter(name = "sortDir", description = "Dirección: asc | desc", example = "desc")
-            @RequestParam(value = "sortDir", required = false) String sortDir) {
-        log.debug("GET /documents page={} size={} sortBy={} sortDir={}", page, size, sortBy, sortDir);
-        return ResponseEntity.ok(documentQueryService.list(page, size, sortBy, sortDir));
+            @RequestParam(value = "sortDir", required = false) String sortDir,
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
+
+        boolean isAdmin = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        AuditContext audit = auditContextResolver.resolve(httpRequest);
+
+        log.debug("GET /documents q='{}' categoryId={} responsibleArea='{}' dateFrom={} dateTo={} "
+                        + "uploadedBy={} page={} size={} sortBy={} sortDir={} isAdmin={}",
+                q, categoryId, responsibleArea, dateFrom, dateTo, uploadedBy,
+                page, size, sortBy, sortDir, isAdmin);
+
+        return ResponseEntity.ok(documentSearchService.search(
+                q, categoryId, responsibleArea, dateFrom, dateTo, uploadedBy,
+                page, size, sortBy, sortDir, isAdmin, audit));
+    }
+
+    /**
+     * SRC-02 / HU-21: retorna las categorías activas y, solo para ADMIN, los usuarios activos
+     * disponibles para poblar los selectores del panel de filtros.
+     */
+    @Operation(
+            summary = "Obtener opciones de filtros",
+            description = "SRC-02 — HU-21. Retorna categorías activas ordenadas por nombre y, "
+                    + "solo para ADMIN, usuarios activos ordenados por nombre. "
+                    + "Accesible para todos los roles autenticados.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Opciones de filtro retornadas exitosamente",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = FilterOptionsResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'READER')")
+    @GetMapping("/filter-options")
+    public ResponseEntity<FilterOptionsResponse> filterOptions(Authentication authentication) {
+        boolean isAdmin = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        log.debug("GET /documents/filter-options isAdmin={}", isAdmin);
+        return ResponseEntity.ok(documentSearchService.getFilterOptions(isAdmin));
     }
 
     /**

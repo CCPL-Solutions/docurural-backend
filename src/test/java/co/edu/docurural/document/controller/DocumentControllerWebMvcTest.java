@@ -1,10 +1,12 @@
 package co.edu.docurural.document.controller;
 
+import co.edu.docurural.document.dto.ActiveFiltersResponse;
 import co.edu.docurural.document.dto.DeleteDocumentResponse;
 import co.edu.docurural.document.dto.DocumentDetailResponse;
 import co.edu.docurural.document.dto.DocumentFileContent;
 import co.edu.docurural.document.dto.DocumentListResponse;
 import co.edu.docurural.document.dto.DocumentSummaryResponse;
+import co.edu.docurural.document.dto.FilterOptionsResponse;
 import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
 import co.edu.docurural.document.dto.UploadDocumentResponse;
 import co.edu.docurural.document.enums.DocumentFormat;
@@ -12,6 +14,7 @@ import co.edu.docurural.document.service.DocumentBatchService;
 import co.edu.docurural.document.service.DocumentCommandService;
 import co.edu.docurural.document.service.DocumentContentService;
 import co.edu.docurural.document.service.DocumentQueryService;
+import co.edu.docurural.document.service.DocumentSearchService;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.audit.AuditContextResolver;
 import co.edu.docurural.shared.config.SecurityConfig;
@@ -41,6 +44,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
@@ -73,6 +77,8 @@ class DocumentControllerWebMvcTest {
     DocumentCommandService documentCommandService;
     @MockitoBean
     DocumentQueryService documentQueryService;
+    @MockitoBean
+    DocumentSearchService documentSearchService;
     @MockitoBean
     DocumentContentService documentContentService;
     @MockitoBean
@@ -530,11 +536,12 @@ class DocumentControllerWebMvcTest {
     }
 
     // ------------------------------------------------------------------
-    // GET /documents (DOC-01)
+    // GET /documents (DOC-01 / SRC-01 — HU-15, HU-20, HU-21, HU-22)
     // ------------------------------------------------------------------
 
     @Test
     void list_returns200WithEnvelope_whenServiceReturnsDocuments() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
         DocumentSummaryResponse summary = new DocumentSummaryResponse(
                 47L,
                 "Acta Consejo Directivo Marzo 2026",
@@ -546,8 +553,9 @@ class DocumentControllerWebMvcTest {
                 "Ana Admin",
                 LocalDateTime.of(2026, 4, 10, 9, 30));
 
-        DocumentListResponse listResponse = new DocumentListResponse(47, 3, 1, 20, List.of(summary));
-        when(documentQueryService.list(isNull(), isNull(), isNull(), isNull())).thenReturn(listResponse);
+        DocumentListResponse listResponse = new DocumentListResponse(47, 3, 1, 20, null, null, List.of(summary));
+        when(documentSearchService.search(any(), any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), anyBoolean(), any())).thenReturn(listResponse);
 
         mockMvc.perform(get("/documents"))
                 .andExpect(status().isOk())
@@ -555,6 +563,7 @@ class DocumentControllerWebMvcTest {
                 .andExpect(jsonPath("$.totalPages").value(3))
                 .andExpect(jsonPath("$.currentPage").value(1))
                 .andExpect(jsonPath("$.pageSize").value(20))
+                .andExpect(jsonPath("$.searchTerm").doesNotExist())
                 .andExpect(jsonPath("$.documents[0].id").value(47))
                 .andExpect(jsonPath("$.documents[0].title").value("Acta Consejo Directivo Marzo 2026"))
                 .andExpect(jsonPath("$.documents[0].category").value("Actas"))
@@ -562,23 +571,60 @@ class DocumentControllerWebMvcTest {
     }
 
     @Test
-    void list_passesQueryParamsToService() throws Exception {
-        DocumentListResponse listResponse = new DocumentListResponse(0, 0, 2, 10, List.of());
-        when(documentQueryService.list(eq(2), eq(10), eq("title"), eq("asc"))).thenReturn(listResponse);
+    void list_returns200WithSearchTermAndActiveFilters_whenQAndFiltersProvided() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        ActiveFiltersResponse filters = new ActiveFiltersResponse(3L, "Actas", null,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 5, 31), null);
+        DocumentListResponse listResponse = new DocumentListResponse(8, 1, 1, 20, "acta", filters, List.of());
+        when(documentSearchService.search(any(), any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), anyBoolean(), any())).thenReturn(listResponse);
 
         mockMvc.perform(get("/documents")
+                        .param("q", "acta")
+                        .param("categoryId", "3")
+                        .param("dateFrom", "2026-01-01")
+                        .param("dateTo", "2026-05-31"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.searchTerm").value("acta"))
+                .andExpect(jsonPath("$.activeFilters.categoryId").value(3))
+                .andExpect(jsonPath("$.activeFilters.categoryName").value("Actas"))
+                .andExpect(jsonPath("$.activeFilters.dateFrom").value("2026-01-01"))
+                .andExpect(jsonPath("$.activeFilters.dateTo").value("2026-05-31"))
+                .andExpect(jsonPath("$.totalDocuments").value(8));
+    }
+
+    @Test
+    void list_passesAllParamsToService() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        DocumentListResponse listResponse = new DocumentListResponse(0, 0, 2, 10, null, null, List.of());
+        when(documentSearchService.search(any(), any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), anyBoolean(), any())).thenReturn(listResponse);
+
+        mockMvc.perform(get("/documents")
+                        .param("q", "acta")
+                        .param("categoryId", "3")
+                        .param("responsibleArea", "Rectoría")
+                        .param("dateFrom", "2026-01-01")
+                        .param("dateTo", "2026-05-31")
+                        .param("uploadedBy", "1")
                         .param("page", "2")
                         .param("size", "10")
                         .param("sortBy", "title")
                         .param("sortDir", "asc"))
                 .andExpect(status().isOk());
 
+        ArgumentCaptor<String> qCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Long> categoryIdCaptor = ArgumentCaptor.forClass(Long.class);
         ArgumentCaptor<Integer> pageCaptor = ArgumentCaptor.forClass(Integer.class);
         ArgumentCaptor<Integer> sizeCaptor = ArgumentCaptor.forClass(Integer.class);
         ArgumentCaptor<String> sortByCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> sortDirCaptor = ArgumentCaptor.forClass(String.class);
-        verify(documentQueryService).list(pageCaptor.capture(), sizeCaptor.capture(),
-                sortByCaptor.capture(), sortDirCaptor.capture());
+        verify(documentSearchService).search(
+                qCaptor.capture(), categoryIdCaptor.capture(), any(), any(), any(), any(),
+                pageCaptor.capture(), sizeCaptor.capture(), sortByCaptor.capture(), sortDirCaptor.capture(),
+                eq(false), any());
+        assertThat(qCaptor.getValue()).isEqualTo("acta");
+        assertThat(categoryIdCaptor.getValue()).isEqualTo(3L);
         assertThat(pageCaptor.getValue()).isEqualTo(2);
         assertThat(sizeCaptor.getValue()).isEqualTo(10);
         assertThat(sortByCaptor.getValue()).isEqualTo("title");
@@ -586,8 +632,41 @@ class DocumentControllerWebMvcTest {
     }
 
     @Test
-    void list_returns400_whenServiceThrowsInvalidArgument() throws Exception {
-        when(documentQueryService.list(any(), any(), any(), any()))
+    void list_returns400_whenServiceThrowsInvalidArgumentForQ() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        when(documentSearchService.search(any(), any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), anyBoolean(), any()))
+                .thenThrow(new BusinessRuleException(
+                        BusinessErrorCode.INVALID_ARGUMENT,
+                        "Ingrese al menos 2 caracteres para buscar"));
+
+        mockMvc.perform(get("/documents").param("q", "a"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Ingrese al menos 2 caracteres para buscar"));
+    }
+
+    @Test
+    void list_returns400_whenServiceThrowsInvalidArgumentForDateRange() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        when(documentSearchService.search(any(), any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), anyBoolean(), any()))
+                .thenThrow(new BusinessRuleException(
+                        BusinessErrorCode.INVALID_ARGUMENT,
+                        "La fecha de inicio no puede ser posterior a la fecha de fin"));
+
+        mockMvc.perform(get("/documents")
+                        .param("dateFrom", "2026-05-01")
+                        .param("dateTo", "2026-04-30"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        "La fecha de inicio no puede ser posterior a la fecha de fin"));
+    }
+
+    @Test
+    void list_returns400_whenServiceThrowsInvalidArgumentForSort() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        when(documentSearchService.search(any(), any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), anyBoolean(), any()))
                 .thenThrow(new BusinessRuleException(
                         BusinessErrorCode.INVALID_ARGUMENT,
                         "El campo de ordenamiento ''fileSize'' no es soportado. Use createdAt, title o documentDate"));
@@ -596,5 +675,39 @@ class DocumentControllerWebMvcTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(
                         "El campo de ordenamiento ''fileSize'' no es soportado. Use createdAt, title o documentDate"));
+    }
+
+    // ------------------------------------------------------------------
+    // GET /documents/filter-options (SRC-02 — HU-21)
+    // ------------------------------------------------------------------
+
+    @Test
+    void filterOptions_returns200WithCategoriesAndUsers_whenAdmin() throws Exception {
+        FilterOptionsResponse response = new FilterOptionsResponse(
+                List.of(new FilterOptionsResponse.CategoryOption(1L, "Actas"),
+                        new FilterOptionsResponse.CategoryOption(2L, "Circulares")),
+                List.of(new FilterOptionsResponse.UserOption(10L, "Ana Admin")));
+        when(documentSearchService.getFilterOptions(false)).thenReturn(response);
+
+        mockMvc.perform(get("/documents/filter-options"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.categories").isArray())
+                .andExpect(jsonPath("$.categories[0].id").value(1))
+                .andExpect(jsonPath("$.categories[0].name").value("Actas"))
+                .andExpect(jsonPath("$.users[0].id").value(10))
+                .andExpect(jsonPath("$.users[0].fullName").value("Ana Admin"));
+    }
+
+    @Test
+    void filterOptions_returns200WithCategoriesAndNullUsers_whenEditor() throws Exception {
+        FilterOptionsResponse response = new FilterOptionsResponse(
+                List.of(new FilterOptionsResponse.CategoryOption(1L, "Actas")),
+                null);
+        when(documentSearchService.getFilterOptions(false)).thenReturn(response);
+
+        mockMvc.perform(get("/documents/filter-options"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.categories").isArray())
+                .andExpect(jsonPath("$.users").doesNotExist());
     }
 }
