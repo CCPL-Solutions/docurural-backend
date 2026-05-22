@@ -60,6 +60,7 @@ co.edu.docurural/
 ├── document/       Gestión, búsqueda y filtrado de documentos
 ├── category/       Categorías documentales
 ├── activitylog/    Log de auditoría de acciones
+├── dashboard/      Panel de control — endpoint agregado read-only (DSH-01)
 └── shared/         Infraestructura transversal a todos los módulos
     ├── config/     Beans de configuración de Spring
     ├── security/   Filtro JWT, proveedor de tokens, UserDetails
@@ -69,6 +70,14 @@ co.edu.docurural/
     ├── dto/        DTOs de uso general (ApiErrorResponse, MessageResponse)
     └── util/       Utilidades transversales (MessageResolver, SortingValidator)
 ```
+
+#### Módulo dashboard — patrón aggregator
+
+El módulo `dashboard` es una excepción deliberada al patrón estándar: no posee entidad ni repositorio propios.
+`DashboardService` es un **aggregator read-only** que compone 3 bloques de datos en una sola transacción de lectura,
+realizando las consultas necesarias sobre `DocumentRepository` y `CategoryRepository` para construir la respuesta de
+`GET /api/dashboard/stats` (DSH-01). Este diseño minimiza los roundtrips al servidor, requisito clave para conexiones
+lentas del entorno rural.
 
 ### Ventajas de package-by-feature
 

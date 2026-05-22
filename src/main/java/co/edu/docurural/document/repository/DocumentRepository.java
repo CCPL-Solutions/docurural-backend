@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,4 +37,24 @@ public interface DocumentRepository extends JpaRepository<Document, Long>, JpaSp
             GROUP BY d.category.id
             """)
     List<CategoryDocumentCount> countActiveByCategoryId(@Param("status") DocumentStatus status);
+
+    /** Total de documentos con el status indicado (DSH-01 / HU-24). */
+    long countByStatus(DocumentStatus status);
+
+    /**
+     * Documentos cargados desde {@code from} (primer instante del mes en curso)
+     * con el status indicado (DSH-01 / HU-24).
+     */
+    @Query("""
+            SELECT COUNT(d)
+            FROM Document d
+            WHERE d.status = :status
+              AND d.createdAt >= :from
+            """)
+    long countUploadedSince(@Param("status") DocumentStatus status,
+                            @Param("from") LocalDateTime from);
+
+    /** Últimos 10 documentos cargados con el status indicado (DSH-01 / HU-25). */
+    @EntityGraph(attributePaths = {"category", "uploadedBy"})
+    List<Document> findTop10ByStatusOrderByCreatedAtDesc(DocumentStatus status);
 }

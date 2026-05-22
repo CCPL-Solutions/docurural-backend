@@ -162,6 +162,12 @@ src/main/java/co/edu/docurural/
 │   ├── repository/        → ActivityLogRepository
 │   └── service/           → ActivityLogService
 │
+├── dashboard/             # Panel de control — endpoint agregado (DSH-01 / HU-24..HU-27)
+│   ├── controller/        → DashboardController
+│   ├── dto/               → DashboardStatsResponse, SummaryResponse, TopCategoryResponse,
+│   │                          CategoryDistributionItemResponse, RecentDocumentResponse
+│   └── service/           → DashboardService
+│
 └── shared/                # Código compartido entre módulos
     ├── config/            → SecurityConfig, CorsConfig, OpenApiConfig,
     │                          InitialAdminSeederConfig
@@ -233,6 +239,12 @@ Todos los endpoints de categorías requieren rol **`ADMIN`**.
 | `GET`  | `/documents/{id}/download`        | `ADMIN`, `EDITOR`, `READER` | HU-12          | Descarga el archivo con `Content-Disposition: attachment` y nombre original (DOC-08). Registra acción `DOWNLOAD`.                                  |
 | `POST` | `/documents`                      | `ADMIN`, `EDITOR`           | HU-09          | Carga un documento (`multipart/form-data`) con sus metadatos. Máximo 10 MB.                                                                        |
 | `POST` | `/documents/batch`                | `ADMIN`, `EDITOR`           | HU-10          | Carga hasta 5 documentos simultáneamente con metadatos comunes.                                                                                    |
+
+### Dashboard
+
+| Método | Ruta                 | Acceso                      | HU             | Descripción                                                                                                           |
+|--------|----------------------|-----------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------|
+| `GET`  | `/dashboard/stats`   | `ADMIN`, `EDITOR`, `READER` | HU-24/25/26/27 | Retorna en una sola llamada totales del repositorio, distribución por categoría y últimos 10 documentos (DSH-01). |
 
 **Almacenamiento de archivos:**
 
