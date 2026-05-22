@@ -1,7 +1,7 @@
 package co.edu.docurural.dashboard.service;
 
-import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.repository.CategoryRepository;
+import co.edu.docurural.category.repository.projection.CategoryNameView;
 import co.edu.docurural.dashboard.dto.CategoryDistributionItemResponse;
 import co.edu.docurural.dashboard.dto.DashboardStatsResponse;
 import co.edu.docurural.dashboard.dto.RecentDocumentResponse;
@@ -62,8 +62,8 @@ public class DashboardService {
                                           CategoryDocumentCount::getCount));
 
         Map<Long, String> nameByCategory = categoryRepository
-                .findAll(Sort.by("name")).stream()
-                .collect(Collectors.toMap(Category::getId, Category::getName));
+                .findAllBy(Sort.by("name")).stream()
+                .collect(Collectors.toMap(CategoryNameView::getId, CategoryNameView::getName));
 
         TopCategoryResponse topCategory = buildTopCategory(countByCategory, nameByCategory, totalActive);
         List<CategoryDistributionItemResponse> distribution =
