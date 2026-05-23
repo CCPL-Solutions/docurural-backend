@@ -13,7 +13,7 @@ import co.edu.docurural.category.dto.UpdateCategoryStatusResponse;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.repository.CategoryRepository;
-import co.edu.docurural.document.service.DocumentQueryService;
+import co.edu.docurural.category.repository.projection.CategoryCountView;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.user.repository.UserRepository;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
@@ -32,7 +32,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -57,8 +56,6 @@ class CategoryServiceTest {
     @Mock
     CategoryRepository categoryRepository;
     @Mock
-    DocumentQueryService documentQueryService;
-    @Mock
     UserRepository userRepository;
     @Mock
     ActivityLogService activityLogService;
@@ -66,7 +63,7 @@ class CategoryServiceTest {
     MessageResolver messageResolver;
 
     @InjectMocks
-    CategoryService categoryService;
+    CategoryServiceImpl categoryService;
 
     @BeforeEach
     void stubMessageResolver() {
@@ -452,8 +449,8 @@ class CategoryServiceTest {
         Category cat3 = TestFixtures.categoryInactive(5L, "Resoluciones");
 
         when(categoryRepository.findAll(any(Sort.class))).thenReturn(List.of(cat1, cat2, cat3));
-        when(documentQueryService.getActiveCountsByCategory())
-                .thenReturn(Map.of(1L, 23L, 5L, 7L));
+        when(categoryRepository.countActiveDocumentsByCategory())
+                .thenReturn(List.of(countView(1L, 23L), countView(5L, 7L)));
 
         CategoryListResponse response = categoryService.list(null, null);
 
@@ -469,7 +466,7 @@ class CategoryServiceTest {
     @Test
     void list_withDefaultParams_sortsByNameAsc() {
         when(categoryRepository.findAll(any(Sort.class))).thenReturn(List.of());
-        when(documentQueryService.getActiveCountsByCategory()).thenReturn(Map.of());
+        when(categoryRepository.countActiveDocumentsByCategory()).thenReturn(List.of());
 
         categoryService.list(null, null);
 
@@ -483,7 +480,7 @@ class CategoryServiceTest {
     @Test
     void list_withCreatedAtDesc_passesSortToRepo() {
         when(categoryRepository.findAll(any(Sort.class))).thenReturn(List.of());
-        when(documentQueryService.getActiveCountsByCategory()).thenReturn(Map.of());
+        when(categoryRepository.countActiveDocumentsByCategory()).thenReturn(List.of());
 
         categoryService.list("createdAt", "desc");
 
@@ -501,7 +498,7 @@ class CategoryServiceTest {
                 .extracting(ex -> ((BusinessRuleException) ex).getCode())
                 .isEqualTo(BusinessErrorCode.INVALID_ARGUMENT);
 
-        verifyNoInteractions(categoryRepository, documentQueryService);
+        verifyNoInteractions(categoryRepository, activityLogService);
     }
 
     @Test
@@ -517,7 +514,7 @@ class CategoryServiceTest {
     @Test
     void list_returnsEmptyResponse_whenNoCategories() {
         when(categoryRepository.findAll(any(Sort.class))).thenReturn(List.of());
-        when(documentQueryService.getActiveCountsByCategory()).thenReturn(Map.of());
+        when(categoryRepository.countActiveDocumentsByCategory()).thenReturn(List.of());
 
         CategoryListResponse response = categoryService.list(null, null);
 
@@ -531,7 +528,7 @@ class CategoryServiceTest {
     void list_categoriesWithoutActiveDocuments_haveCountZero() {
         when(categoryRepository.findAll(any(Sort.class)))
                 .thenReturn(List.of(TestFixtures.categoryActive(1L, "Actas")));
-        when(documentQueryService.getActiveCountsByCategory()).thenReturn(Map.of());
+        when(categoryRepository.countActiveDocumentsByCategory()).thenReturn(List.of());
 
         CategoryListResponse response = categoryService.list(null, null);
 
@@ -546,8 +543,7 @@ class CategoryServiceTest {
     void findById_returnsDetail_withDocumentCount() {
         Category category = TestFixtures.categoryActive(1L, "Actas", "Actas de reuniones");
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
-        when(documentQueryService.getActiveCountsByCategory())
-                .thenReturn(Map.of(1L, 15L));
+        when(categoryRepository.countActiveDocumentsByCategoryId(1L)).thenReturn(15L);
 
         CategoryDetailResponse response = categoryService.findById(1L);
 
@@ -562,7 +558,7 @@ class CategoryServiceTest {
     void findById_returnsZeroCount_whenCategoryHasNoActiveDocuments() {
         when(categoryRepository.findById(2L))
                 .thenReturn(Optional.of(TestFixtures.categoryActive(2L, "Resoluciones")));
-        when(documentQueryService.getActiveCountsByCategory()).thenReturn(Map.of());
+        when(categoryRepository.countActiveDocumentsByCategoryId(2L)).thenReturn(0L);
 
         CategoryDetailResponse response = categoryService.findById(2L);
 
@@ -575,5 +571,16 @@ class CategoryServiceTest {
 
         assertThatThrownBy(() -> categoryService.findById(99L))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    // ------------------------------------------------------------------
+    // Helpers
+    // ------------------------------------------------------------------
+
+    private static CategoryCountView countView(Long categoryId, long count) {
+        return new CategoryCountView() {
+            @Override public Long getCategoryId() { return categoryId; }
+            @Override public Long getCount() { return count; }
+        };
     }
 }

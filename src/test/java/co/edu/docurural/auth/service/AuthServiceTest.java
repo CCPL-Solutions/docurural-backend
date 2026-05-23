@@ -60,7 +60,7 @@ class AuthServiceTest {
     MessageResolver messageResolver;
 
     @InjectMocks
-    AuthService authService;
+    AuthServiceImpl authService;
 
     @BeforeEach
     void stubMessageResolver() {

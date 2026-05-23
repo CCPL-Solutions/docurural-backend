@@ -8,7 +8,6 @@ import co.edu.docurural.activitylog.repository.ActivityLogRepository;
 import co.edu.docurural.document.repository.DocumentRepository;
 import co.edu.docurural.user.repository.UserRepository;
 import co.edu.docurural.support.TestFixtures;
-import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,10 +20,12 @@ import org.springframework.context.MessageSource;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -42,7 +43,7 @@ class ActivityLogServiceTest {
     MessageSource messageSource;
 
     @InjectMocks
-    ActivityLogService activityLogService;
+    ActivityLogServiceImpl activityLogService;
 
     @BeforeEach
     void stubMessageSource() {
@@ -51,7 +52,7 @@ class ActivityLogServiceTest {
     }
 
     // ------------------------------------------------------------------
-    // Guard clauses
+    // Guard clauses — siguen lanzando (errores de programación)
     // ------------------------------------------------------------------
 
     @Test
@@ -84,28 +85,34 @@ class ActivityLogServiceTest {
         verifyNoInteractions(activityLogRepository, userRepository, documentRepository);
     }
 
+    // ------------------------------------------------------------------
+    // Errores de datos — se absorben para no revertir la operación padre
+    // ------------------------------------------------------------------
+
     @Test
-    void record_withMissingUser_throwsResourceNotFound() {
+    void record_withMissingUser_logsErrorAndDoesNotPersist() {
         when(userRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> activityLogService.record(
+        // NO debe lanzar — el fallo de auditoría no debe propagarse al llamador
+        assertThatCode(() -> activityLogService.record(
                 ActivityAction.LOGIN, new AuditContext(99L, "203.0.113.10"), null, "detail"))
-                .isInstanceOf(ResourceNotFoundException.class);
+                .doesNotThrowAnyException();
 
-        verifyNoInteractions(activityLogRepository, documentRepository);
+        verify(activityLogRepository, never()).save(any());
+        verifyNoInteractions(documentRepository);
     }
 
     @Test
-    void record_withDocumentId_andMissingDocument_throwsResourceNotFound() {
+    void record_withDocumentId_andMissingDocument_logsErrorAndDoesNotPersist() {
         User user = TestFixtures.userEditor(5L);
         when(userRepository.findById(5L)).thenReturn(Optional.of(user));
         when(documentRepository.findById(77L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> activityLogService.record(
+        assertThatCode(() -> activityLogService.record(
                 ActivityAction.DOWNLOAD, new AuditContext(5L, "203.0.113.10"), 77L, "detail"))
-                .isInstanceOf(ResourceNotFoundException.class);
+                .doesNotThrowAnyException();
 
-        verifyNoInteractions(activityLogRepository);
+        verify(activityLogRepository, never()).save(any());
     }
 
     @Test
@@ -145,19 +152,17 @@ class ActivityLogServiceTest {
     // ------------------------------------------------------------------
 
     @Test
-    void record_withoutDocumentAndValidUser_persistsAndReturnsSavedEntity() {
+    void record_withoutDocumentAndValidUser_persistsEntry() {
         User user = TestFixtures.userEditor(5L);
         when(userRepository.findById(5L)).thenReturn(Optional.of(user));
         when(activityLogRepository.save(any(ActivityLog.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
-        ActivityLog result = activityLogService.record(
+        activityLogService.record(
                 ActivityAction.CREATE_USER,
                 new AuditContext(5L, "127.0.0.1"),
                 null,
                 "Usuario creado: 99");
-
-        assertThat(result).isNotNull();
 
         ArgumentCaptor<ActivityLog> captor = ArgumentCaptor.forClass(ActivityLog.class);
         verify(activityLogRepository).save(captor.capture());
@@ -169,7 +174,5 @@ class ActivityLogServiceTest {
         assertThat(saved.getIpAddress()).isEqualTo("127.0.0.1");
 
         verifyNoInteractions(documentRepository);
-        // el servicio retorna lo que devuelve save
-        assertThat(result).isSameAs(saved);
     }
 }

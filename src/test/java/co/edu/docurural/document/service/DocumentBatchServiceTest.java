@@ -48,7 +48,7 @@ class DocumentBatchServiceTest {
     @Mock CategoryRepository categoryRepository;
     @Mock MessageResolver messageResolver;
 
-    @InjectMocks DocumentBatchService batchService;
+    @InjectMocks DocumentBatchServiceImpl batchService;
 
     @BeforeEach
     void stubCommon() {
@@ -56,7 +56,6 @@ class DocumentBatchServiceTest {
                 .thenAnswer(inv -> inv.getArgument(0));
         lenient().when(messageResolver.get(anyString(), any()))
                 .thenAnswer(inv -> inv.getArgument(0));
-        lenient().when(documentService.requireActorUserId(AUDIT)).thenReturn(ACTOR_ID);
     }
 
     // ------------------------------------------------------------------
@@ -261,10 +260,9 @@ class DocumentBatchServiceTest {
 
     @Test
     void uploadBatch_throwsIllegalArgument_whenAuditIsNull() {
-        when(documentService.requireActorUserId(null)).thenThrow(new IllegalArgumentException("audit no puede ser null"));
-
         assertThatThrownBy(() -> batchService.uploadBatch(request(1L, null), new MultipartFile[]{pdf("f.pdf")}, null))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("audit no puede ser null");
     }
 
     // ------------------------------------------------------------------

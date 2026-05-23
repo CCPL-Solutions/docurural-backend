@@ -52,7 +52,7 @@ class DocumentContentServiceTest {
     MessageResolver messageResolver;
 
     @InjectMocks
-    DocumentContentService documentContentService;
+    DocumentContentServiceImpl documentContentService;
 
     @BeforeEach
     void stubMessageResolver() {

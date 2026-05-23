@@ -1,7 +1,7 @@
 package co.edu.docurural.dashboard.service;
 
-import co.edu.docurural.category.repository.CategoryRepository;
 import co.edu.docurural.category.repository.projection.CategoryNameView;
+import co.edu.docurural.category.service.CategoryService;
 import co.edu.docurural.dashboard.dto.CategoryDistributionItemResponse;
 import co.edu.docurural.dashboard.dto.DashboardStatsResponse;
 import co.edu.docurural.document.entity.Document;
@@ -31,10 +31,10 @@ class DashboardServiceTest {
     @Mock
     DocumentRepository documentRepository;
     @Mock
-    CategoryRepository categoryRepository;
+    CategoryService categoryService;
 
     @InjectMocks
-    DashboardService dashboardService;
+    DashboardServiceImpl dashboardService;
 
     // -------------------------------------------------------------------------
     // Helpers de stub
@@ -48,7 +48,7 @@ class DashboardServiceTest {
                 .thenReturn(List.of());
         when(documentRepository.findTop10ByStatusOrderByCreatedAtDesc(DocumentStatus.ACTIVE))
                 .thenReturn(List.of());
-        when(categoryRepository.findAllBy(any(Sort.class))).thenReturn(List.of());
+        when(categoryService.findAllCategoryNames(any(Sort.class))).thenReturn(List.of());
     }
 
     /** Projection anónima para simular el resultado del GROUP BY. */
@@ -100,7 +100,7 @@ class DashboardServiceTest {
                 .thenReturn(List.of(countRow(1L, 18L), countRow(2L, 11L)));
         when(documentRepository.findTop10ByStatusOrderByCreatedAtDesc(DocumentStatus.ACTIVE))
                 .thenReturn(List.of(doc));
-        when(categoryRepository.findAllBy(any(Sort.class)))
+        when(categoryService.findAllCategoryNames(any(Sort.class)))
                 .thenReturn(List.of(nameView(1L, "Actas"), nameView(2L, "Informes")));
 
         DashboardStatsResponse result = dashboardService.getStats();
@@ -119,7 +119,6 @@ class DashboardServiceTest {
 
     @Test
     void getStats_calculatesPercentagesWithTwoDecimals() {
-        // Valores del ejemplo de la spec: {18,11,8,6,4}/47
         when(documentRepository.countByStatus(DocumentStatus.ACTIVE)).thenReturn(47L);
         when(documentRepository.countUploadedSince(eq(DocumentStatus.ACTIVE), any(LocalDateTime.class)))
                 .thenReturn(0L);
@@ -129,7 +128,7 @@ class DashboardServiceTest {
                         countRow(4L, 6L), countRow(5L, 4L)));
         when(documentRepository.findTop10ByStatusOrderByCreatedAtDesc(DocumentStatus.ACTIVE))
                 .thenReturn(List.of());
-        when(categoryRepository.findAllBy(any(Sort.class)))
+        when(categoryService.findAllCategoryNames(any(Sort.class)))
                 .thenReturn(List.of(
                         nameView(1L, "Actas"), nameView(2L, "Circulares"),
                         nameView(3L, "Contratos"), nameView(4L, "Informes"), nameView(5L, "PRAE")));
@@ -137,7 +136,6 @@ class DashboardServiceTest {
         DashboardStatsResponse result = dashboardService.getStats();
 
         List<CategoryDistributionItemResponse> dist = result.categoryDistribution();
-        // Primer elemento debe ser Actas (mayor count)
         assertThat(dist.get(0).categoryName()).isEqualTo("Actas");
         assertThat(dist.get(0).percentage()).isEqualTo(38.30);
         assertThat(dist.get(1).percentage()).isEqualTo(23.40);
@@ -155,12 +153,11 @@ class DashboardServiceTest {
         when(documentRepository.countByStatus(DocumentStatus.ACTIVE)).thenReturn(10L);
         when(documentRepository.countUploadedSince(eq(DocumentStatus.ACTIVE), any(LocalDateTime.class)))
                 .thenReturn(0L);
-        // Solo la categoría 1 tiene documentos
         when(documentRepository.countActiveByCategoryId(DocumentStatus.ACTIVE))
                 .thenReturn(List.of(countRow(1L, 10L)));
         when(documentRepository.findTop10ByStatusOrderByCreatedAtDesc(DocumentStatus.ACTIVE))
                 .thenReturn(List.of());
-        when(categoryRepository.findAllBy(any(Sort.class)))
+        when(categoryService.findAllCategoryNames(any(Sort.class)))
                 .thenReturn(List.of(nameView(1L, "Actas"), nameView(2L, "Sin Documentos")));
 
         DashboardStatsResponse result = dashboardService.getStats();
@@ -182,7 +179,7 @@ class DashboardServiceTest {
                 .thenReturn(List.of(countRow(99L, 3L)));
         when(documentRepository.findTop10ByStatusOrderByCreatedAtDesc(DocumentStatus.ACTIVE))
                 .thenReturn(List.of());
-        when(categoryRepository.findAllBy(any(Sort.class)))
+        when(categoryService.findAllCategoryNames(any(Sort.class)))
                 .thenReturn(List.of(nameView(99L, "Categoría Inactiva")));
 
         DashboardStatsResponse result = dashboardService.getStats();
@@ -209,7 +206,7 @@ class DashboardServiceTest {
                 .thenReturn(List.of(countRow(1L, 1L)));
         when(documentRepository.findTop10ByStatusOrderByCreatedAtDesc(DocumentStatus.ACTIVE))
                 .thenReturn(List.of(doc));
-        when(categoryRepository.findAllBy(any(Sort.class)))
+        when(categoryService.findAllCategoryNames(any(Sort.class)))
                 .thenReturn(List.of(nameView(1L, "Actas")));
 
         DashboardStatsResponse result = dashboardService.getStats();
@@ -237,7 +234,7 @@ class DashboardServiceTest {
                 .thenReturn(List.of(countRow(3L, 7L), countRow(1L, 5L), countRow(2L, 3L)));
         when(documentRepository.findTop10ByStatusOrderByCreatedAtDesc(DocumentStatus.ACTIVE))
                 .thenReturn(List.of());
-        when(categoryRepository.findAllBy(any(Sort.class)))
+        when(categoryService.findAllCategoryNames(any(Sort.class)))
                 .thenReturn(List.of(nameView(1L, "A"), nameView(2L, "B"), nameView(3L, "C")));
 
         DashboardStatsResponse result = dashboardService.getStats();

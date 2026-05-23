@@ -70,7 +70,7 @@ class DocumentCommandServiceTest {
     MessageResolver messageResolver;
 
     @InjectMocks
-    DocumentCommandService documentCommandService;
+    DocumentCommandServiceImpl documentCommandService;
 
     @BeforeEach
     void stubMessageResolver() {

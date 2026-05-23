@@ -49,6 +49,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
+
     private static final Long ADMIN_ID = 1L;
     private static final AuditContext AUDIT_ADMIN = new AuditContext(ADMIN_ID, "203.0.113.10");
 
@@ -62,7 +63,7 @@ class UserServiceTest {
     MessageResolver messageResolver;
 
     @InjectMocks
-    UserService userService;
+    UserServiceImpl userService;
 
     @BeforeEach
     void stubMessageResolver() {

@@ -43,7 +43,7 @@ class DocumentQueryServiceTest {
     ActivityLogService activityLogService;
 
     @InjectMocks
-    DocumentQueryService documentQueryService;
+    DocumentQueryServiceImpl documentQueryService;
 
     @BeforeEach
     void stubMessageResolver() {

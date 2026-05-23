@@ -61,7 +61,7 @@ class DocumentSearchServiceTest {
     MessageResolver messageResolver;
 
     @InjectMocks
-    DocumentSearchService documentSearchService;
+    DocumentSearchServiceImpl documentSearchService;
 
     @BeforeEach
     void stubMessageResolver() {

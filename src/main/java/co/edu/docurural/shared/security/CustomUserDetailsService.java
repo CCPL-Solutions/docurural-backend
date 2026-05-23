@@ -44,11 +44,6 @@ public class CustomUserDetailsService implements UserDetailsService {
                     return new UsernameNotFoundException("User not found");
                 });
 
-        return new CustomUserPrincipal(
-                user.getId(),
-                user.getEmail(),
-                user.getRole(),
-                user.getStatus(),
-                user.getPasswordHash());
+        return CustomUserPrincipal.forAuthentication(user);
     }
 }
