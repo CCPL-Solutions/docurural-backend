@@ -434,7 +434,7 @@ class UserServiceTest {
         assertThat(userCaptor.getValue().getStatus()).isEqualTo(UserStatus.ACTIVE);
 
         verify(activityLogService).record(
-                eq(ActivityAction.DEACTIVATE_USER),
+                eq(ActivityAction.ACTIVATE_USER),
                 eq(AUDIT_ADMIN),
                 isNull(),
                 eq("Nuevo estado: ACTIVE"));

@@ -167,8 +167,11 @@ public class UserServiceImpl implements UserService {
                 ? messageResolver.get("user.activated.success")
                 : messageResolver.get("user.deactivated.success");
 
+        ActivityAction statusAction = newStatus == UserStatus.ACTIVE
+                ? ActivityAction.ACTIVATE_USER
+                : ActivityAction.DEACTIVATE_USER;
         activityLogService.record(
-                ActivityAction.DEACTIVATE_USER,
+                statusAction,
                 audit,
                 null,
                 "Nuevo estado: " + newStatus.name());

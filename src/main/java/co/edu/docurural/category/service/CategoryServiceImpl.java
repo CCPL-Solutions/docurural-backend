@@ -170,8 +170,11 @@ public class CategoryServiceImpl implements CategoryService {
                 ? messageResolver.get("category.activated.success")
                 : messageResolver.get("category.deactivated.success");
 
+        ActivityAction statusAction = newStatus == CategoryStatus.ACTIVE
+                ? ActivityAction.ACTIVATE_CATEGORY
+                : ActivityAction.DEACTIVATE_CATEGORY;
         activityLogService.record(
-                ActivityAction.DEACTIVATE_CATEGORY,
+                statusAction,
                 audit,
                 null,
                 "Estado cambiado a " + newStatus.name());

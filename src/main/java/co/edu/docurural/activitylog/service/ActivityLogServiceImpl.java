@@ -6,6 +6,7 @@ import co.edu.docurural.activitylog.repository.ActivityLogRepository;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.repository.DocumentRepository;
 import co.edu.docurural.shared.audit.AuditContext;
+import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.user.entity.User;
 import co.edu.docurural.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -48,13 +49,13 @@ public class ActivityLogServiceImpl implements ActivityLogService {
 
         try {
             User user = userRepository.findById(audit.actorUserId())
-                    .orElseThrow(() -> new RuntimeException(
+                    .orElseThrow(() -> new ResourceNotFoundException(
                             resolve("user.not-found", audit.actorUserId())));
 
             Document document = null;
             if (documentId != null) {
                 document = documentRepository.findById(documentId)
-                        .orElseThrow(() -> new RuntimeException(
+                        .orElseThrow(() -> new ResourceNotFoundException(
                                 resolve("document.not-found", documentId)));
             }
 
@@ -70,8 +71,8 @@ public class ActivityLogServiceImpl implements ActivityLogService {
             log.debug("activity_log registrado: id={} action={} userId={} documentId={}",
                     saved.getId(), action, audit.actorUserId(), documentId);
         } catch (Exception ex) {
-            log.error("[AUDIT_FAILED] No se pudo registrar auditoría [action={} actorId={}]: {}",
-                    action, audit.actorUserId(), ex.getMessage());
+            log.error("[AUDIT_FAILED] No se pudo registrar auditoría [action={} actorId={}]",
+                    action, audit.actorUserId(), ex);
         }
     }
 

@@ -47,18 +47,18 @@ Instanciar directamente con `Mappers.getMapper(XyzMapper.class)`. Verificar que 
 
 ## Nombrado de tests
 
-Formato obligatorio: `should_<comportamientoEsperado>_when_<condición>`
+Formato obligatorio: `<accion>_<contexto>_<resultado>`
 
 ```java
 
 @Test
-void should_returnToken_when_credentialsAreValid() { ...}
+void uploadBatch_returnsAllSuccessful_whenAllFilesValid() { ...}
 
 @Test
-void should_throwResourceNotFoundException_when_documentIdDoesNotExist() { ...}
+void search_returns400_whenQHasOneChar() { ...}
 
 @Test
-void should_forbidEdit_when_editorIsNotOwner() { ...}
+void create_persistsAndLogs_whenNameIsUnique() { ...}
 ```
 
 ## Fixtures y builders

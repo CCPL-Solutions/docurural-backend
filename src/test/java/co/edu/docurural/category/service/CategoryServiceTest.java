@@ -385,7 +385,7 @@ class CategoryServiceTest {
         assertThat(response.message()).isEqualTo("category.activated.success");
 
         verify(activityLogService).record(
-                eq(ActivityAction.DEACTIVATE_CATEGORY),
+                eq(ActivityAction.ACTIVATE_CATEGORY),
                 eq(AUDIT_ADMIN),
                 isNull(),
                 eq("Estado cambiado a ACTIVE"));

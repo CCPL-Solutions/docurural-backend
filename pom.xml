@@ -174,21 +174,10 @@
 				<configuration>
 					<excludes>
 						<exclude>**/DocururalBackendApplication.class</exclude>
-					<exclude>**/mapper/**</exclude>
-						<exclude>**/shared/config/**</exclude>
-						<exclude>**/shared/security/SecurityConstants.class</exclude>
-						<exclude>**/shared/security/JwtProperties.class</exclude>
-						<exclude>**/shared/security/CustomUserPrincipal.class</exclude>
-						<exclude>**/audit/**</exclude>
-						<exclude>**/util/**</exclude>
 						<exclude>**/dto/**</exclude>
 						<exclude>**/entity/**</exclude>
 						<exclude>**/enums/**</exclude>
-						<exclude>**/repository/**</exclude>
-						<exclude>**/exception/BusinessRuleException.class</exclude>
-						<exclude>**/exception/ConflictException.class</exclude>
-						<exclude>**/exception/ResourceNotFoundException.class</exclude>
-						<exclude>**/exception/FileStorageException.class</exclude>
+						<exclude>**/repository/projection/**</exclude>
 					</excludes>
 				</configuration>
 				<executions>
@@ -219,6 +208,11 @@
 											<counter>LINE</counter>
 											<value>COVEREDRATIO</value>
 											<minimum>0.80</minimum>
+										</limit>
+										<limit>
+											<counter>BRANCH</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.65</minimum>
 										</limit>
 									</limits>
 								</rule>
