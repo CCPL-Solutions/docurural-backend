@@ -46,4 +46,20 @@ public final class FileNameSanitizer {
         }
         return cleaned.length() <= 255 ? cleaned : cleaned.substring(0, 255);
     }
+
+    /**
+     * Enmascara un correo electrónico para logs operacionales.
+     * Muestra solo el primer carácter de la parte local y el dominio completo.
+     * Ejemplo: {@code admin@docurural.edu.co} → {@code a***@docurural.edu.co}
+     */
+    public static String maskEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return "***";
+        }
+        int atIndex = email.indexOf('@');
+        if (atIndex <= 0) {
+            return email.charAt(0) + "***";
+        }
+        return email.charAt(0) + "***" + email.substring(atIndex);
+    }
 }

@@ -1,6 +1,7 @@
 package co.edu.docurural.user.controller;
 
 import co.edu.docurural.shared.audit.AuditContextResolver;
+import co.edu.docurural.shared.util.FileNameSanitizer;
 import co.edu.docurural.user.dto.CreateUserResponseDto;
 import co.edu.docurural.user.dto.UpdateStatusResponseDto;
 import co.edu.docurural.user.service.UserService;
@@ -133,7 +134,7 @@ public class UserController {
     public ResponseEntity<CreateUserResponseDto> create(
             @Valid @RequestBody CreateUserRequestDto request,
             HttpServletRequest httpRequest) {
-        log.debug("POST /users email={}", request.email());
+        log.debug("POST /users email={}", FileNameSanitizer.maskEmail(request.email()));
         CreateUserResponseDto response = userService.create(request, auditContextResolver.resolve(httpRequest));
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

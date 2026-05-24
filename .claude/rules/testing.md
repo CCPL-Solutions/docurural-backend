@@ -90,25 +90,14 @@ DocumentMapper documentMapper = Mappers.getMapper(DocumentMapper.class);
 
 ## JaCoCo — clases excluidas de cobertura
 
-Las siguientes clases están excluidas del umbral del 80% (configurado en `pom.xml`):
+Las siguientes clases están excluidas del umbral (configurado en `pom.xml`):
 
 ```
-**/mapper/**
-**/shared/config/**
-**/shared/security/SecurityConstants
-**/shared/security/JwtProperties
-**/shared/security/CustomUserPrincipal
-**/audit/**
-**/util/**
 **/dto/**
 **/entity/**
 **/enums/**
-**/repository/**
-BusinessRuleException
-ConflictException
-ResourceNotFoundException
-FileStorageException
+**/repository/projection/**
 DocururalBackendApplication
 ```
 
-Umbral: **≥80% cobertura de líneas (BUNDLE)**. Verificar con `./mvnw clean verify`.
+Umbrales: **≥80% líneas (LINE)** y **≥65% ramas (BRANCH)** a nivel BUNDLE. Verificar con `./mvnw clean verify`.

@@ -5,6 +5,7 @@ import co.edu.docurural.auth.dto.LoginRequestDto;
 import co.edu.docurural.auth.dto.LoginResponseDto;
 import co.edu.docurural.shared.audit.AuditContextResolver;
 import co.edu.docurural.shared.dto.ApiErrorResponseDto;
+import co.edu.docurural.shared.util.FileNameSanitizer;
 import co.edu.docurural.shared.dto.MessageResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -66,7 +67,7 @@ public class AuthController {
     public ResponseEntity<LoginResponseDto> login(
             @Valid @RequestBody LoginRequestDto request,
             HttpServletRequest httpRequest) {
-        log.debug("POST /auth/login email={}", request.email());
+        log.debug("POST /auth/login email={}", FileNameSanitizer.maskEmail(request.email()));
         LoginResponseDto response = authService.login(request, auditContextResolver.resolve(httpRequest));
         return ResponseEntity.ok(response);
     }

@@ -12,6 +12,7 @@ import co.edu.docurural.shared.dto.MessageResponseDto;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.shared.security.JwtProperties;
 import co.edu.docurural.shared.security.JwtTokenProvider;
+import co.edu.docurural.shared.util.FileNameSanitizer;
 import co.edu.docurural.shared.util.MessageResolver;
 import co.edu.docurural.user.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
@@ -82,7 +83,7 @@ public class AuthServiceImpl implements AuthService {
                 null,
                 LOGIN_DETAIL);
 
-        log.info("Login exitoso para userId={} email={}", savedUser.getId(), normalizedEmail);
+        log.info("Login exitoso para userId={} email={}", savedUser.getId(), FileNameSanitizer.maskEmail(normalizedEmail));
 
         UserSummaryDto summary = userMapper.toSummary(savedUser);
         return LoginResponseDto.bearer(token, expiresInSeconds, summary);
