@@ -112,12 +112,8 @@ public class DocumentBatchServiceImpl implements DocumentBatchService {
         return fallback;
     }
 
-    private void requireActorUserId(AuditContext audit) {
-        if (audit == null) {
-            throw new IllegalArgumentException("audit no puede ser null");
-        }
-        if (audit.actorUserId() == null) {
-            throw new IllegalArgumentException("audit.actorUserId no puede ser null");
-        }
+    private static void requireActorUserId(AuditContext audit) {
+        if (audit == null) throw new IllegalArgumentException("audit no puede ser null");
+        audit.requireActorUserId();
     }
 }

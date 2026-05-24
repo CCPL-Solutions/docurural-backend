@@ -31,4 +31,19 @@ public final class FileNameSanitizer {
         }
         return cleaned.length() > MAX_LENGTH ? cleaned.substring(0, MAX_LENGTH) : cleaned;
     }
+
+    /**
+     * Sanitiza un nombre de archivo para su uso en cabeceras HTTP.
+     * Elimina caracteres de control, barras y recorta a 255 caracteres.
+     */
+    public static String forHttpHeader(String filename) {
+        if (filename == null || filename.isBlank()) {
+            return FALLBACK;
+        }
+        String cleaned = filename.replaceAll("\\p{Cntrl}", "").replace("/", "").replace("\\", "").trim();
+        if (cleaned.isEmpty()) {
+            return FALLBACK;
+        }
+        return cleaned.length() <= 255 ? cleaned : cleaned.substring(0, 255);
+    }
 }

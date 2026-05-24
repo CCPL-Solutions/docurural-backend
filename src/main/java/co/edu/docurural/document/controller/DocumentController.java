@@ -11,7 +11,6 @@ import co.edu.docurural.document.dto.UpdateDocumentMetadataRequestDto;
 import co.edu.docurural.document.dto.UpdateDocumentMetadataResponseDto;
 import co.edu.docurural.document.dto.UploadDocumentRequestDto;
 import co.edu.docurural.document.dto.UploadDocumentResponseDto;
-import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.document.service.DocumentBatchService;
 import co.edu.docurural.document.service.DocumentCommandService;
 import co.edu.docurural.document.service.DocumentContentService;
@@ -21,6 +20,7 @@ import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.audit.AuditContextResolver;
 import co.edu.docurural.shared.dto.ApiErrorResponseDto;
 import co.edu.docurural.shared.util.ContentDispositionResolver;
+import co.edu.docurural.shared.util.FileNameSanitizer;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -131,8 +131,7 @@ public class DocumentController {
             Authentication authentication,
             HttpServletRequest httpRequest) {
 
-        boolean isAdmin = authentication != null && authentication.getAuthorities().stream()
-                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        boolean isAdmin = isAdmin(authentication);
         AuditContext audit = auditContextResolver.resolve(httpRequest);
 
         log.debug("GET /documents q='{}' categoryId={} responsibleArea='{}' dateFrom={} dateTo={} "
@@ -168,8 +167,7 @@ public class DocumentController {
     @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'READER')")
     @GetMapping("/filter-options")
     public ResponseEntity<FilterOptionsResponseDto> filterOptions(Authentication authentication) {
-        boolean isAdmin = authentication != null && authentication.getAuthorities().stream()
-                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        boolean isAdmin = isAdmin(authentication);
         log.debug("GET /documents/filter-options isAdmin={}", isAdmin);
         return ResponseEntity.ok(documentSearchService.getFilterOptions(isAdmin));
     }
@@ -316,45 +314,9 @@ public class DocumentController {
         log.debug("GET /documents/{}/view", id);
         AuditContext audit = auditContextResolver.resolve(httpRequest);
         DocumentFileContentDto content = documentContentService.openForView(id, audit);
-
-        MediaType mediaType = mediaTypeFor(content.format());
         ContentDisposition disposition = contentDispositionResolver.forView(
                 content.format(), content.originalFileName());
-
-        return ResponseEntity.ok()
-                .contentType(mediaType)
-                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
-                .contentLength(content.fileSizeBytes())
-                .header("X-File-Name", sanitizeForHeader(content.originalFileName()))
-                .header("X-File-Size", String.valueOf(content.fileSizeBytes()))
-                .body(content.resource());
-    }
-
-    private static MediaType mediaTypeFor(DocumentFormat format) {
-        return switch (format) {
-            case PDF -> MediaType.APPLICATION_PDF;
-            case JPG -> MediaType.IMAGE_JPEG;
-            case PNG -> MediaType.IMAGE_PNG;
-            case DOCX -> MediaType.parseMediaType(
-                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-            case XLSX -> MediaType.parseMediaType(
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        };
-    }
-
-    private static String sanitizeForHeader(String filename) {
-        if (filename == null || filename.isBlank()) {
-            return "file";
-        }
-        String sanitized = filename
-                .replaceAll("\\p{Cntrl}", "")
-                .replace("/", "")
-                .replace("\\", "")
-                .trim();
-        if (sanitized.isEmpty()) {
-            return "file";
-        }
-        return sanitized.length() <= 255 ? sanitized : sanitized.substring(0, 255);
+        return buildFileResponse(content, disposition);
     }
 
     /**
@@ -399,16 +361,24 @@ public class DocumentController {
         log.debug("GET /documents/{}/download", id);
         AuditContext audit = auditContextResolver.resolve(httpRequest);
         DocumentFileContentDto content = documentContentService.openForDownload(id, audit);
-
         ContentDisposition disposition = contentDispositionResolver.forDownload(content.originalFileName());
+        return buildFileResponse(content, disposition);
+    }
 
+    private ResponseEntity<Resource> buildFileResponse(DocumentFileContentDto content,
+                                                        ContentDisposition disposition) {
         return ResponseEntity.ok()
-                .contentType(mediaTypeFor(content.format()))
+                .contentType(content.format().toMediaType())
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .contentLength(content.fileSizeBytes())
-                .header("X-File-Name", sanitizeForHeader(content.originalFileName()))
+                .header("X-File-Name", FileNameSanitizer.forHttpHeader(content.originalFileName()))
                 .header("X-File-Size", String.valueOf(content.fileSizeBytes()))
                 .body(content.resource());
+    }
+
+    private static boolean isAdmin(Authentication authentication) {
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
     }
 
     /**

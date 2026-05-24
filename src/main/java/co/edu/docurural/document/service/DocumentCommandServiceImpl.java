@@ -186,53 +186,60 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
                                        String responsibleArea, LocalDate documentDate,
                                        String description, String activityDetailPrefix,
                                        Long actorId, AuditContext audit) {
+        validateFile(file);
+        DocumentFormat format = fileValidationService.validate(file);
+        StoredFile stored = storeWithRollback(file, format);
+        Document document = buildDocument(title, category, responsibleArea, documentDate,
+                description, stored, format, file, actorId);
+        Document saved = documentRepository.save(document);
+        activityLogService.record(ActivityAction.UPLOAD, audit, saved.getId(),
+                activityDetailPrefix + saved.getOriginalFileName());
+        return saved;
+    }
+
+    private void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
                     messageResolver.get("document.file.empty"));
         }
+    }
 
-        DocumentFormat format = fileValidationService.validate(file);
+    private StoredFile storeWithRollback(MultipartFile file, DocumentFormat format) {
         StoredFile stored = fileStorageService.store(file, format);
-
-        String storedRelativePath = stored.relativePath();
+        String relativePath = stored.relativePath();
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCompletion(int status) {
                     if (status == STATUS_ROLLED_BACK || status == STATUS_UNKNOWN) {
-                        fileStorageService.delete(storedRelativePath);
+                        fileStorageService.delete(relativePath);
                     }
                 }
             });
         }
+        return stored;
+    }
 
-        Document document = Document.builder()
+    private Document buildDocument(String title, Category category, String responsibleArea,
+                                   LocalDate documentDate, String description,
+                                   StoredFile stored, DocumentFormat format,
+                                   MultipartFile file, Long actorId) {
+        return Document.builder()
                 .title(title)
                 .description(description)
                 .category(category)
                 .responsibleArea(responsibleArea)
                 .documentDate(documentDate)
-                .filePath(storedRelativePath)
+                .filePath(stored.relativePath())
                 .originalFileName(FileNameSanitizer.sanitize(file.getOriginalFilename()))
                 .fileFormat(format)
                 .fileSizeBytes(file.getSize())
                 .uploadedBy(userRepository.getReferenceById(actorId))
                 .build();
-
-        Document saved = documentRepository.save(document);
-        activityLogService.record(ActivityAction.UPLOAD, audit, saved.getId(),
-                activityDetailPrefix + saved.getOriginalFileName());
-
-        return saved;
     }
 
-    private Long requireActorUserId(AuditContext audit) {
-        if (audit == null) {
-            throw new IllegalArgumentException("audit no puede ser null");
-        }
-        if (audit.actorUserId() == null) {
-            throw new IllegalArgumentException("audit.actorUserId no puede ser null");
-        }
-        return audit.actorUserId();
+    private static Long requireActorUserId(AuditContext audit) {
+        if (audit == null) throw new IllegalArgumentException("audit no puede ser null");
+        return audit.requireActorUserId();
     }
 }

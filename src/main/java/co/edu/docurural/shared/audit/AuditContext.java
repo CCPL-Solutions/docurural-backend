@@ -8,5 +8,12 @@ public record AuditContext(Long actorUserId, String clientIp) {
     public AuditContext withActorUserId(Long actorUserId) {
         return new AuditContext(actorUserId, clientIp);
     }
+
+    public Long requireActorUserId() {
+        if (actorUserId == null) {
+            throw new IllegalArgumentException("audit.actorUserId no puede ser null");
+        }
+        return actorUserId;
+    }
 }
 

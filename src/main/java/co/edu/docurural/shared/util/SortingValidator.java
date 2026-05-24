@@ -22,6 +22,23 @@ public class SortingValidator {
 
     private final MessageResolver messages;
 
+    /**
+     * Encapsula la configuración fija de paginación para un endpoint concreto,
+     * eliminando el long parameter list de {@link #resolvePageable}.
+     */
+    public record PageableConfig(
+            Set<String> allowedFields,
+            String defaultSortBy,
+            String defaultSortDir,
+            int defaultPage,
+            int defaultSize,
+            int maxSize,
+            String pageMsgKey,
+            String sizeMsgKey,
+            String fieldMsgKey,
+            String dirMsgKey
+    ) {}
+
     public Sort resolveSort(String sortBy, String sortDir,
                             Set<String> allowedFields,
                             String defaultField, String defaultDir,
@@ -45,25 +62,22 @@ public class SortingValidator {
 
     public Pageable resolvePageable(Integer page, Integer size,
                                     String sortBy, String sortDir,
-                                    Set<String> allowedFields,
-                                    String defaultField, String defaultDir,
-                                    int defaultPage, int defaultSize, int maxSize,
-                                    String pageMsgKey, String sizeMsgKey,
-                                    String fieldMsgKey, String dirMsgKey) {
-        int resolvedPage = (page == null) ? defaultPage : page;
-        int resolvedSize = (size == null) ? defaultSize : size;
+                                    PageableConfig config) {
+        int resolvedPage = (page == null) ? config.defaultPage() : page;
+        int resolvedSize = (size == null) ? config.defaultSize() : size;
 
         if (resolvedPage < 1) {
             throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
-                    messages.get(pageMsgKey));
+                    messages.get(config.pageMsgKey()));
         }
-        if (resolvedSize < 1 || resolvedSize > maxSize) {
+        if (resolvedSize < 1 || resolvedSize > config.maxSize()) {
             throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
-                    messages.get(sizeMsgKey));
+                    messages.get(config.sizeMsgKey()));
         }
 
-        Sort sort = resolveSort(sortBy, sortDir, allowedFields, defaultField, defaultDir,
-                fieldMsgKey, dirMsgKey);
+        Sort sort = resolveSort(sortBy, sortDir, config.allowedFields(),
+                config.defaultSortBy(), config.defaultSortDir(),
+                config.fieldMsgKey(), config.dirMsgKey());
         return PageRequest.of(resolvedPage - 1, resolvedSize, sort);
     }
 }

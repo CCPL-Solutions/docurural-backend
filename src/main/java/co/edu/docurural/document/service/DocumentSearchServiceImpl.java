@@ -17,6 +17,7 @@ import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.util.MessageResolver;
 import co.edu.docurural.shared.util.SortingValidator;
+import co.edu.docurural.shared.util.SortingValidator.PageableConfig;
 import co.edu.docurural.user.entity.User;
 import co.edu.docurural.user.enums.UserStatus;
 import co.edu.docurural.user.repository.UserRepository;
@@ -43,12 +44,13 @@ public class DocumentSearchServiceImpl implements DocumentSearchService {
 
     private static final int MIN_Q = 2;
     private static final int MAX_Q = 100;
-    private static final int DEFAULT_PAGE = 1;
-    private static final int DEFAULT_SIZE = 20;
-    private static final int MAX_SIZE = 50;
-    private static final String DEFAULT_SORT_BY = "createdAt";
-    private static final String DEFAULT_SORT_DIR = "desc";
-    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("createdAt", "title", "documentDate");
+    private static final PageableConfig PAGEABLE_CONFIG = new PageableConfig(
+            Set.of("createdAt", "title", "documentDate"),
+            "createdAt", "desc",
+            1, 20, 50,
+            "document.page.invalid", "document.page.size-invalid",
+            "document.sort.unsupported-field", "document.sort.unsupported-direction"
+    );
 
     private final DocumentRepository documentRepository;
     private final CategoryRepository categoryRepository;
@@ -66,37 +68,13 @@ public class DocumentSearchServiceImpl implements DocumentSearchService {
             Integer page, Integer size, String sortBy, String sortDir,
             boolean actorIsAdmin, AuditContext audit) {
 
-        String normalizedQ = (q == null) ? null : q.trim();
-        if (normalizedQ != null && normalizedQ.isBlank()) {
-            normalizedQ = null;
-        }
-        if (normalizedQ != null && normalizedQ.length() < MIN_Q) {
-            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
-                    messageResolver.get("document.search.q.too-short"));
-        }
-        if (normalizedQ != null && normalizedQ.length() > MAX_Q) {
-            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
-                    messageResolver.get("document.search.q.too-long"));
-        }
-
-        String normalizedArea = (responsibleArea == null) ? null : responsibleArea.trim();
-        if (normalizedArea != null && normalizedArea.isBlank()) {
-            normalizedArea = null;
-        }
-
-        if (dateFrom != null && dateTo != null && dateFrom.isAfter(dateTo)) {
-            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
-                    messageResolver.get("document.search.date-range.invalid"));
-        }
+        String normalizedQ = trimToNull(q);
+        String normalizedArea = trimToNull(responsibleArea);
+        validateSearchParams(normalizedQ, dateFrom, dateTo);
 
         Long uploadedByEffective = actorIsAdmin ? uploadedBy : null;
 
-        Pageable pageable = sortingValidator.resolvePageable(
-                page, size, sortBy, sortDir,
-                ALLOWED_SORT_FIELDS, DEFAULT_SORT_BY, DEFAULT_SORT_DIR,
-                DEFAULT_PAGE, DEFAULT_SIZE, MAX_SIZE,
-                "document.page.invalid", "document.page.size-invalid",
-                "document.sort.unsupported-field", "document.sort.unsupported-direction");
+        Pageable pageable = sortingValidator.resolvePageable(page, size, sortBy, sortDir, PAGEABLE_CONFIG);
 
         int resolvedPage = pageable.getPageNumber() + 1;
         int resolvedSize = pageable.getPageSize();
@@ -193,5 +171,26 @@ public class DocumentSearchServiceImpl implements DocumentSearchService {
     private void append(StringBuilder sb, String part) {
         if (!sb.isEmpty()) sb.append(", ");
         sb.append(part);
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isBlank() ? null : trimmed;
+    }
+
+    private void validateSearchParams(String normalizedQ, LocalDate dateFrom, LocalDate dateTo) {
+        if (normalizedQ != null && normalizedQ.length() < MIN_Q) {
+            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
+                    messageResolver.get("document.search.q.too-short"));
+        }
+        if (normalizedQ != null && normalizedQ.length() > MAX_Q) {
+            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
+                    messageResolver.get("document.search.q.too-long"));
+        }
+        if (dateFrom != null && dateTo != null && dateFrom.isAfter(dateTo)) {
+            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
+                    messageResolver.get("document.search.date-range.invalid"));
+        }
     }
 }

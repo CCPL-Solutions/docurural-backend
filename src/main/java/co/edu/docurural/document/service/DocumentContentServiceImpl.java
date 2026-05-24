@@ -52,9 +52,8 @@ public class DocumentContentServiceImpl implements DocumentContentService {
                                                 ActivityAction action,
                                                 Function<Document, String> detailBuilder,
                                                 String logVerb) {
-        if (audit == null || audit.actorUserId() == null) {
-            throw new IllegalArgumentException("audit.actorUserId no puede ser null");
-        }
+        if (audit == null) throw new IllegalArgumentException("audit.actorUserId no puede ser null");
+        audit.requireActorUserId();
 
         Document document = documentRepository.findByIdAndStatus(id, DocumentStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException(
