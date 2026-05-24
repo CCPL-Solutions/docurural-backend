@@ -5,11 +5,11 @@ import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.repository.CategoryRepository;
-import co.edu.docurural.document.dto.DeleteDocumentResponse;
-import co.edu.docurural.document.dto.UpdateDocumentMetadataRequest;
-import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
-import co.edu.docurural.document.dto.UploadDocumentRequest;
-import co.edu.docurural.document.dto.UploadDocumentResponse;
+import co.edu.docurural.document.dto.DeleteDocumentResponseDto;
+import co.edu.docurural.document.dto.UpdateDocumentMetadataRequestDto;
+import co.edu.docurural.document.dto.UpdateDocumentMetadataResponseDto;
+import co.edu.docurural.document.dto.UploadDocumentRequestDto;
+import co.edu.docurural.document.dto.UploadDocumentResponseDto;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.document.enums.DocumentStatus;
@@ -58,7 +58,7 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
 
     @Override
     @Transactional
-    public UploadDocumentResponse upload(UploadDocumentRequest request, MultipartFile file, AuditContext audit) {
+    public UploadDocumentResponseDto upload(UploadDocumentRequestDto request, MultipartFile file, AuditContext audit) {
         Long actorId = requireActorUserId(audit);
 
         Category category = categoryRepository.findById(request.categoryId())
@@ -79,7 +79,7 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
 
     @Override
     @Transactional
-    public UpdateDocumentMetadataResponse updateMetadata(Long id, UpdateDocumentMetadataRequest request, AuditContext audit) {
+    public UpdateDocumentMetadataResponseDto updateMetadata(Long id, UpdateDocumentMetadataRequestDto request, AuditContext audit) {
         Long actorId = requireActorUserId(audit);
 
         Document document = documentRepository.findByIdAndStatus(id, DocumentStatus.ACTIVE)
@@ -122,7 +122,7 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
 
     @Override
     @Transactional
-    public DeleteDocumentResponse deleteLogical(Long id, AuditContext audit) {
+    public DeleteDocumentResponseDto deleteLogical(Long id, AuditContext audit) {
         Long actorId = requireActorUserId(audit);
 
         Document document = documentRepository.findByIdAndStatus(id, DocumentStatus.ACTIVE)
@@ -162,7 +162,7 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
     }
 
     private List<String> applyMetadataUpdates(Document document,
-                                              UpdateDocumentMetadataRequest request,
+                                              UpdateDocumentMetadataRequestDto request,
                                               Category category) {
         List<String> modifiedFields = new ArrayList<>(
                 FieldUpdater.of(document)

@@ -1,17 +1,17 @@
 package co.edu.docurural.category.service;
 
+import co.edu.docurural.category.dto.CategoryDetailResponseDto;
+import co.edu.docurural.category.dto.UpdateCategoryStatusResponseDto;
 import co.edu.docurural.category.mapper.CategoryMapper;
 import co.edu.docurural.activitylog.enums.ActivityAction;
 import org.mapstruct.factory.Mappers;
 import co.edu.docurural.activitylog.service.ActivityLogService;
-import co.edu.docurural.category.dto.CategoryDetailResponse;
-import co.edu.docurural.category.dto.CategoryListResponse;
-import co.edu.docurural.category.dto.CreateCategoryRequest;
-import co.edu.docurural.category.dto.CreateCategoryResponse;
-import co.edu.docurural.category.dto.UpdateCategoryRequest;
-import co.edu.docurural.category.dto.UpdateCategoryResponse;
-import co.edu.docurural.category.dto.UpdateCategoryStatusRequest;
-import co.edu.docurural.category.dto.UpdateCategoryStatusResponse;
+import co.edu.docurural.category.dto.CategoryListResponseDto;
+import co.edu.docurural.category.dto.CreateCategoryRequestDto;
+import co.edu.docurural.category.dto.CreateCategoryResponseDto;
+import co.edu.docurural.category.dto.UpdateCategoryRequestDto;
+import co.edu.docurural.category.dto.UpdateCategoryResponseDto;
+import co.edu.docurural.category.dto.UpdateCategoryStatusRequestDto;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.repository.CategoryRepository;
@@ -83,7 +83,7 @@ class CategoryServiceTest {
 
     @Test
     void create_persistsAndLogs_whenNameIsUnique() {
-        CreateCategoryRequest request = TestFixtures.createCategoryRequest(
+        CreateCategoryRequestDto request = TestFixtures.createCategoryRequest(
                 "Proyectos Biotecnología",
                 "Proyectos e informes del laboratorio de biotecnología");
 
@@ -97,7 +97,7 @@ class CategoryServiceTest {
             return c;
         });
 
-        CreateCategoryResponse response = categoryService.create(request, AUDIT_ADMIN);
+        CreateCategoryResponseDto response = categoryService.create(request, AUDIT_ADMIN);
 
         assertThat(response.id()).isEqualTo(9L);
         assertThat(response.name()).isEqualTo("Proyectos Biotecnología");
@@ -121,7 +121,7 @@ class CategoryServiceTest {
 
     @Test
     void create_withNullDescription_persistsCategoryWithNullDescription() {
-        CreateCategoryRequest request = TestFixtures.createCategoryRequest("Circulares", null);
+        CreateCategoryRequestDto request = TestFixtures.createCategoryRequest("Circulares", null);
 
         when(categoryRepository.existsByName(request.name())).thenReturn(false);
         when(userRepository.getReferenceById(ADMIN_ID)).thenReturn(TestFixtures.userAdmin(ADMIN_ID));
@@ -133,7 +133,7 @@ class CategoryServiceTest {
             return c;
         });
 
-        CreateCategoryResponse response = categoryService.create(request, AUDIT_ADMIN);
+        CreateCategoryResponseDto response = categoryService.create(request, AUDIT_ADMIN);
 
         assertThat(response.description()).isNull();
 
@@ -144,7 +144,7 @@ class CategoryServiceTest {
 
     @Test
     void create_throwsConflict_whenNameAlreadyExists() {
-        CreateCategoryRequest request = TestFixtures.createCategoryRequest("Actas", null);
+        CreateCategoryRequestDto request = TestFixtures.createCategoryRequest("Actas", null);
         when(categoryRepository.existsByName("Actas")).thenReturn(true);
 
         assertThatThrownBy(() -> categoryService.create(request, AUDIT_ADMIN))
@@ -156,7 +156,7 @@ class CategoryServiceTest {
 
     @Test
     void create_throwsIllegalArgument_whenAuditIsNull() {
-        CreateCategoryRequest request = TestFixtures.createCategoryRequest("Actas", null);
+        CreateCategoryRequestDto request = TestFixtures.createCategoryRequest("Actas", null);
 
         assertThatThrownBy(() -> categoryService.create(request, null))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -167,7 +167,7 @@ class CategoryServiceTest {
 
     @Test
     void create_throwsIllegalArgument_whenActorUserIdIsNull() {
-        CreateCategoryRequest request = TestFixtures.createCategoryRequest("Actas", null);
+        CreateCategoryRequestDto request = TestFixtures.createCategoryRequest("Actas", null);
         AuditContext auditWithNullActor = new AuditContext(null, "127.0.0.1");
 
         assertThatThrownBy(() -> categoryService.create(request, auditWithNullActor))
@@ -185,7 +185,7 @@ class CategoryServiceTest {
     void update_persistsAndLogs_whenNameAndDescriptionChange() {
         Long categoryId = 9L;
         Category existing = TestFixtures.categoryActive(categoryId, "Proyectos Biotecnología", "Descripción anterior");
-        UpdateCategoryRequest request = TestFixtures.updateCategoryRequest(
+        UpdateCategoryRequestDto request = TestFixtures.updateCategoryRequest(
                 "Proyectos e Informes Biotecnología",
                 "Descripción nueva");
 
@@ -193,7 +193,7 @@ class CategoryServiceTest {
         when(categoryRepository.existsByNameAndIdNot(request.name(), categoryId)).thenReturn(false);
         when(categoryRepository.save(any(Category.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UpdateCategoryResponse response = categoryService.update(categoryId, request, AUDIT_ADMIN);
+        UpdateCategoryResponseDto response = categoryService.update(categoryId, request, AUDIT_ADMIN);
 
         assertThat(response.id()).isEqualTo(categoryId);
         assertThat(response.name()).isEqualTo("Proyectos e Informes Biotecnología");
@@ -217,7 +217,7 @@ class CategoryServiceTest {
     void update_onlyName_logsModifiedFieldsName() {
         Long categoryId = 9L;
         Category existing = TestFixtures.categoryActive(categoryId, "Proyectos Biotecnología", "Descripción actual");
-        UpdateCategoryRequest request = TestFixtures.updateCategoryRequest(
+        UpdateCategoryRequestDto request = TestFixtures.updateCategoryRequest(
                 "Proyectos e Informes Biotecnología",
                 "Descripción actual");
 
@@ -238,13 +238,13 @@ class CategoryServiceTest {
     void update_descriptionNull_preservesCurrentDescription() {
         Long categoryId = 9L;
         Category existing = TestFixtures.categoryActive(categoryId, "Actas", "Descripción actual");
-        UpdateCategoryRequest request = TestFixtures.updateCategoryRequest("Actas Actualizadas", null);
+        UpdateCategoryRequestDto request = TestFixtures.updateCategoryRequest("Actas Actualizadas", null);
 
         when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(existing));
         when(categoryRepository.existsByNameAndIdNot(request.name(), categoryId)).thenReturn(false);
         when(categoryRepository.save(any(Category.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UpdateCategoryResponse response = categoryService.update(categoryId, request, AUDIT_ADMIN);
+        UpdateCategoryResponseDto response = categoryService.update(categoryId, request, AUDIT_ADMIN);
 
         assertThat(response.description()).isEqualTo("Descripción actual");
 
@@ -263,7 +263,7 @@ class CategoryServiceTest {
     void update_nameUnchanged_skipsUniquenessCheck() {
         Long categoryId = 9L;
         Category existing = TestFixtures.categoryActive(categoryId, "Actas", "Descripción");
-        UpdateCategoryRequest request = TestFixtures.updateCategoryRequest("Actas", "Nueva descripción");
+        UpdateCategoryRequestDto request = TestFixtures.updateCategoryRequest("Actas", "Nueva descripción");
 
         when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(existing));
         when(categoryRepository.save(any(Category.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -305,7 +305,7 @@ class CategoryServiceTest {
     void update_throwsConflict_whenNewNameUsedByAnother() {
         Long categoryId = 9L;
         Category existing = TestFixtures.categoryActive(categoryId, "Proyectos Biotecnología", null);
-        UpdateCategoryRequest request = TestFixtures.updateCategoryRequest("Actas", null);
+        UpdateCategoryRequestDto request = TestFixtures.updateCategoryRequest("Actas", null);
 
         when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(existing));
         when(categoryRepository.existsByNameAndIdNot("Actas", categoryId)).thenReturn(true);
@@ -347,12 +347,12 @@ class CategoryServiceTest {
     void changeStatus_deactivates_persistsAndLogs() {
         Long categoryId = 9L;
         Category existing = TestFixtures.categoryActive(categoryId, "Proyectos e Informes Biotecnología");
-        UpdateCategoryStatusRequest request = TestFixtures.updateCategoryStatusRequest(CategoryStatus.INACTIVE);
+        UpdateCategoryStatusRequestDto request = TestFixtures.updateCategoryStatusRequest(CategoryStatus.INACTIVE);
 
         when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(existing));
         when(categoryRepository.save(any(Category.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UpdateCategoryStatusResponse response = categoryService.changeStatus(categoryId, request, AUDIT_ADMIN);
+        UpdateCategoryStatusResponseDto response = categoryService.changeStatus(categoryId, request, AUDIT_ADMIN);
 
         assertThat(response.id()).isEqualTo(categoryId);
         assertThat(response.name()).isEqualTo("Proyectos e Informes Biotecnología");
@@ -374,12 +374,12 @@ class CategoryServiceTest {
     void changeStatus_reactivates_persistsAndLogs() {
         Long categoryId = 5L;
         Category existing = TestFixtures.categoryInactive(categoryId, "Actas");
-        UpdateCategoryStatusRequest request = TestFixtures.updateCategoryStatusRequest(CategoryStatus.ACTIVE);
+        UpdateCategoryStatusRequestDto request = TestFixtures.updateCategoryStatusRequest(CategoryStatus.ACTIVE);
 
         when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(existing));
         when(categoryRepository.save(any(Category.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UpdateCategoryStatusResponse response = categoryService.changeStatus(categoryId, request, AUDIT_ADMIN);
+        UpdateCategoryStatusResponseDto response = categoryService.changeStatus(categoryId, request, AUDIT_ADMIN);
 
         assertThat(response.status()).isEqualTo("ACTIVE");
         assertThat(response.message()).isEqualTo("category.activated.success");
@@ -456,7 +456,7 @@ class CategoryServiceTest {
         when(categoryRepository.countActiveDocumentsByCategory())
                 .thenReturn(List.of(countView(1L, 23L), countView(5L, 7L)));
 
-        CategoryListResponse response = categoryService.list(null, null);
+        CategoryListResponseDto response = categoryService.list(null, null);
 
         assertThat(response.totalCategories()).isEqualTo(3);
         assertThat(response.activeCategories()).isEqualTo(2);
@@ -520,7 +520,7 @@ class CategoryServiceTest {
         when(categoryRepository.findAll(any(Sort.class))).thenReturn(List.of());
         when(categoryRepository.countActiveDocumentsByCategory()).thenReturn(List.of());
 
-        CategoryListResponse response = categoryService.list(null, null);
+        CategoryListResponseDto response = categoryService.list(null, null);
 
         assertThat(response.totalCategories()).isEqualTo(0);
         assertThat(response.activeCategories()).isEqualTo(0);
@@ -534,7 +534,7 @@ class CategoryServiceTest {
                 .thenReturn(List.of(TestFixtures.categoryActive(1L, "Actas")));
         when(categoryRepository.countActiveDocumentsByCategory()).thenReturn(List.of());
 
-        CategoryListResponse response = categoryService.list(null, null);
+        CategoryListResponseDto response = categoryService.list(null, null);
 
         assertThat(response.categories().get(0).documentCount()).isEqualTo(0);
     }
@@ -549,7 +549,7 @@ class CategoryServiceTest {
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
         when(categoryRepository.countActiveDocumentsByCategoryId(1L)).thenReturn(15L);
 
-        CategoryDetailResponse response = categoryService.findById(1L);
+        CategoryDetailResponseDto response = categoryService.findById(1L);
 
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.name()).isEqualTo("Actas");
@@ -564,7 +564,7 @@ class CategoryServiceTest {
                 .thenReturn(Optional.of(TestFixtures.categoryActive(2L, "Resoluciones")));
         when(categoryRepository.countActiveDocumentsByCategoryId(2L)).thenReturn(0L);
 
-        CategoryDetailResponse response = categoryService.findById(2L);
+        CategoryDetailResponseDto response = categoryService.findById(2L);
 
         assertThat(response.documentCount()).isEqualTo(0);
     }

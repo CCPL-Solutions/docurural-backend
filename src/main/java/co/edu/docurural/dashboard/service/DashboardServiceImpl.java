@@ -2,11 +2,11 @@ package co.edu.docurural.dashboard.service;
 
 import co.edu.docurural.category.repository.projection.CategoryNameView;
 import co.edu.docurural.category.service.CategoryService;
-import co.edu.docurural.dashboard.dto.CategoryDistributionItemResponse;
-import co.edu.docurural.dashboard.dto.DashboardStatsResponse;
-import co.edu.docurural.dashboard.dto.RecentDocumentResponse;
-import co.edu.docurural.dashboard.dto.SummaryResponse;
-import co.edu.docurural.dashboard.dto.TopCategoryResponse;
+import co.edu.docurural.dashboard.dto.CategoryDistributionItemResponseDto;
+import co.edu.docurural.dashboard.dto.DashboardStatsResponseDto;
+import co.edu.docurural.dashboard.dto.RecentDocumentResponseDto;
+import co.edu.docurural.dashboard.dto.SummaryResponseDto;
+import co.edu.docurural.dashboard.dto.TopCategoryResponseDto;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.enums.DocumentStatus;
 import co.edu.docurural.document.repository.DocumentRepository;
@@ -42,7 +42,7 @@ public class DashboardServiceImpl implements DashboardService {
 
     @Override
     @Transactional(readOnly = true)
-    public DashboardStatsResponse getStats() {
+    public DashboardStatsResponseDto getStats() {
         long totalActive = documentRepository.countByStatus(DocumentStatus.ACTIVE);
 
         LocalDateTime firstOfMonth = LocalDate.now().withDayOfMonth(1).atStartOfDay();
@@ -58,35 +58,35 @@ public class DashboardServiceImpl implements DashboardService {
                 .findAllCategoryNames(Sort.by("name")).stream()
                 .collect(Collectors.toMap(CategoryNameView::getId, CategoryNameView::getName));
 
-        TopCategoryResponse topCategory = buildTopCategory(countByCategory, nameByCategory, totalActive);
-        List<CategoryDistributionItemResponse> distribution =
+        TopCategoryResponseDto topCategory = buildTopCategory(countByCategory, nameByCategory, totalActive);
+        List<CategoryDistributionItemResponseDto> distribution =
                 buildDistribution(countByCategory, nameByCategory, totalActive);
 
         List<Document> recentDocs =
                 documentRepository.findTop10ByStatusOrderByCreatedAtDesc(DocumentStatus.ACTIVE);
-        List<RecentDocumentResponse> recentDocuments = recentDocs.stream()
+        List<RecentDocumentResponseDto> recentDocuments = recentDocs.stream()
                 .map(DashboardServiceImpl::toRecentDocumentResponse)
                 .toList();
 
-        SummaryResponse summary = new SummaryResponse(totalActive, thisMonth, topCategory);
-        return new DashboardStatsResponse(summary, distribution, recentDocuments);
+        SummaryResponseDto summary = new SummaryResponseDto(totalActive, thisMonth, topCategory);
+        return new DashboardStatsResponseDto(summary, distribution, recentDocuments);
     }
 
-    private static TopCategoryResponse buildTopCategory(Map<Long, Long> countByCategory,
-                                                        Map<Long, String> nameByCategory,
-                                                        long totalActive) {
+    private static TopCategoryResponseDto buildTopCategory(Map<Long, Long> countByCategory,
+                                                           Map<Long, String> nameByCategory,
+                                                           long totalActive) {
         if (totalActive == 0 || countByCategory.isEmpty()) {
             return null;
         }
         return countByCategory.entrySet().stream()
                 .max(Map.Entry.comparingByValue())
-                .map(e -> new TopCategoryResponse(
+                .map(e -> new TopCategoryResponseDto(
                         nameByCategory.getOrDefault(e.getKey(), ""),
                         e.getValue()))
                 .orElse(null);
     }
 
-    private static List<CategoryDistributionItemResponse> buildDistribution(
+    private static List<CategoryDistributionItemResponseDto> buildDistribution(
             Map<Long, Long> countByCategory,
             Map<Long, String> nameByCategory,
             long totalActive) {
@@ -99,7 +99,7 @@ public class DashboardServiceImpl implements DashboardService {
                 .sorted(Comparator.comparingLong(Map.Entry<Long, Long>::getValue).reversed())
                 .map(e -> {
                     double percentage = Math.round(e.getValue() * 10000.0 / totalActive) / 100.0;
-                    return new CategoryDistributionItemResponse(
+                    return new CategoryDistributionItemResponseDto(
                             nameByCategory.getOrDefault(e.getKey(), ""),
                             e.getValue(),
                             percentage);
@@ -107,8 +107,8 @@ public class DashboardServiceImpl implements DashboardService {
                 .toList();
     }
 
-    private static RecentDocumentResponse toRecentDocumentResponse(Document doc) {
-        return new RecentDocumentResponse(
+    private static RecentDocumentResponseDto toRecentDocumentResponse(Document doc) {
+        return new RecentDocumentResponseDto(
                 doc.getId(),
                 doc.getTitle(),
                 doc.getCategory().getName(),

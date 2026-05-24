@@ -1,13 +1,13 @@
 package co.edu.docurural.auth.service;
 
-import co.edu.docurural.auth.dto.LoginRequest;
-import co.edu.docurural.auth.dto.LoginResponse;
+import co.edu.docurural.auth.dto.LoginRequestDto;
+import co.edu.docurural.auth.dto.LoginResponseDto;
 import co.edu.docurural.shared.audit.AuditContext;
-import co.edu.docurural.shared.dto.MessageResponse;
+import co.edu.docurural.shared.dto.MessageResponseDto;
 
 public interface AuthService {
 
-    LoginResponse login(LoginRequest request, AuditContext audit);
+    LoginResponseDto login(LoginRequestDto request, AuditContext audit);
 
-    MessageResponse logout(AuditContext audit);
+    MessageResponseDto logout(AuditContext audit);
 }

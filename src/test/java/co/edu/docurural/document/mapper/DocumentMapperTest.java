@@ -1,9 +1,9 @@
 package co.edu.docurural.document.mapper;
 
-import co.edu.docurural.document.dto.DocumentDetailResponse;
-import co.edu.docurural.document.dto.DocumentListResponse;
-import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
-import co.edu.docurural.document.dto.UploadDocumentResponse;
+import co.edu.docurural.document.dto.DocumentDetailResponseDto;
+import co.edu.docurural.document.dto.DocumentListResponseDto;
+import co.edu.docurural.document.dto.UpdateDocumentMetadataResponseDto;
+import co.edu.docurural.document.dto.UploadDocumentResponseDto;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.support.TestFixtures;
@@ -29,7 +29,7 @@ class DocumentMapperTest {
         var user = TestFixtures.userAdmin(10L);
         Document doc = TestFixtures.documentActive(48L, category, user);
 
-        UploadDocumentResponse response = mapper.toUploadResponse(doc, "Documento cargado exitosamente");
+        UploadDocumentResponseDto response = mapper.toUploadResponse(doc, "Documento cargado exitosamente");
 
         assertThat(response.id()).isEqualTo(48L);
         assertThat(response.title()).isEqualTo("Acta Consejo Directivo Marzo 2026");
@@ -49,7 +49,7 @@ class DocumentMapperTest {
         Document doc = TestFixtures.documentActive(1L, category, user);
         doc.setFileFormat(null);
 
-        UploadDocumentResponse response = mapper.toUploadResponse(doc, "ok");
+        UploadDocumentResponseDto response = mapper.toUploadResponse(doc, "ok");
 
         assertThat(response.fileFormat()).isNull();
     }
@@ -70,7 +70,7 @@ class DocumentMapperTest {
         var user = TestFixtures.userAdmin(10L);
         Document doc = TestFixtures.documentActive(48L, category, user);
 
-        DocumentDetailResponse response = mapper.toDetailResponse(doc);
+        DocumentDetailResponseDto response = mapper.toDetailResponse(doc);
 
         assertThat(response.id()).isEqualTo(48L);
         assertThat(response.title()).isEqualTo(doc.getTitle());
@@ -94,7 +94,7 @@ class DocumentMapperTest {
         Document doc = TestFixtures.documentActive(48L, category, user);
         doc.setDescription(null);
 
-        DocumentDetailResponse response = mapper.toDetailResponse(doc);
+        DocumentDetailResponseDto response = mapper.toDetailResponse(doc);
 
         assertThat(response.description()).isNull();
     }
@@ -112,7 +112,7 @@ class DocumentMapperTest {
         Document doc = TestFixtures.documentActive(47L, category, user);
         doc.setTitle("Acta Consejo Directivo Marzo 2026 - Revisado");
 
-        UpdateDocumentMetadataResponse response =
+        UpdateDocumentMetadataResponseDto response =
                 mapper.toUpdateMetadataResponse(doc, "Documento actualizado exitosamente");
 
         assertThat(response.id()).isEqualTo(47L);
@@ -142,7 +142,7 @@ class DocumentMapperTest {
         PageRequest pageRequest = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Document> page = new PageImpl<>(List.of(doc), pageRequest, 1L);
 
-        DocumentListResponse response = mapper.toListResponse(page, 1, 20);
+        DocumentListResponseDto response = mapper.toListResponse(page, 1, 20);
 
         assertThat(response.totalDocuments()).isEqualTo(1);
         assertThat(response.totalPages()).isEqualTo(1);
@@ -166,7 +166,7 @@ class DocumentMapperTest {
     void toListResponse_returnsEmptyListAndZeroTotals_whenPageIsEmpty() {
         Page<Document> page = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0L);
 
-        DocumentListResponse response = mapper.toListResponse(page, 1, 20);
+        DocumentListResponseDto response = mapper.toListResponse(page, 1, 20);
 
         assertThat(response.totalDocuments()).isEqualTo(0);
         assertThat(response.totalPages()).isEqualTo(0);

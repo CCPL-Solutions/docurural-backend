@@ -2,14 +2,14 @@ package co.edu.docurural.category.service;
 
 import co.edu.docurural.activitylog.enums.ActivityAction;
 import co.edu.docurural.activitylog.service.ActivityLogService;
-import co.edu.docurural.category.dto.CategoryDetailResponse;
-import co.edu.docurural.category.dto.CategoryListResponse;
-import co.edu.docurural.category.dto.CreateCategoryRequest;
-import co.edu.docurural.category.dto.CreateCategoryResponse;
-import co.edu.docurural.category.dto.UpdateCategoryRequest;
-import co.edu.docurural.category.dto.UpdateCategoryResponse;
-import co.edu.docurural.category.dto.UpdateCategoryStatusRequest;
-import co.edu.docurural.category.dto.UpdateCategoryStatusResponse;
+import co.edu.docurural.category.dto.CategoryDetailResponseDto;
+import co.edu.docurural.category.dto.CategoryListResponseDto;
+import co.edu.docurural.category.dto.CreateCategoryRequestDto;
+import co.edu.docurural.category.dto.CreateCategoryResponseDto;
+import co.edu.docurural.category.dto.UpdateCategoryRequestDto;
+import co.edu.docurural.category.dto.UpdateCategoryResponseDto;
+import co.edu.docurural.category.dto.UpdateCategoryStatusRequestDto;
+import co.edu.docurural.category.dto.UpdateCategoryStatusResponseDto;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.mapper.CategoryMapper;
@@ -62,7 +62,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public CategoryListResponse list(String sortBy, String sortDir) {
+    public CategoryListResponseDto list(String sortBy, String sortDir) {
         Sort sort = sortingValidator.resolveSort(
                 sortBy, sortDir,
                 ALLOWED_SORT_FIELDS, DEFAULT_SORT_BY, DEFAULT_SORT_DIR,
@@ -78,7 +78,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public CategoryDetailResponse findById(Long id) {
+    public CategoryDetailResponseDto findById(Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         messageResolver.get("category.not-found", id)));
@@ -90,7 +90,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional
-    public CreateCategoryResponse create(CreateCategoryRequest request, AuditContext audit) {
+    public CreateCategoryResponseDto create(CreateCategoryRequestDto request, AuditContext audit) {
         Long adminId = requireActorUserId(audit);
 
         if (categoryRepository.existsByName(request.name())) {
@@ -118,7 +118,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional
-    public UpdateCategoryResponse update(Long id, UpdateCategoryRequest request, AuditContext audit) {
+    public UpdateCategoryResponseDto update(Long id, UpdateCategoryRequestDto request, AuditContext audit) {
         requireActorUserId(audit);
 
         Category category = categoryRepository.findById(id)
@@ -149,7 +149,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional
-    public UpdateCategoryStatusResponse changeStatus(Long id, UpdateCategoryStatusRequest request, AuditContext audit) {
+    public UpdateCategoryStatusResponseDto changeStatus(Long id, UpdateCategoryStatusRequestDto request, AuditContext audit) {
         Long adminId = requireActorUserId(audit);
 
         Category category = categoryRepository.findById(id)
@@ -192,7 +192,7 @@ public class CategoryServiceImpl implements CategoryService {
                 .collect(Collectors.toMap(CategoryCountView::getCategoryId, CategoryCountView::getCount));
     }
 
-    private List<String> applyUpdates(Category category, UpdateCategoryRequest request, boolean nameChanged) {
+    private List<String> applyUpdates(Category category, UpdateCategoryRequestDto request, boolean nameChanged) {
         List<String> modifiedFields = new ArrayList<>(
                 FieldUpdater.of(category)
                         .setIfPresent("description", request.description(),

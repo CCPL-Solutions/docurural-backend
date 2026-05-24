@@ -3,7 +3,7 @@ package co.edu.docurural.document.service;
 import co.edu.docurural.activitylog.enums.ActivityAction;
 import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.category.entity.Category;
-import co.edu.docurural.document.dto.DocumentFileContent;
+import co.edu.docurural.document.dto.DocumentFileContentDto;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.document.enums.DocumentStatus;
@@ -77,7 +77,7 @@ class DocumentContentServiceTest {
                 .thenReturn(Optional.of(doc));
         when(fileStorageService.load(doc.getFilePath())).thenReturn(resource);
 
-        DocumentFileContent content = documentContentService.openForView(48L, AUDIT);
+        DocumentFileContentDto content = documentContentService.openForView(48L, AUDIT);
 
         assertThat(content.resource()).isEqualTo(resource);
         assertThat(content.format()).isEqualTo(DocumentFormat.PDF);
@@ -143,7 +143,7 @@ class DocumentContentServiceTest {
                 .thenReturn(Optional.of(doc));
         when(fileStorageService.load(doc.getFilePath())).thenReturn(resource);
 
-        DocumentFileContent content = documentContentService.openForDownload(48L, AUDIT);
+        DocumentFileContentDto content = documentContentService.openForDownload(48L, AUDIT);
 
         assertThat(content.resource()).isEqualTo(resource);
         assertThat(content.format()).isEqualTo(DocumentFormat.PDF);

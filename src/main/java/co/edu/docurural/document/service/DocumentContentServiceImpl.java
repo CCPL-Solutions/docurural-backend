@@ -2,7 +2,7 @@ package co.edu.docurural.document.service;
 
 import co.edu.docurural.activitylog.enums.ActivityAction;
 import co.edu.docurural.activitylog.service.ActivityLogService;
-import co.edu.docurural.document.dto.DocumentFileContent;
+import co.edu.docurural.document.dto.DocumentFileContentDto;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.enums.DocumentStatus;
 import co.edu.docurural.document.repository.DocumentRepository;
@@ -34,7 +34,7 @@ public class DocumentContentServiceImpl implements DocumentContentService {
 
     @Override
     @Transactional
-    public DocumentFileContent openForView(Long id, AuditContext audit) {
+    public DocumentFileContentDto openForView(Long id, AuditContext audit) {
         return loadAndAudit(id, audit, ActivityAction.VIEW,
                 doc -> "Formato: " + doc.getFileFormat().name(),
                 "visualizado");
@@ -42,16 +42,16 @@ public class DocumentContentServiceImpl implements DocumentContentService {
 
     @Override
     @Transactional
-    public DocumentFileContent openForDownload(Long id, AuditContext audit) {
+    public DocumentFileContentDto openForDownload(Long id, AuditContext audit) {
         return loadAndAudit(id, audit, ActivityAction.DOWNLOAD,
                 doc -> "Archivo: " + doc.getOriginalFileName(),
                 "descargado");
     }
 
-    private DocumentFileContent loadAndAudit(Long id, AuditContext audit,
-                                             ActivityAction action,
-                                             Function<Document, String> detailBuilder,
-                                             String logVerb) {
+    private DocumentFileContentDto loadAndAudit(Long id, AuditContext audit,
+                                                ActivityAction action,
+                                                Function<Document, String> detailBuilder,
+                                                String logVerb) {
         if (audit == null || audit.actorUserId() == null) {
             throw new IllegalArgumentException("audit.actorUserId no puede ser null");
         }
@@ -66,7 +66,7 @@ public class DocumentContentServiceImpl implements DocumentContentService {
         log.debug("Documento {}: id={} format={} actor={}",
                 logVerb, document.getId(), document.getFileFormat(), audit.actorUserId());
 
-        return new DocumentFileContent(resource, document.getFileFormat(),
+        return new DocumentFileContentDto(resource, document.getFileFormat(),
                 document.getOriginalFileName(), document.getFileSizeBytes());
     }
 }

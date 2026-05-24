@@ -5,9 +5,9 @@ import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.repository.CategoryRepository;
-import co.edu.docurural.document.dto.ActiveFiltersResponse;
-import co.edu.docurural.document.dto.DocumentListResponse;
-import co.edu.docurural.document.dto.FilterOptionsResponse;
+import co.edu.docurural.document.dto.ActiveFiltersResponseDto;
+import co.edu.docurural.document.dto.DocumentListResponseDto;
+import co.edu.docurural.document.dto.FilterOptionsResponseDto;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.mapper.DocumentMapper;
 import co.edu.docurural.document.repository.DocumentRepository;
@@ -60,7 +60,7 @@ public class DocumentSearchServiceImpl implements DocumentSearchService {
 
     @Override
     @Transactional(readOnly = true)
-    public DocumentListResponse search(
+    public DocumentListResponseDto search(
             String q, Long categoryId, String responsibleArea,
             LocalDate dateFrom, LocalDate dateTo, Long uploadedBy,
             Integer page, Integer size, String sortBy, String sortDir,
@@ -116,7 +116,7 @@ public class DocumentSearchServiceImpl implements DocumentSearchService {
                 normalizedQ, categoryId, normalizedArea, dateFrom, dateTo,
                 uploadedByEffective, resolvedPage, resolvedSize, result.getTotalElements());
 
-        ActiveFiltersResponse activeFilters = buildActiveFilters(
+        ActiveFiltersResponseDto activeFilters = buildActiveFilters(
                 categoryId, normalizedArea, dateFrom, dateTo, uploadedByEffective);
 
         if (normalizedQ != null) {
@@ -130,26 +130,26 @@ public class DocumentSearchServiceImpl implements DocumentSearchService {
 
     @Override
     @Transactional(readOnly = true)
-    public FilterOptionsResponse getFilterOptions(boolean actorIsAdmin) {
-        List<FilterOptionsResponse.CategoryOption> categories = categoryRepository.findAll().stream()
+    public FilterOptionsResponseDto getFilterOptions(boolean actorIsAdmin) {
+        List<FilterOptionsResponseDto.CategoryOption> categories = categoryRepository.findAll().stream()
                 .filter(c -> c.getStatus() == CategoryStatus.ACTIVE)
                 .sorted(Comparator.comparing(Category::getName))
-                .map(c -> new FilterOptionsResponse.CategoryOption(c.getId(), c.getName()))
+                .map(c -> new FilterOptionsResponseDto.CategoryOption(c.getId(), c.getName()))
                 .toList();
 
-        List<FilterOptionsResponse.UserOption> users = null;
+        List<FilterOptionsResponseDto.UserOption> users = null;
         if (actorIsAdmin) {
             users = userRepository.findAll().stream()
                     .filter(u -> u.getStatus() == UserStatus.ACTIVE)
                     .sorted(Comparator.comparing(User::getFullName))
-                    .map(u -> new FilterOptionsResponse.UserOption(u.getId(), u.getFullName()))
+                    .map(u -> new FilterOptionsResponseDto.UserOption(u.getId(), u.getFullName()))
                     .toList();
         }
 
-        return new FilterOptionsResponse(categories, users);
+        return new FilterOptionsResponseDto(categories, users);
     }
 
-    private ActiveFiltersResponse buildActiveFilters(
+    private ActiveFiltersResponseDto buildActiveFilters(
             Long categoryId, String responsibleArea,
             LocalDate dateFrom, LocalDate dateTo, Long uploadedByEffective) {
 
@@ -172,15 +172,15 @@ public class DocumentSearchServiceImpl implements DocumentSearchService {
                     .orElse(null);
         }
 
-        return new ActiveFiltersResponse(categoryId, categoryName, responsibleArea, dateFrom, dateTo, uploadedByName);
+        return new ActiveFiltersResponseDto(categoryId, categoryName, responsibleArea, dateFrom, dateTo, uploadedByName);
     }
 
-    private String buildSearchDetail(String q, ActiveFiltersResponse activeFilters, long totalResults) {
+    private String buildSearchDetail(String q, ActiveFiltersResponseDto activeFilters, long totalResults) {
         String filtersStr = (activeFilters == null) ? "sin filtros" : formatFilters(activeFilters);
         return String.format("Término: \"%s\"; Filtros: %s; Resultados: %d", q, filtersStr, totalResults);
     }
 
-    private String formatFilters(ActiveFiltersResponse f) {
+    private String formatFilters(ActiveFiltersResponseDto f) {
         StringBuilder sb = new StringBuilder();
         if (f.categoryName() != null) append(sb, "categoría=" + f.categoryName());
         if (f.responsibleArea() != null) append(sb, "área=" + f.responsibleArea());

@@ -1,14 +1,14 @@
 package co.edu.docurural.document.controller;
 
-import co.edu.docurural.document.dto.ActiveFiltersResponse;
-import co.edu.docurural.document.dto.DeleteDocumentResponse;
-import co.edu.docurural.document.dto.DocumentDetailResponse;
-import co.edu.docurural.document.dto.DocumentFileContent;
-import co.edu.docurural.document.dto.DocumentListResponse;
-import co.edu.docurural.document.dto.DocumentSummaryResponse;
-import co.edu.docurural.document.dto.FilterOptionsResponse;
-import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
-import co.edu.docurural.document.dto.UploadDocumentResponse;
+import co.edu.docurural.document.dto.ActiveFiltersResponseDto;
+import co.edu.docurural.document.dto.DeleteDocumentResponseDto;
+import co.edu.docurural.document.dto.DocumentDetailResponseDto;
+import co.edu.docurural.document.dto.DocumentFileContentDto;
+import co.edu.docurural.document.dto.DocumentListResponseDto;
+import co.edu.docurural.document.dto.DocumentSummaryResponseDto;
+import co.edu.docurural.document.dto.FilterOptionsResponseDto;
+import co.edu.docurural.document.dto.UpdateDocumentMetadataResponseDto;
+import co.edu.docurural.document.dto.UploadDocumentResponseDto;
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.document.service.DocumentBatchService;
 import co.edu.docurural.document.service.DocumentCommandService;
@@ -91,7 +91,7 @@ class DocumentControllerWebMvcTest {
     void upload_returns201AndPayload_whenValid() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
 
-        UploadDocumentResponse response = new UploadDocumentResponse(
+        UploadDocumentResponseDto response = new UploadDocumentResponseDto(
                 48L,
                 "Acta Consejo Directivo Marzo 2026",
                 "Actas",
@@ -244,7 +244,7 @@ class DocumentControllerWebMvcTest {
     void updateMetadata_returns200AndPayload_whenValid() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
 
-        UpdateDocumentMetadataResponse response = new UpdateDocumentMetadataResponse(
+        UpdateDocumentMetadataResponseDto response = new UpdateDocumentMetadataResponseDto(
                 47L,
                 "Acta Consejo Directivo Marzo 2026 - Revisado",
                 "Actas",
@@ -320,7 +320,7 @@ class DocumentControllerWebMvcTest {
     void deleteLogical_returns200AndPayload_whenDocumentActive() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
 
-        DeleteDocumentResponse response = new DeleteDocumentResponse(
+        DeleteDocumentResponseDto response = new DeleteDocumentResponseDto(
                 47L,
                 "Documento eliminado exitosamente");
 
@@ -348,17 +348,17 @@ class DocumentControllerWebMvcTest {
 
     @Test
     void getById_returns200WithDetail_whenDocumentActive() throws Exception {
-        DocumentDetailResponse response = new DocumentDetailResponse(
+        DocumentDetailResponseDto response = new DocumentDetailResponseDto(
                 48L,
                 "Acta Consejo Directivo Marzo 2026",
                 "Acta de reunión",
-                new DocumentDetailResponse.CategoryRef(1L, "Actas"),
+                new DocumentDetailResponseDto.CategoryRef(1L, "Actas"),
                 "Rectoría",
                 LocalDate.of(2026, 3, 15),
                 "PDF",
                 524288L,
                 "acta.pdf",
-                new DocumentDetailResponse.UploadedByRef(10L, "Ana Admin"),
+                new DocumentDetailResponseDto.UploadedByRef(10L, "Ana Admin"),
                 LocalDateTime.of(2026, 4, 10, 9, 30));
 
         when(documentQueryService.findDetailById(48L)).thenReturn(response);
@@ -391,7 +391,7 @@ class DocumentControllerWebMvcTest {
     void view_returns200WithInlineDispositionAndStream_whenPdf() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
         byte[] pdfBytes = "%PDF-1.4 test".getBytes();
-        DocumentFileContent content = new DocumentFileContent(
+        DocumentFileContentDto content = new DocumentFileContentDto(
                 new ByteArrayResource(pdfBytes), DocumentFormat.PDF, "acta.pdf", pdfBytes.length);
 
         when(documentContentService.openForView(eq(48L), any())).thenReturn(content);
@@ -409,7 +409,7 @@ class DocumentControllerWebMvcTest {
     void view_returns200WithAttachmentDisposition_whenDocx() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
         byte[] docxBytes = new byte[]{1, 2, 3};
-        DocumentFileContent content = new DocumentFileContent(
+        DocumentFileContentDto content = new DocumentFileContentDto(
                 new ByteArrayResource(docxBytes), DocumentFormat.DOCX, "informe.docx", docxBytes.length);
 
         when(documentContentService.openForView(eq(48L), any())).thenReturn(content);
@@ -461,7 +461,7 @@ class DocumentControllerWebMvcTest {
     void download_returns200WithAttachmentDispositionAndStream_whenPdf() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
         byte[] pdfBytes = "%PDF-1.4 test".getBytes();
-        DocumentFileContent content = new DocumentFileContent(
+        DocumentFileContentDto content = new DocumentFileContentDto(
                 new ByteArrayResource(pdfBytes), DocumentFormat.PDF, "acta.pdf", pdfBytes.length);
 
         when(documentContentService.openForDownload(eq(48L), any())).thenReturn(content);
@@ -479,7 +479,7 @@ class DocumentControllerWebMvcTest {
     void download_returns200WithAttachmentDisposition_whenPng() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
         byte[] pngBytes = new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47};
-        DocumentFileContent content = new DocumentFileContent(
+        DocumentFileContentDto content = new DocumentFileContentDto(
                 new ByteArrayResource(pngBytes), DocumentFormat.PNG, "imagen.png", pngBytes.length);
 
         when(documentContentService.openForDownload(eq(48L), any())).thenReturn(content);
@@ -526,7 +526,7 @@ class DocumentControllerWebMvcTest {
     void download_sanitizesControlCharsInXFileNameHeader() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
         byte[] pdfBytes = new byte[]{1, 2, 3};
-        DocumentFileContent content = new DocumentFileContent(
+        DocumentFileContentDto content = new DocumentFileContentDto(
                 new ByteArrayResource(pdfBytes), DocumentFormat.PDF, "malo\r\nInjected: bad", pdfBytes.length);
 
         when(documentContentService.openForDownload(eq(48L), any())).thenReturn(content);
@@ -543,7 +543,7 @@ class DocumentControllerWebMvcTest {
     @Test
     void list_returns200WithEnvelope_whenServiceReturnsDocuments() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
-        DocumentSummaryResponse summary = new DocumentSummaryResponse(
+        DocumentSummaryResponseDto summary = new DocumentSummaryResponseDto(
                 47L,
                 "Acta Consejo Directivo Marzo 2026",
                 "Actas",
@@ -554,7 +554,7 @@ class DocumentControllerWebMvcTest {
                 "Ana Admin",
                 LocalDateTime.of(2026, 4, 10, 9, 30));
 
-        DocumentListResponse listResponse = new DocumentListResponse(47, 3, 1, 20, null, null, List.of(summary));
+        DocumentListResponseDto listResponse = new DocumentListResponseDto(47, 3, 1, 20, null, null, List.of(summary));
         when(documentSearchService.search(any(), any(), any(), any(), any(), any(),
                 any(), any(), any(), any(), anyBoolean(), any())).thenReturn(listResponse);
 
@@ -574,9 +574,9 @@ class DocumentControllerWebMvcTest {
     @Test
     void list_returns200WithSearchTermAndActiveFilters_whenQAndFiltersProvided() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
-        ActiveFiltersResponse filters = new ActiveFiltersResponse(3L, "Actas", null,
+        ActiveFiltersResponseDto filters = new ActiveFiltersResponseDto(3L, "Actas", null,
                 LocalDate.of(2026, 1, 1), LocalDate.of(2026, 5, 31), null);
-        DocumentListResponse listResponse = new DocumentListResponse(8, 1, 1, 20, "acta", filters, List.of());
+        DocumentListResponseDto listResponse = new DocumentListResponseDto(8, 1, 1, 20, "acta", filters, List.of());
         when(documentSearchService.search(any(), any(), any(), any(), any(), any(),
                 any(), any(), any(), any(), anyBoolean(), any())).thenReturn(listResponse);
 
@@ -597,7 +597,7 @@ class DocumentControllerWebMvcTest {
     @Test
     void list_passesAllParamsToService() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
-        DocumentListResponse listResponse = new DocumentListResponse(0, 0, 2, 10, null, null, List.of());
+        DocumentListResponseDto listResponse = new DocumentListResponseDto(0, 0, 2, 10, null, null, List.of());
         when(documentSearchService.search(any(), any(), any(), any(), any(), any(),
                 any(), any(), any(), any(), anyBoolean(), any())).thenReturn(listResponse);
 
@@ -684,10 +684,10 @@ class DocumentControllerWebMvcTest {
 
     @Test
     void filterOptions_returns200WithCategoriesAndUsers_whenAdmin() throws Exception {
-        FilterOptionsResponse response = new FilterOptionsResponse(
-                List.of(new FilterOptionsResponse.CategoryOption(1L, "Actas"),
-                        new FilterOptionsResponse.CategoryOption(2L, "Circulares")),
-                List.of(new FilterOptionsResponse.UserOption(10L, "Ana Admin")));
+        FilterOptionsResponseDto response = new FilterOptionsResponseDto(
+                List.of(new FilterOptionsResponseDto.CategoryOption(1L, "Actas"),
+                        new FilterOptionsResponseDto.CategoryOption(2L, "Circulares")),
+                List.of(new FilterOptionsResponseDto.UserOption(10L, "Ana Admin")));
         when(documentSearchService.getFilterOptions(false)).thenReturn(response);
 
         mockMvc.perform(get("/documents/filter-options"))
@@ -701,8 +701,8 @@ class DocumentControllerWebMvcTest {
 
     @Test
     void filterOptions_returns200WithCategoriesAndNullUsers_whenEditor() throws Exception {
-        FilterOptionsResponse response = new FilterOptionsResponse(
-                List.of(new FilterOptionsResponse.CategoryOption(1L, "Actas")),
+        FilterOptionsResponseDto response = new FilterOptionsResponseDto(
+                List.of(new FilterOptionsResponseDto.CategoryOption(1L, "Actas")),
                 null);
         when(documentSearchService.getFilterOptions(false)).thenReturn(response);
 

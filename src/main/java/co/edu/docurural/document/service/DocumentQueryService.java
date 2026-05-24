@@ -1,12 +1,12 @@
 package co.edu.docurural.document.service;
 
-import co.edu.docurural.document.dto.DocumentDetailResponse;
+import co.edu.docurural.document.dto.DocumentDetailResponseDto;
 
 import java.util.Map;
 
 public interface DocumentQueryService {
 
-    DocumentDetailResponse findDetailById(Long id);
+    DocumentDetailResponseDto findDetailById(Long id);
 
     /**
      * Conteos de documentos ACTIVE agrupados por categoría.

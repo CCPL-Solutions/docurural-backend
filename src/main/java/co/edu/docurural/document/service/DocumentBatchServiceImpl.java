@@ -2,9 +2,9 @@ package co.edu.docurural.document.service;
 
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.repository.CategoryRepository;
-import co.edu.docurural.document.dto.BatchUploadDocumentRequest;
-import co.edu.docurural.document.dto.BatchUploadDocumentResponse;
-import co.edu.docurural.document.dto.BatchUploadItemResult;
+import co.edu.docurural.document.dto.BatchUploadDocumentRequestDto;
+import co.edu.docurural.document.dto.BatchUploadDocumentResponseDto;
+import co.edu.docurural.document.dto.BatchUploadItemResultDto;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
@@ -41,9 +41,9 @@ public class DocumentBatchServiceImpl implements DocumentBatchService {
     private final MessageResolver messageResolver;
 
     @Override
-    public BatchUploadDocumentResponse uploadBatch(BatchUploadDocumentRequest request,
-                                                   MultipartFile[] files,
-                                                   AuditContext audit) {
+    public BatchUploadDocumentResponseDto uploadBatch(BatchUploadDocumentRequestDto request,
+                                                      MultipartFile[] files,
+                                                      AuditContext audit) {
         requireActorUserId(audit);
 
         if (files == null || files.length == 0) {
@@ -66,7 +66,7 @@ public class DocumentBatchServiceImpl implements DocumentBatchService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         messageResolver.get("document.category.not-found")));
 
-        List<BatchUploadItemResult> results = new ArrayList<>(files.length);
+        List<BatchUploadItemResultDto> results = new ArrayList<>(files.length);
 
         for (int i = 0; i < files.length; i++) {
             MultipartFile file = files[i];
@@ -76,29 +76,29 @@ public class DocumentBatchServiceImpl implements DocumentBatchService {
             results.add(processOneFile(file, fileName, resolvedTitle, request, audit));
         }
 
-        int successful = (int) results.stream().filter(BatchUploadItemResult::success).count();
+        int successful = (int) results.stream().filter(BatchUploadItemResultDto::success).count();
         int total = results.size();
 
         log.info("Lote completado: {}/{} archivos exitosos", successful, total);
 
-        return new BatchUploadDocumentResponse(total, successful, total - successful, results);
+        return new BatchUploadDocumentResponseDto(total, successful, total - successful, results);
     }
 
-    private BatchUploadItemResult processOneFile(MultipartFile file, String fileName,
-                                                 String resolvedTitle,
-                                                 BatchUploadDocumentRequest request,
-                                                 AuditContext audit) {
+    private BatchUploadItemResultDto processOneFile(MultipartFile file, String fileName,
+                                                    String resolvedTitle,
+                                                    BatchUploadDocumentRequestDto request,
+                                                    AuditContext audit) {
         try {
             Document saved = documentService.uploadSingleForBatch(
                     file, resolvedTitle, request.categoryId(),
                     request.responsibleArea(), LocalDate.now(), audit);
-            return new BatchUploadItemResult(fileName, true, saved.getId(), null);
+            return new BatchUploadItemResultDto(fileName, true, saved.getId(), null);
         } catch (BusinessRuleException e) {
             log.warn("Archivo '{}' rechazado en lote: {}", fileName, e.getMessage());
-            return new BatchUploadItemResult(fileName, false, null, e.getMessage());
+            return new BatchUploadItemResultDto(fileName, false, null, e.getMessage());
         } catch (FileStorageException e) {
             log.error("Error de almacenamiento para '{}' en lote: {}", fileName, e.getMessage());
-            return new BatchUploadItemResult(fileName, false, null, e.getMessage());
+            return new BatchUploadItemResultDto(fileName, false, null, e.getMessage());
         }
     }
 

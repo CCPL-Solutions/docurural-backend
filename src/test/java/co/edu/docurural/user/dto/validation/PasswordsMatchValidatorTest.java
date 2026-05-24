@@ -1,8 +1,8 @@
 package co.edu.docurural.user.dto.validation;
 
 import co.edu.docurural.user.enums.UserRole;
-import co.edu.docurural.user.dto.CreateUserRequest;
-import co.edu.docurural.user.dto.UpdateUserRequest;
+import co.edu.docurural.user.dto.CreateUserRequestDto;
+import co.edu.docurural.user.dto.UpdateUserRequestDto;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -42,7 +42,7 @@ class PasswordsMatchValidatorTest {
 
     @Test
     void isValid_recordWithMatchingPasswords_passes() {
-        CreateUserRequest request = new CreateUserRequest(
+        CreateUserRequestDto request = new CreateUserRequestDto(
                 "Ana Admin",
                 "ana.admin@docurural.edu.co",
                 "Password123!",
@@ -50,14 +50,14 @@ class PasswordsMatchValidatorTest {
                 UserRole.ADMIN
         );
 
-        Set<ConstraintViolation<CreateUserRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<CreateUserRequestDto>> violations = validator.validate(request);
 
         assertThat(violations).isEmpty();
     }
 
     @Test
     void isValid_recordWithMismatchedPasswords_failsOnConfirmPasswordField() {
-        CreateUserRequest request = new CreateUserRequest(
+        CreateUserRequestDto request = new CreateUserRequestDto(
                 "Ana Admin",
                 "ana.admin@docurural.edu.co",
                 "password123",
@@ -65,7 +65,7 @@ class PasswordsMatchValidatorTest {
                 UserRole.ADMIN
         );
 
-        Set<ConstraintViolation<CreateUserRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<CreateUserRequestDto>> violations = validator.validate(request);
 
         assertThat(violations)
                 .anySatisfy(v -> {
@@ -76,7 +76,7 @@ class PasswordsMatchValidatorTest {
 
     @Test
     void isValid_recordWithBlankPassword_passes() {
-        CreateUserRequest request = new CreateUserRequest(
+        CreateUserRequestDto request = new CreateUserRequestDto(
                 "Ana Admin",
                 "ana.admin@docurural.edu.co",
                 "   ",
@@ -84,7 +84,7 @@ class PasswordsMatchValidatorTest {
                 UserRole.ADMIN
         );
 
-        Set<ConstraintViolation<CreateUserRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<CreateUserRequestDto>> violations = validator.validate(request);
 
         // En create, password en blanco debe fallar por @NotBlank/@Size, no por PasswordsMatch.
         assertThat(violations)
@@ -97,7 +97,7 @@ class PasswordsMatchValidatorTest {
 
     @Test
     void isValid_updateRequestWithNullPassword_passes() {
-        UpdateUserRequest request = new UpdateUserRequest(
+        UpdateUserRequestDto request = new UpdateUserRequestDto(
                 "Erik Editor",
                 "erik.editor@docurural.edu.co",
                 UserRole.EDITOR,
@@ -105,14 +105,14 @@ class PasswordsMatchValidatorTest {
                 null
         );
 
-        Set<ConstraintViolation<UpdateUserRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<UpdateUserRequestDto>> violations = validator.validate(request);
 
         assertThat(violations).isEmpty();
     }
 
     @Test
     void isValid_updateRequestWithPasswordButMismatchedConfirm_fails() {
-        UpdateUserRequest request = new UpdateUserRequest(
+        UpdateUserRequestDto request = new UpdateUserRequestDto(
                 "Erik Editor",
                 "erik.editor@docurural.edu.co",
                 UserRole.EDITOR,
@@ -120,7 +120,7 @@ class PasswordsMatchValidatorTest {
                 "another999"
         );
 
-        Set<ConstraintViolation<UpdateUserRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<UpdateUserRequestDto>> violations = validator.validate(request);
 
         assertThat(violations)
                 .anySatisfy(v -> {

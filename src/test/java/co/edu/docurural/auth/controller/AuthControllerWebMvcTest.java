@@ -1,14 +1,14 @@
 package co.edu.docurural.auth.controller;
 
+import co.edu.docurural.auth.dto.UserSummaryDto;
 import co.edu.docurural.shared.security.JwtAuthenticationFilter;
 import co.edu.docurural.shared.config.SecurityConfig;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.audit.AuditContextResolver;
 import co.edu.docurural.auth.service.AuthService;
-import co.edu.docurural.auth.dto.LoginRequest;
-import co.edu.docurural.auth.dto.LoginResponse;
-import co.edu.docurural.auth.dto.UserSummary;
-import co.edu.docurural.shared.dto.MessageResponse;
+import co.edu.docurural.auth.dto.LoginRequestDto;
+import co.edu.docurural.auth.dto.LoginResponseDto;
+import co.edu.docurural.shared.dto.MessageResponseDto;
 import co.edu.docurural.shared.exception.GlobalExceptionHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
@@ -55,16 +55,16 @@ class AuthControllerWebMvcTest {
 
     @Test
     void login_withValidBody_returns200AndResponse() throws Exception {
-        LoginResponse response = LoginResponse.bearer(
+        LoginResponseDto response = LoginResponseDto.bearer(
                 "token-abc",
                 1800L,
-                new UserSummary(10L, "Ana Admin", "ana.admin@docurural.edu.co", "ADMIN"));
+                new UserSummaryDto(10L, "Ana Admin", "ana.admin@docurural.edu.co", "ADMIN"));
         AuditContext auditContext = new AuditContext(null, "127.0.0.1");
 
         when(auditContextResolver.resolve(any(HttpServletRequest.class))).thenReturn(auditContext);
-        when(authService.login(any(LoginRequest.class), eq(auditContext))).thenReturn(response);
+        when(authService.login(any(LoginRequestDto.class), eq(auditContext))).thenReturn(response);
 
-        String body = objectMapper.writeValueAsString(new LoginRequest(
+        String body = objectMapper.writeValueAsString(new LoginRequestDto(
                 "ana.admin@docurural.edu.co",
                 "plain-password"));
 
@@ -105,10 +105,10 @@ class AuthControllerWebMvcTest {
     @Test
     void login_whenServiceThrowsBadCredentials_returns401MappedError() throws Exception {
         when(auditContextResolver.resolve(any(HttpServletRequest.class))).thenReturn(new AuditContext(null, "127.0.0.1"));
-        when(authService.login(any(LoginRequest.class), any(AuditContext.class)))
+        when(authService.login(any(LoginRequestDto.class), any(AuditContext.class)))
                 .thenThrow(new BadCredentialsException("Bad credentials"));
 
-        String body = objectMapper.writeValueAsString(new LoginRequest(
+        String body = objectMapper.writeValueAsString(new LoginRequestDto(
                 "ana.admin@docurural.edu.co",
                 "wrong-password"));
 
@@ -125,7 +125,7 @@ class AuthControllerWebMvcTest {
         AuditContext auditContext = new AuditContext(10L, "127.0.0.1");
         when(auditContextResolver.resolve(any(HttpServletRequest.class))).thenReturn(auditContext);
         when(authService.logout(eq(auditContext)))
-                .thenReturn(new MessageResponse("Sesión cerrada exitosamente"));
+                .thenReturn(new MessageResponseDto("Sesión cerrada exitosamente"));
 
         mockMvc.perform(post("/auth/logout"))
                 .andExpect(status().isOk())

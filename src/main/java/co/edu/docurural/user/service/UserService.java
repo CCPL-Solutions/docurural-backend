@@ -1,24 +1,24 @@
 package co.edu.docurural.user.service;
 
 import co.edu.docurural.shared.audit.AuditContext;
-import co.edu.docurural.user.dto.CreateUserRequest;
-import co.edu.docurural.user.dto.CreateUserResponse;
-import co.edu.docurural.user.dto.UpdateStatusRequest;
-import co.edu.docurural.user.dto.UpdateStatusResponse;
-import co.edu.docurural.user.dto.UpdateUserRequest;
-import co.edu.docurural.user.dto.UpdateUserResponse;
-import co.edu.docurural.user.dto.UserListResponse;
-import co.edu.docurural.user.dto.UserResponse;
+import co.edu.docurural.user.dto.CreateUserRequestDto;
+import co.edu.docurural.user.dto.CreateUserResponseDto;
+import co.edu.docurural.user.dto.UpdateStatusRequestDto;
+import co.edu.docurural.user.dto.UpdateStatusResponseDto;
+import co.edu.docurural.user.dto.UpdateUserRequestDto;
+import co.edu.docurural.user.dto.UpdateUserResponseDto;
+import co.edu.docurural.user.dto.UserListResponseDto;
+import co.edu.docurural.user.dto.UserResponseDto;
 
 public interface UserService {
 
-    UserListResponse list(String sortBy, String sortDir);
+    UserListResponseDto list(String sortBy, String sortDir);
 
-    UserResponse findById(Long id);
+    UserResponseDto findById(Long id);
 
-    CreateUserResponse create(CreateUserRequest request, AuditContext audit);
+    CreateUserResponseDto create(CreateUserRequestDto request, AuditContext audit);
 
-    UpdateUserResponse update(Long id, UpdateUserRequest request, AuditContext audit);
+    UpdateUserResponseDto update(Long id, UpdateUserRequestDto request, AuditContext audit);
 
-    UpdateStatusResponse changeStatus(Long id, UpdateStatusRequest request, AuditContext audit);
+    UpdateStatusResponseDto changeStatus(Long id, UpdateStatusRequestDto request, AuditContext audit);
 }

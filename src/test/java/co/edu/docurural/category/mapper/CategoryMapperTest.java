@@ -1,10 +1,10 @@
 package co.edu.docurural.category.mapper;
 
-import co.edu.docurural.category.dto.CategoryDetailResponse;
-import co.edu.docurural.category.dto.CategoryListResponse;
-import co.edu.docurural.category.dto.CreateCategoryResponse;
-import co.edu.docurural.category.dto.UpdateCategoryResponse;
-import co.edu.docurural.category.dto.UpdateCategoryStatusResponse;
+import co.edu.docurural.category.dto.CategoryDetailResponseDto;
+import co.edu.docurural.category.dto.CategoryListResponseDto;
+import co.edu.docurural.category.dto.CreateCategoryResponseDto;
+import co.edu.docurural.category.dto.UpdateCategoryResponseDto;
+import co.edu.docurural.category.dto.UpdateCategoryStatusResponseDto;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.support.TestFixtures;
@@ -26,7 +26,7 @@ class CategoryMapperTest {
     void toCreateResponse_mapsAllFields() {
         Category category = TestFixtures.categoryActive(9L, "Actas", "Actas de reuniones");
 
-        CreateCategoryResponse response = mapper.toCreateResponse(category, "Categoría creada exitosamente");
+        CreateCategoryResponseDto response = mapper.toCreateResponse(category, "Categoría creada exitosamente");
 
         assertThat(response.id()).isEqualTo(9L);
         assertThat(response.name()).isEqualTo("Actas");
@@ -40,7 +40,7 @@ class CategoryMapperTest {
     void toCreateResponse_withNullDescription_mapsDescriptionAsNull() {
         Category category = TestFixtures.categoryActive(1L, "Resoluciones");
 
-        CreateCategoryResponse response = mapper.toCreateResponse(category, "ok");
+        CreateCategoryResponseDto response = mapper.toCreateResponse(category, "ok");
 
         assertThat(response.description()).isNull();
     }
@@ -53,7 +53,7 @@ class CategoryMapperTest {
                 .createdAt(TestFixtures.FIXED_CREATED_AT)
                 .build();
 
-        CreateCategoryResponse response = mapper.toCreateResponse(category, "ok");
+        CreateCategoryResponseDto response = mapper.toCreateResponse(category, "ok");
 
         assertThat(response.status()).isNull();
     }
@@ -68,7 +68,7 @@ class CategoryMapperTest {
     void toCreateResponse_statusIsAlwaysActiveStringForNewCategory() {
         Category category = TestFixtures.categoryActive(5L, "Circulares");
 
-        CreateCategoryResponse response = mapper.toCreateResponse(category, "msg");
+        CreateCategoryResponseDto response = mapper.toCreateResponse(category, "msg");
 
         assertThat(response.status()).isEqualTo(CategoryStatus.ACTIVE.name());
     }
@@ -81,7 +81,7 @@ class CategoryMapperTest {
     void toUpdateResponse_mapsAllFields() {
         Category category = TestFixtures.categoryActive(9L, "Proyectos e Informes Biotecnología", "Descripción detallada");
 
-        UpdateCategoryResponse response = mapper.toUpdateResponse(category, "Categoría actualizada exitosamente");
+        UpdateCategoryResponseDto response = mapper.toUpdateResponse(category, "Categoría actualizada exitosamente");
 
         assertThat(response.id()).isEqualTo(9L);
         assertThat(response.name()).isEqualTo("Proyectos e Informes Biotecnología");
@@ -94,7 +94,7 @@ class CategoryMapperTest {
     void toUpdateResponse_withNullDescription_mapsDescriptionAsNull() {
         Category category = TestFixtures.categoryActive(3L, "Circulares");
 
-        UpdateCategoryResponse response = mapper.toUpdateResponse(category, "ok");
+        UpdateCategoryResponseDto response = mapper.toUpdateResponse(category, "ok");
 
         assertThat(response.description()).isNull();
     }
@@ -113,7 +113,7 @@ class CategoryMapperTest {
     void toStatusResponse_mapsAllFields_whenCategoryActive() {
         Category category = TestFixtures.categoryActive(9L, "Proyectos e Informes Biotecnología");
 
-        UpdateCategoryStatusResponse response = mapper.toStatusResponse(category, "Categoría desactivada exitosamente");
+        UpdateCategoryStatusResponseDto response = mapper.toStatusResponse(category, "Categoría desactivada exitosamente");
 
         assertThat(response.id()).isEqualTo(9L);
         assertThat(response.name()).isEqualTo("Proyectos e Informes Biotecnología");
@@ -125,7 +125,7 @@ class CategoryMapperTest {
     void toStatusResponse_withInactiveCategory_mapsStatusAsInactive() {
         Category category = TestFixtures.categoryInactive(5L, "Actas");
 
-        UpdateCategoryStatusResponse response = mapper.toStatusResponse(category, "Categoría desactivada exitosamente");
+        UpdateCategoryStatusResponseDto response = mapper.toStatusResponse(category, "Categoría desactivada exitosamente");
 
         assertThat(response.status()).isEqualTo("INACTIVE");
     }
@@ -138,7 +138,7 @@ class CategoryMapperTest {
                 .createdAt(TestFixtures.FIXED_CREATED_AT)
                 .build();
 
-        UpdateCategoryStatusResponse response = mapper.toStatusResponse(category, "ok");
+        UpdateCategoryStatusResponseDto response = mapper.toStatusResponse(category, "ok");
 
         assertThat(response.status()).isNull();
     }
@@ -158,7 +158,7 @@ class CategoryMapperTest {
         User admin = TestFixtures.userAdmin(1L);
         Category category = TestFixtures.categoryActive(1L, "Actas", "Actas de reuniones", admin);
 
-        CategoryDetailResponse response = mapper.toDetailResponse(category, 23L);
+        CategoryDetailResponseDto response = mapper.toDetailResponse(category, 23L);
 
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.name()).isEqualTo("Actas");
@@ -173,7 +173,7 @@ class CategoryMapperTest {
     void toDetailResponse_withNullCreatedBy_mapsToSistema() {
         Category category = TestFixtures.categoryActive(2L, "Resoluciones");
 
-        CategoryDetailResponse response = mapper.toDetailResponse(category, 0L);
+        CategoryDetailResponseDto response = mapper.toDetailResponse(category, 0L);
 
         assertThat(response.createdBy()).isEqualTo("Sistema");
     }
@@ -186,7 +186,7 @@ class CategoryMapperTest {
                 .createdAt(TestFixtures.FIXED_CREATED_AT)
                 .build();
 
-        CategoryDetailResponse response = mapper.toDetailResponse(category, 5L);
+        CategoryDetailResponseDto response = mapper.toDetailResponse(category, 5L);
 
         assertThat(response.status()).isNull();
     }
@@ -195,7 +195,7 @@ class CategoryMapperTest {
     void toDetailResponse_withZeroDocumentCount_mapsToZero() {
         Category category = TestFixtures.categoryActive(4L, "Circulares");
 
-        CategoryDetailResponse response = mapper.toDetailResponse(category, 0L);
+        CategoryDetailResponseDto response = mapper.toDetailResponse(category, 0L);
 
         assertThat(response.documentCount()).isEqualTo(0);
     }
@@ -212,7 +212,7 @@ class CategoryMapperTest {
 
     @Test
     void toListResponse_emptyList_returnsZeroCounters_andEmptyList() {
-        CategoryListResponse response = mapper.toListResponse(List.of(), Map.of());
+        CategoryListResponseDto response = mapper.toListResponse(List.of(), Map.of());
 
         assertThat(response.totalCategories()).isEqualTo(0);
         assertThat(response.activeCategories()).isEqualTo(0);
@@ -226,7 +226,7 @@ class CategoryMapperTest {
         Category cat2 = TestFixtures.categoryActive(2L, "Informes");
         Category cat3 = TestFixtures.categoryInactive(3L, "Resoluciones");
 
-        CategoryListResponse response = mapper.toListResponse(
+        CategoryListResponseDto response = mapper.toListResponse(
                 List.of(cat1, cat2, cat3),
                 Map.of(1L, 10L, 2L, 5L));
 
@@ -242,7 +242,7 @@ class CategoryMapperTest {
     void toListResponse_missingCountInMap_treatedAsZero() {
         Category category = TestFixtures.categoryActive(9L, "Circulares");
 
-        CategoryListResponse response = mapper.toListResponse(List.of(category), Map.of());
+        CategoryListResponseDto response = mapper.toListResponse(List.of(category), Map.of());
 
         assertThat(response.categories().get(0).documentCount()).isEqualTo(0);
     }

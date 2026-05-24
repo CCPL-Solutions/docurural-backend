@@ -1,7 +1,7 @@
 package co.edu.docurural.document.controller;
 
-import co.edu.docurural.document.dto.BatchUploadDocumentResponse;
-import co.edu.docurural.document.dto.BatchUploadItemResult;
+import co.edu.docurural.document.dto.BatchUploadDocumentResponseDto;
+import co.edu.docurural.document.dto.BatchUploadItemResultDto;
 import co.edu.docurural.document.service.DocumentBatchService;
 import co.edu.docurural.document.service.DocumentCommandService;
 import co.edu.docurural.document.service.DocumentContentService;
@@ -67,11 +67,11 @@ class DocumentBatchControllerWebMvcTest {
     void uploadBatch_returns200WithAllSuccessful_whenAllFilesValid() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
 
-        BatchUploadDocumentResponse response = new BatchUploadDocumentResponse(
+        BatchUploadDocumentResponseDto response = new BatchUploadDocumentResponseDto(
                 2, 2, 0,
                 List.of(
-                        new BatchUploadItemResult("acta_enero.pdf", true, 48L, null),
-                        new BatchUploadItemResult("acta_febrero.pdf", true, 49L, null)));
+                        new BatchUploadItemResultDto("acta_enero.pdf", true, 48L, null),
+                        new BatchUploadItemResultDto("acta_febrero.pdf", true, 49L, null)));
 
         when(documentBatchService.uploadBatch(any(), any(), any())).thenReturn(response);
 
@@ -100,11 +100,11 @@ class DocumentBatchControllerWebMvcTest {
     void uploadBatch_returns200WithMixedResults_whenOneFileFails() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
 
-        BatchUploadDocumentResponse response = new BatchUploadDocumentResponse(
+        BatchUploadDocumentResponseDto response = new BatchUploadDocumentResponseDto(
                 2, 1, 1,
                 List.of(
-                        new BatchUploadItemResult("bueno.pdf", true, 48L, null),
-                        new BatchUploadItemResult("malo.pdf", false, null, "El archivo supera el tamaño máximo")));
+                        new BatchUploadItemResultDto("bueno.pdf", true, 48L, null),
+                        new BatchUploadItemResultDto("malo.pdf", false, null, "El archivo supera el tamaño máximo")));
 
         when(documentBatchService.uploadBatch(any(), any(), any())).thenReturn(response);
 

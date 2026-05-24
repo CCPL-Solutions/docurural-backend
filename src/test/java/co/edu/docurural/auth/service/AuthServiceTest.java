@@ -2,12 +2,12 @@ package co.edu.docurural.auth.service;
 
 import co.edu.docurural.activitylog.enums.ActivityAction;
 import co.edu.docurural.activitylog.service.ActivityLogService;
-import co.edu.docurural.auth.dto.LoginRequest;
-import co.edu.docurural.auth.dto.LoginResponse;
+import co.edu.docurural.auth.dto.LoginRequestDto;
+import co.edu.docurural.auth.dto.LoginResponseDto;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.user.entity.User;
 import co.edu.docurural.user.repository.UserRepository;
-import co.edu.docurural.shared.dto.MessageResponse;
+import co.edu.docurural.shared.dto.MessageResponseDto;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.shared.security.JwtProperties;
 import co.edu.docurural.shared.security.JwtTokenProvider;
@@ -80,14 +80,14 @@ class AuthServiceTest {
     @Test
     void login_withValidCredentials_returnsBearerToken_updatesLastLogin_logsLogin() {
         User admin = TestFixtures.userAdmin(10L);
-        LoginRequest request = TestFixtures.loginRequest(admin.getEmail(), "plain-password");
+        LoginRequestDto request = TestFixtures.loginRequest(admin.getEmail(), "plain-password");
 
         when(userRepository.findByEmail(admin.getEmail())).thenReturn(Optional.of(admin));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
         when(jwtTokenProvider.generateToken(any(User.class))).thenReturn("token-abc");
         when(jwtProperties.getExpirationMs()).thenReturn(1_800_000L);
 
-        LoginResponse response = authService.login(request, LOGIN_AUDIT);
+        LoginResponseDto response = authService.login(request, LOGIN_AUDIT);
 
         assertThat(response.token()).isEqualTo("token-abc");
         assertThat(response.tokenType()).isEqualTo("Bearer");
@@ -118,7 +118,7 @@ class AuthServiceTest {
 
     @Test
     void login_withBadCredentials_propagatesBadCredentialsException() {
-        LoginRequest request = TestFixtures.loginRequest("ana.admin@docurural.edu.co", "wrong");
+        LoginRequestDto request = TestFixtures.loginRequest("ana.admin@docurural.edu.co", "wrong");
         when(authenticationManager.authenticate(any()))
                 .thenThrow(new BadCredentialsException("Bad credentials"));
 
@@ -130,7 +130,7 @@ class AuthServiceTest {
 
     @Test
     void login_withDisabledAccount_propagatesDisabledException() {
-        LoginRequest request = TestFixtures.loginRequest("ida.inactive@docurural.edu.co", "whatever");
+        LoginRequestDto request = TestFixtures.loginRequest("ida.inactive@docurural.edu.co", "whatever");
         when(authenticationManager.authenticate(any()))
                 .thenThrow(new DisabledException("Account disabled"));
 
@@ -142,7 +142,7 @@ class AuthServiceTest {
 
     @Test
     void login_authenticatedButUserNotInDb_throwsResourceNotFound() {
-        LoginRequest request = TestFixtures.loginRequest("ghost@docurural.edu.co", "any");
+        LoginRequestDto request = TestFixtures.loginRequest("ghost@docurural.edu.co", "any");
         when(userRepository.findByEmail("ghost@docurural.edu.co")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> authService.login(request, LOGIN_AUDIT))
@@ -163,7 +163,7 @@ class AuthServiceTest {
         when(userRepository.findById(42L)).thenReturn(Optional.of(user));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        MessageResponse response = authService.logout(LOGOUT_AUDIT);
+        MessageResponseDto response = authService.logout(LOGOUT_AUDIT);
 
         assertThat(response.message()).isEqualTo("auth.logout.success");
 

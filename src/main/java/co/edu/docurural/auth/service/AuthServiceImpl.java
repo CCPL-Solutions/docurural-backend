@@ -2,13 +2,13 @@ package co.edu.docurural.auth.service;
 
 import co.edu.docurural.activitylog.enums.ActivityAction;
 import co.edu.docurural.activitylog.service.ActivityLogService;
-import co.edu.docurural.auth.dto.LoginRequest;
-import co.edu.docurural.auth.dto.LoginResponse;
-import co.edu.docurural.auth.dto.UserSummary;
+import co.edu.docurural.auth.dto.LoginRequestDto;
+import co.edu.docurural.auth.dto.LoginResponseDto;
+import co.edu.docurural.auth.dto.UserSummaryDto;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.user.entity.User;
 import co.edu.docurural.user.repository.UserRepository;
-import co.edu.docurural.shared.dto.MessageResponse;
+import co.edu.docurural.shared.dto.MessageResponseDto;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.shared.security.JwtProperties;
 import co.edu.docurural.shared.security.JwtTokenProvider;
@@ -60,7 +60,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public LoginResponse login(LoginRequest request, AuditContext audit) {
+    public LoginResponseDto login(LoginRequestDto request, AuditContext audit) {
         String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
 
         authenticationManager.authenticate(
@@ -84,13 +84,13 @@ public class AuthServiceImpl implements AuthService {
 
         log.info("Login exitoso para userId={} email={}", savedUser.getId(), normalizedEmail);
 
-        UserSummary summary = userMapper.toSummary(savedUser);
-        return LoginResponse.bearer(token, expiresInSeconds, summary);
+        UserSummaryDto summary = userMapper.toSummary(savedUser);
+        return LoginResponseDto.bearer(token, expiresInSeconds, summary);
     }
 
     @Override
     @Transactional
-    public MessageResponse logout(AuditContext audit) {
+    public MessageResponseDto logout(AuditContext audit) {
         AuditContext resolvedAudit = requireAuditWithActor(audit);
 
         User user = userRepository.findById(resolvedAudit.actorUserId())
@@ -106,7 +106,7 @@ public class AuthServiceImpl implements AuthService {
                 LOGOUT_DETAIL);
 
         log.info("Logout registrado para userId={}", resolvedAudit.actorUserId());
-        return new MessageResponse(messageResolver.get("auth.logout.success"));
+        return new MessageResponseDto(messageResolver.get("auth.logout.success"));
     }
 
     private AuditContext requireAudit(AuditContext audit) {

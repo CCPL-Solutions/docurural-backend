@@ -1,6 +1,6 @@
 package co.edu.docurural.document.service;
 
-import co.edu.docurural.document.dto.DocumentDetailResponse;
+import co.edu.docurural.document.dto.DocumentDetailResponseDto;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.enums.DocumentStatus;
 import co.edu.docurural.document.mapper.DocumentMapper;
@@ -30,7 +30,7 @@ public class DocumentQueryServiceImpl implements DocumentQueryService {
 
     @Override
     @Transactional(readOnly = true)
-    public DocumentDetailResponse findDetailById(Long id) {
+    public DocumentDetailResponseDto findDetailById(Long id) {
         Document document = documentRepository.findByIdAndStatus(id, DocumentStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         messageResolver.get("document.not-found", id)));

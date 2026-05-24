@@ -2,8 +2,8 @@ package co.edu.docurural.dashboard.service;
 
 import co.edu.docurural.category.repository.projection.CategoryNameView;
 import co.edu.docurural.category.service.CategoryService;
-import co.edu.docurural.dashboard.dto.CategoryDistributionItemResponse;
-import co.edu.docurural.dashboard.dto.DashboardStatsResponse;
+import co.edu.docurural.dashboard.dto.CategoryDistributionItemResponseDto;
+import co.edu.docurural.dashboard.dto.DashboardStatsResponseDto;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.enums.DocumentStatus;
 import co.edu.docurural.document.repository.DocumentRepository;
@@ -75,7 +75,7 @@ class DashboardServiceTest {
     void getStats_returnsZeroAndNullTop_whenRepositoryIsEmpty() {
         stubEmpty();
 
-        DashboardStatsResponse result = dashboardService.getStats();
+        DashboardStatsResponseDto result = dashboardService.getStats();
 
         assertThat(result.summary().totalActiveDocuments()).isZero();
         assertThat(result.summary().documentsUploadedThisMonth()).isZero();
@@ -103,7 +103,7 @@ class DashboardServiceTest {
         when(categoryService.findAllCategoryNames(any(Sort.class)))
                 .thenReturn(List.of(nameView(1L, "Actas"), nameView(2L, "Informes")));
 
-        DashboardStatsResponse result = dashboardService.getStats();
+        DashboardStatsResponseDto result = dashboardService.getStats();
 
         assertThat(result.summary().totalActiveDocuments()).isEqualTo(29L);
         assertThat(result.summary().documentsUploadedThisMonth()).isEqualTo(5L);
@@ -133,9 +133,9 @@ class DashboardServiceTest {
                         nameView(1L, "Actas"), nameView(2L, "Circulares"),
                         nameView(3L, "Contratos"), nameView(4L, "Informes"), nameView(5L, "PRAE")));
 
-        DashboardStatsResponse result = dashboardService.getStats();
+        DashboardStatsResponseDto result = dashboardService.getStats();
 
-        List<CategoryDistributionItemResponse> dist = result.categoryDistribution();
+        List<CategoryDistributionItemResponseDto> dist = result.categoryDistribution();
         assertThat(dist.get(0).categoryName()).isEqualTo("Actas");
         assertThat(dist.get(0).percentage()).isEqualTo(38.30);
         assertThat(dist.get(1).percentage()).isEqualTo(23.40);
@@ -160,7 +160,7 @@ class DashboardServiceTest {
         when(categoryService.findAllCategoryNames(any(Sort.class)))
                 .thenReturn(List.of(nameView(1L, "Actas"), nameView(2L, "Sin Documentos")));
 
-        DashboardStatsResponse result = dashboardService.getStats();
+        DashboardStatsResponseDto result = dashboardService.getStats();
 
         assertThat(result.categoryDistribution()).hasSize(1);
         assertThat(result.categoryDistribution().get(0).categoryName()).isEqualTo("Actas");
@@ -182,7 +182,7 @@ class DashboardServiceTest {
         when(categoryService.findAllCategoryNames(any(Sort.class)))
                 .thenReturn(List.of(nameView(99L, "Categoría Inactiva")));
 
-        DashboardStatsResponse result = dashboardService.getStats();
+        DashboardStatsResponseDto result = dashboardService.getStats();
 
         assertThat(result.categoryDistribution()).hasSize(1);
         assertThat(result.categoryDistribution().get(0).categoryName()).isEqualTo("Categoría Inactiva");
@@ -209,7 +209,7 @@ class DashboardServiceTest {
         when(categoryService.findAllCategoryNames(any(Sort.class)))
                 .thenReturn(List.of(nameView(1L, "Actas")));
 
-        DashboardStatsResponse result = dashboardService.getStats();
+        DashboardStatsResponseDto result = dashboardService.getStats();
 
         assertThat(result.recentDocuments()).hasSize(1);
         var recent = result.recentDocuments().get(0);
@@ -237,9 +237,9 @@ class DashboardServiceTest {
         when(categoryService.findAllCategoryNames(any(Sort.class)))
                 .thenReturn(List.of(nameView(1L, "A"), nameView(2L, "B"), nameView(3L, "C")));
 
-        DashboardStatsResponse result = dashboardService.getStats();
+        DashboardStatsResponseDto result = dashboardService.getStats();
 
-        List<CategoryDistributionItemResponse> dist = result.categoryDistribution();
+        List<CategoryDistributionItemResponseDto> dist = result.categoryDistribution();
         assertThat(dist.get(0).categoryName()).isEqualTo("C");
         assertThat(dist.get(1).categoryName()).isEqualTo("A");
         assertThat(dist.get(2).categoryName()).isEqualTo("B");

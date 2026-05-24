@@ -4,11 +4,11 @@ import co.edu.docurural.activitylog.enums.ActivityAction;
 import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.repository.CategoryRepository;
-import co.edu.docurural.document.dto.DeleteDocumentResponse;
-import co.edu.docurural.document.dto.UpdateDocumentMetadataRequest;
-import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
-import co.edu.docurural.document.dto.UploadDocumentRequest;
-import co.edu.docurural.document.dto.UploadDocumentResponse;
+import co.edu.docurural.document.dto.DeleteDocumentResponseDto;
+import co.edu.docurural.document.dto.UpdateDocumentMetadataRequestDto;
+import co.edu.docurural.document.dto.UpdateDocumentMetadataResponseDto;
+import co.edu.docurural.document.dto.UploadDocumentRequestDto;
+import co.edu.docurural.document.dto.UploadDocumentResponseDto;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.document.enums.DocumentStatus;
@@ -93,7 +93,7 @@ class DocumentCommandServiceTest {
     void upload_persistsDocumentAndLogsActivity_whenAllValid() {
         Category category = TestFixtures.categoryActive(1L, "Actas");
         User uploader = TestFixtures.userAdmin(ACTOR_ID);
-        UploadDocumentRequest request = TestFixtures.uploadDocumentRequest(1L);
+        UploadDocumentRequestDto request = TestFixtures.uploadDocumentRequest(1L);
         MockMultipartFile file = new MockMultipartFile("file", "acta.pdf", "application/pdf", new byte[100]);
 
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
@@ -107,7 +107,7 @@ class DocumentCommandServiceTest {
             return d;
         });
 
-        UploadDocumentResponse response = documentCommandService.upload(request, file, AUDIT);
+        UploadDocumentResponseDto response = documentCommandService.upload(request, file, AUDIT);
 
         assertThat(response.id()).isEqualTo(48L);
         assertThat(response.category()).isEqualTo("Actas");
@@ -125,7 +125,7 @@ class DocumentCommandServiceTest {
 
     @Test
     void upload_throwsOnNullAudit() {
-        UploadDocumentRequest request = TestFixtures.uploadDocumentRequest(1L);
+        UploadDocumentRequestDto request = TestFixtures.uploadDocumentRequest(1L);
         MockMultipartFile file = new MockMultipartFile("file", "f.pdf", "application/pdf", new byte[10]);
 
         assertThatThrownBy(() -> documentCommandService.upload(request, file, null))
@@ -134,7 +134,7 @@ class DocumentCommandServiceTest {
 
     @Test
     void upload_throwsOnAuditWithNullActorId() {
-        UploadDocumentRequest request = TestFixtures.uploadDocumentRequest(1L);
+        UploadDocumentRequestDto request = TestFixtures.uploadDocumentRequest(1L);
         MockMultipartFile file = new MockMultipartFile("file", "f.pdf", "application/pdf", new byte[10]);
 
         assertThatThrownBy(() -> documentCommandService.upload(request, file, new AuditContext(null, "127.0.0.1")))
@@ -143,7 +143,7 @@ class DocumentCommandServiceTest {
 
     @Test
     void upload_throwsNotFound_whenCategoryDoesNotExist() {
-        UploadDocumentRequest request = TestFixtures.uploadDocumentRequest(99L);
+        UploadDocumentRequestDto request = TestFixtures.uploadDocumentRequest(99L);
         MockMultipartFile file = new MockMultipartFile("file", "f.pdf", "application/pdf", new byte[10]);
 
         when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
@@ -158,7 +158,7 @@ class DocumentCommandServiceTest {
     @Test
     void upload_throwsNotFound_whenCategoryIsInactive() {
         Category inactive = TestFixtures.categoryInactive(1L, "Actas");
-        UploadDocumentRequest request = TestFixtures.uploadDocumentRequest(1L);
+        UploadDocumentRequestDto request = TestFixtures.uploadDocumentRequest(1L);
         MockMultipartFile file = new MockMultipartFile("file", "f.pdf", "application/pdf", new byte[10]);
 
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(inactive));
@@ -170,7 +170,7 @@ class DocumentCommandServiceTest {
     @Test
     void upload_propagatesPayloadTooLarge_fromValidationService() {
         Category category = TestFixtures.categoryActive(1L, "Actas");
-        UploadDocumentRequest request = TestFixtures.uploadDocumentRequest(1L);
+        UploadDocumentRequestDto request = TestFixtures.uploadDocumentRequest(1L);
         MockMultipartFile file = new MockMultipartFile("file", "big.pdf", "application/pdf", new byte[100]);
 
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
@@ -188,7 +188,7 @@ class DocumentCommandServiceTest {
     @Test
     void upload_propagatesUnsupportedMediaType_fromValidationService() {
         Category category = TestFixtures.categoryActive(1L, "Actas");
-        UploadDocumentRequest request = TestFixtures.uploadDocumentRequest(1L);
+        UploadDocumentRequestDto request = TestFixtures.uploadDocumentRequest(1L);
         MockMultipartFile file = new MockMultipartFile("file", "hack.pdf", "text/plain", new byte[100]);
 
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
@@ -212,7 +212,7 @@ class DocumentCommandServiceTest {
         User admin = TestFixtures.userAdmin(ACTOR_ID);
         User uploader = TestFixtures.userEditor(33L);
         Document doc = TestFixtures.documentActive(48L, currentCategory, uploader);
-        UpdateDocumentMetadataRequest request = new UpdateDocumentMetadataRequest(
+        UpdateDocumentMetadataRequestDto request = new UpdateDocumentMetadataRequestDto(
                 "Acta Consejo Directivo Marzo 2026 - Revisado", 2L, "Secretaría",
                 doc.getDocumentDate().plusDays(1), "Versión corregida del acta");
 
@@ -221,7 +221,7 @@ class DocumentCommandServiceTest {
         when(userRepository.findById(ACTOR_ID)).thenReturn(Optional.of(admin));
         when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UpdateDocumentMetadataResponse response = documentCommandService.updateMetadata(48L, request, AUDIT);
+        UpdateDocumentMetadataResponseDto response = documentCommandService.updateMetadata(48L, request, AUDIT);
 
         assertThat(response.id()).isEqualTo(48L);
         assertThat(response.title()).isEqualTo("Acta Consejo Directivo Marzo 2026 - Revisado");
@@ -239,7 +239,7 @@ class DocumentCommandServiceTest {
         User uploader = TestFixtures.userEditor(20L);
         Document doc = TestFixtures.documentActive(48L, category, uploader);
         String originalDescription = doc.getDescription();
-        UpdateDocumentMetadataRequest request = new UpdateDocumentMetadataRequest(
+        UpdateDocumentMetadataRequestDto request = new UpdateDocumentMetadataRequestDto(
                 "Acta Consejo Directivo Marzo 2026 - Revisado", 1L,
                 doc.getResponsibleArea(), doc.getDocumentDate(), null);
 
@@ -259,14 +259,14 @@ class DocumentCommandServiceTest {
         Category category = TestFixtures.categoryActive(1L, "Actas");
         User admin = TestFixtures.userAdmin(ACTOR_ID);
         Document doc = TestFixtures.documentActive(48L, category, TestFixtures.userEditor(30L));
-        UpdateDocumentMetadataRequest request = new UpdateDocumentMetadataRequest(
+        UpdateDocumentMetadataRequestDto request = new UpdateDocumentMetadataRequestDto(
                 doc.getTitle(), category.getId(), doc.getResponsibleArea(), doc.getDocumentDate(), null);
 
         when(documentRepository.findByIdAndStatus(48L, DocumentStatus.ACTIVE)).thenReturn(Optional.of(doc));
         when(categoryRepository.findById(category.getId())).thenReturn(Optional.of(category));
         when(userRepository.findById(ACTOR_ID)).thenReturn(Optional.of(admin));
 
-        UpdateDocumentMetadataResponse response = documentCommandService.updateMetadata(48L, request, AUDIT);
+        UpdateDocumentMetadataResponseDto response = documentCommandService.updateMetadata(48L, request, AUDIT);
 
         assertThat(response.id()).isEqualTo(48L);
         assertThat(response.message()).isEqualTo("document.updated.no-changes");
@@ -282,7 +282,7 @@ class DocumentCommandServiceTest {
         User editor = TestFixtures.userEditor(editorActorId);
         User foreignUploader = TestFixtures.userEditor(77L);
         Document doc = TestFixtures.documentActive(48L, category, foreignUploader);
-        UpdateDocumentMetadataRequest request = TestFixtures.updateDocumentMetadataRequest(1L);
+        UpdateDocumentMetadataRequestDto request = TestFixtures.updateDocumentMetadataRequest(1L);
 
         when(documentRepository.findByIdAndStatus(48L, DocumentStatus.ACTIVE)).thenReturn(Optional.of(doc));
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
@@ -305,7 +305,7 @@ class DocumentCommandServiceTest {
     void updateMetadata_throwsNotFound_whenCategoryIsInactive() {
         Category inactiveCategory = TestFixtures.categoryInactive(9L, "Actas");
         Document doc = TestFixtures.documentActive(48L, TestFixtures.categoryActive(1L, "Actas"), TestFixtures.userEditor(12L));
-        UpdateDocumentMetadataRequest request = TestFixtures.updateDocumentMetadataRequest(9L);
+        UpdateDocumentMetadataRequestDto request = TestFixtures.updateDocumentMetadataRequest(9L);
 
         when(documentRepository.findByIdAndStatus(48L, DocumentStatus.ACTIVE)).thenReturn(Optional.of(doc));
         when(categoryRepository.findById(9L)).thenReturn(Optional.of(inactiveCategory));
@@ -330,7 +330,7 @@ class DocumentCommandServiceTest {
         when(documentRepository.findByIdAndStatus(48L, DocumentStatus.ACTIVE)).thenReturn(Optional.of(doc));
         when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        DeleteDocumentResponse response = documentCommandService.deleteLogical(48L, AUDIT);
+        DeleteDocumentResponseDto response = documentCommandService.deleteLogical(48L, AUDIT);
 
         assertThat(response.id()).isEqualTo(48L);
         assertThat(response.message()).isEqualTo("document.deleted.success");
@@ -362,7 +362,7 @@ class DocumentCommandServiceTest {
     void upload_deletesStoredFile_whenTransactionIsRolledBack() throws Exception {
         Category category = TestFixtures.categoryActive(1L, "Actas");
         User uploader = TestFixtures.userAdmin(ACTOR_ID);
-        UploadDocumentRequest request = TestFixtures.uploadDocumentRequest(1L);
+        UploadDocumentRequestDto request = TestFixtures.uploadDocumentRequest(1L);
         MockMultipartFile file = new MockMultipartFile("file", "acta.pdf", "application/pdf", new byte[100]);
 
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
@@ -394,7 +394,7 @@ class DocumentCommandServiceTest {
     void upload_deletesStoredFile_whenTransactionCompletesWithUnknownStatus() throws Exception {
         Category category = TestFixtures.categoryActive(1L, "Actas");
         User uploader = TestFixtures.userAdmin(ACTOR_ID);
-        UploadDocumentRequest request = TestFixtures.uploadDocumentRequest(1L);
+        UploadDocumentRequestDto request = TestFixtures.uploadDocumentRequest(1L);
         MockMultipartFile file = new MockMultipartFile("file", "acta.pdf", "application/pdf", new byte[100]);
 
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
@@ -426,7 +426,7 @@ class DocumentCommandServiceTest {
     void upload_keepsStoredFile_whenTransactionCommitsSuccessfully() throws Exception {
         Category category = TestFixtures.categoryActive(1L, "Actas");
         User uploader = TestFixtures.userAdmin(ACTOR_ID);
-        UploadDocumentRequest request = TestFixtures.uploadDocumentRequest(1L);
+        UploadDocumentRequestDto request = TestFixtures.uploadDocumentRequest(1L);
         MockMultipartFile file = new MockMultipartFile("file", "acta.pdf", "application/pdf", new byte[100]);
 
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));

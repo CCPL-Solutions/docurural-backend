@@ -1,6 +1,6 @@
 package co.edu.docurural.shared.config;
 
-import co.edu.docurural.shared.dto.ApiErrorResponse;
+import co.edu.docurural.shared.dto.ApiErrorResponseDto;
 import co.edu.docurural.shared.security.CustomUserDetailsService;
 import co.edu.docurural.shared.security.JwtAuthenticationFilter;
 import co.edu.docurural.shared.security.JwtProperties;
@@ -55,7 +55,7 @@ import java.io.IOException;
  *
  * <p>Los errores de autenticación y autorización que ocurren <em>antes</em> de entrar
  * al controller (filtro JWT, rechazos del {@code FilterSecurityInterceptor}) se
- * serializan aquí con el mismo {@link ApiErrorResponse} que usa el
+ * serializan aquí con el mismo {@link ApiErrorResponseDto} que usa el
  * {@code GlobalExceptionHandler} para los errores capturados dentro del controller.
  * Así el cliente siempre recibe la misma estructura.
  */
@@ -169,7 +169,7 @@ public class SecurityConfig {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
 
-        ApiErrorResponse body = ApiErrorResponse.of(
+        ApiErrorResponseDto body = ApiErrorResponseDto.of(
                 status.value(),
                 status.getReasonPhrase(),
                 message);

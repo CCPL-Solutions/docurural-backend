@@ -3,6 +3,8 @@ package co.edu.docurural.user.service;
 import co.edu.docurural.activitylog.enums.ActivityAction;
 import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.shared.audit.AuditContext;
+import co.edu.docurural.user.dto.CreateUserResponseDto;
+import co.edu.docurural.user.dto.UserResponseDto;
 import co.edu.docurural.user.entity.User;
 import co.edu.docurural.user.enums.UserStatus;
 import co.edu.docurural.user.repository.UserRepository;
@@ -13,14 +15,12 @@ import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.shared.util.FieldUpdater;
 import co.edu.docurural.shared.util.MessageResolver;
 import co.edu.docurural.shared.util.SortingValidator;
-import co.edu.docurural.user.dto.CreateUserRequest;
-import co.edu.docurural.user.dto.CreateUserResponse;
-import co.edu.docurural.user.dto.UpdateStatusRequest;
-import co.edu.docurural.user.dto.UpdateStatusResponse;
-import co.edu.docurural.user.dto.UpdateUserRequest;
-import co.edu.docurural.user.dto.UpdateUserResponse;
-import co.edu.docurural.user.dto.UserListResponse;
-import co.edu.docurural.user.dto.UserResponse;
+import co.edu.docurural.user.dto.CreateUserRequestDto;
+import co.edu.docurural.user.dto.UpdateStatusRequestDto;
+import co.edu.docurural.user.dto.UpdateStatusResponseDto;
+import co.edu.docurural.user.dto.UpdateUserRequestDto;
+import co.edu.docurural.user.dto.UpdateUserResponseDto;
+import co.edu.docurural.user.dto.UserListResponseDto;
 import co.edu.docurural.user.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,7 +54,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserListResponse list(String sortBy, String sortDir) {
+    public UserListResponseDto list(String sortBy, String sortDir) {
         Sort sort = sortingValidator.resolveSort(
                 sortBy, sortDir,
                 ALLOWED_SORT_FIELDS, DEFAULT_SORT_BY, DEFAULT_SORT_DIR,
@@ -68,7 +68,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserResponse findById(Long id) {
+    public UserResponseDto findById(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         messageResolver.get("user.not-found", id)));
@@ -77,7 +77,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public CreateUserResponse create(CreateUserRequest request, AuditContext audit) {
+    public CreateUserResponseDto create(CreateUserRequestDto request, AuditContext audit) {
         Long adminId = requireActorUserId(audit);
 
         if (!request.password().equals(request.confirmPassword())) {
@@ -113,7 +113,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public UpdateUserResponse update(Long id, UpdateUserRequest request, AuditContext audit) {
+    public UpdateUserResponseDto update(Long id, UpdateUserRequestDto request, AuditContext audit) {
         Long adminId = requireActorUserId(audit);
 
         User user = userRepository.findById(id)
@@ -140,7 +140,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public UpdateStatusResponse changeStatus(Long id, UpdateStatusRequest request, AuditContext audit) {
+    public UpdateStatusResponseDto changeStatus(Long id, UpdateStatusRequestDto request, AuditContext audit) {
         Long adminId = requireActorUserId(audit);
 
         User user = userRepository.findById(id)
@@ -200,7 +200,7 @@ public class UserServiceImpl implements UserService {
         }
     }
 
-    private List<String> applyUpdates(User user, UpdateUserRequest request, String normalizedEmail) {
+    private List<String> applyUpdates(User user, UpdateUserRequestDto request, String normalizedEmail) {
         List<String> modifiedFields = new ArrayList<>(
                 FieldUpdater.of(user)
                         .setIfChanged("fullName", request.fullName(), user::getFullName, user::setFullName)
