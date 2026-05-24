@@ -97,7 +97,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findById(resolvedAudit.actorUserId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Usuario no encontrado con id " + resolvedAudit.actorUserId()));
-        user.setTokenVersion((user.getTokenVersion() == null ? 0 : user.getTokenVersion()) + 1);
+        user.incrementTokenVersion();
         userRepository.save(user);
 
         activityLogService.record(

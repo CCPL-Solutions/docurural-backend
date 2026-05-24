@@ -68,6 +68,10 @@ public class User {
     @Column(name = "token_version", nullable = false)
     private Integer tokenVersion = 0;
 
+    public void incrementTokenVersion() {
+        tokenVersion = (tokenVersion == null ? 0 : tokenVersion) + 1;
+    }
+
     @PrePersist
     void onCreate() {
         if (createdAt == null) {

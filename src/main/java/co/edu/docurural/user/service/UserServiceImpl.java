@@ -130,7 +130,7 @@ public class UserServiceImpl implements UserService {
 
         User updatedUser = userRepository.save(user);
 
-        recorderUpdateLog(audit, modifiedFields);
+        recordUpdateLog(audit, modifiedFields);
 
         log.info("Usuario actualizado: id={} modifiedFields={} por adminId={}",
                 updatedUser.getId(), modifiedFields, adminId);
@@ -159,7 +159,7 @@ public class UserServiceImpl implements UserService {
 
         user.setStatus(newStatus);
         if (newStatus == UserStatus.INACTIVE) {
-            user.setTokenVersion((user.getTokenVersion() == null ? 0 : user.getTokenVersion()) + 1);
+            user.incrementTokenVersion();
         }
         User updatedUser = userRepository.save(user);
 
@@ -212,7 +212,7 @@ public class UserServiceImpl implements UserService {
 
         if (request.role() != user.getRole()) {
             user.setRole(request.role());
-            user.setTokenVersion((user.getTokenVersion() == null ? 0 : user.getTokenVersion()) + 1);
+            user.incrementTokenVersion();
             modifiedFields.add("role");
         }
 
@@ -224,7 +224,7 @@ public class UserServiceImpl implements UserService {
         return modifiedFields;
     }
 
-    private void recorderUpdateLog(AuditContext audit, List<String> modifiedFields) {
+    private void recordUpdateLog(AuditContext audit, List<String> modifiedFields) {
         activityLogService.record(
                 ActivityAction.EDIT_USER,
                 audit,
