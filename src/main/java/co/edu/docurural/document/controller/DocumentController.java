@@ -20,6 +20,7 @@ import co.edu.docurural.document.service.DocumentSearchService;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.audit.AuditContextResolver;
 import co.edu.docurural.shared.dto.ApiErrorResponse;
+import co.edu.docurural.shared.util.ContentDispositionResolver;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -54,9 +55,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
-import java.util.EnumSet;
 
 /**
  * Controlador REST del módulo de Documentos (DOC-01..DOC-08 / HU-09..HU-14, HU-20..HU-22).
@@ -77,9 +76,7 @@ public class DocumentController {
     private final DocumentContentService documentContentService;
     private final DocumentBatchService documentBatchService;
     private final AuditContextResolver auditContextResolver;
-
-    private static final EnumSet<DocumentFormat> INLINE_FORMATS =
-            EnumSet.of(DocumentFormat.PDF, DocumentFormat.JPG, DocumentFormat.PNG);
+    private final ContentDispositionResolver contentDispositionResolver;
 
     /**
      * DOC-01 / SRC-01 — HU-15, HU-20, HU-21, HU-22: lista y búsqueda paginada de documentos activos.
@@ -321,11 +318,8 @@ public class DocumentController {
         DocumentFileContent content = documentContentService.openForView(id, audit);
 
         MediaType mediaType = mediaTypeFor(content.format());
-        ContentDisposition disposition = INLINE_FORMATS.contains(content.format())
-                ? ContentDisposition.inline()
-                  .filename(content.originalFileName(), StandardCharsets.UTF_8).build()
-                : ContentDisposition.attachment()
-                  .filename(content.originalFileName(), StandardCharsets.UTF_8).build();
+        ContentDisposition disposition = contentDispositionResolver.forView(
+                content.format(), content.originalFileName());
 
         return ResponseEntity.ok()
                 .contentType(mediaType)
@@ -406,8 +400,7 @@ public class DocumentController {
         AuditContext audit = auditContextResolver.resolve(httpRequest);
         DocumentFileContent content = documentContentService.openForDownload(id, audit);
 
-        ContentDisposition disposition = ContentDisposition.attachment()
-                .filename(content.originalFileName(), StandardCharsets.UTF_8).build();
+        ContentDisposition disposition = contentDispositionResolver.forDownload(content.originalFileName());
 
         return ResponseEntity.ok()
                 .contentType(mediaTypeFor(content.format()))

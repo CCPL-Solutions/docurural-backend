@@ -22,6 +22,7 @@ import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.exception.FileStorageException;
 import co.edu.docurural.shared.exception.GlobalExceptionHandler;
+import co.edu.docurural.shared.util.ContentDispositionResolver;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.shared.security.JwtAuthenticationFilter;
 import org.junit.jupiter.api.Test;
@@ -65,7 +66,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                 type = FilterType.ASSIGNABLE_TYPE,
                 classes = {SecurityConfig.class, JwtAuthenticationFilter.class}))
 @AutoConfigureMockMvc(addFilters = false)
-@Import(GlobalExceptionHandler.class)
+@Import({GlobalExceptionHandler.class, ContentDispositionResolver.class})
 class DocumentControllerWebMvcTest {
 
     private static final AuditContext EDITOR_AUDIT = new AuditContext(5L, "127.0.0.1");

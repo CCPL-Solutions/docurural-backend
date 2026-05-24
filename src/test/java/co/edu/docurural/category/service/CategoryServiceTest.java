@@ -21,12 +21,12 @@ import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.exception.ConflictException;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.shared.util.MessageResolver;
+import co.edu.docurural.shared.util.SortingValidator;
 import co.edu.docurural.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
@@ -62,15 +62,16 @@ class CategoryServiceTest {
     @Mock
     MessageResolver messageResolver;
 
-    @InjectMocks
     CategoryServiceImpl categoryService;
 
     @BeforeEach
-    void stubMessageResolver() {
+    void setUp() {
         lenient().when(messageResolver.get(anyString()))
                 .thenAnswer(inv -> inv.getArgument(0));
         lenient().when(messageResolver.get(anyString(), any()))
                 .thenAnswer(inv -> inv.getArgument(0));
+        categoryService = new CategoryServiceImpl(categoryRepository, userRepository,
+                activityLogService, messageResolver, new SortingValidator(messageResolver));
     }
 
     // ------------------------------------------------------------------

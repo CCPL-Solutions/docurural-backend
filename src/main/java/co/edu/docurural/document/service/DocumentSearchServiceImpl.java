@@ -55,9 +55,10 @@ public class DocumentSearchServiceImpl implements DocumentSearchService {
     private final UserRepository userRepository;
     private final ActivityLogService activityLogService;
     private final MessageResolver messageResolver;
+    private final SortingValidator sortingValidator;
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public DocumentListResponse search(
             String q, Long categoryId, String responsibleArea,
             LocalDate dateFrom, LocalDate dateTo, Long uploadedBy,
@@ -89,14 +90,12 @@ public class DocumentSearchServiceImpl implements DocumentSearchService {
 
         Long uploadedByEffective = actorIsAdmin ? uploadedBy : null;
 
-        Pageable pageable = SortingValidator.resolvePageable(
+        Pageable pageable = sortingValidator.resolvePageable(
                 page, size, sortBy, sortDir,
                 ALLOWED_SORT_FIELDS, DEFAULT_SORT_BY, DEFAULT_SORT_DIR,
                 DEFAULT_PAGE, DEFAULT_SIZE, MAX_SIZE,
-                messageResolver.get("document.page.invalid"),
-                messageResolver.get("document.page.size-invalid"),
-                messageResolver.get("document.sort.unsupported-field", sortBy),
-                messageResolver.get("document.sort.unsupported-direction", sortDir));
+                "document.page.invalid", "document.page.size-invalid",
+                "document.sort.unsupported-field", "document.sort.unsupported-direction");
 
         int resolvedPage = pageable.getPageNumber() + 1;
         int resolvedSize = pageable.getPageSize();

@@ -57,15 +57,15 @@ public class CategoryServiceImpl implements CategoryService {
     private final UserRepository userRepository;
     private final ActivityLogService activityLogService;
     private final MessageResolver messageResolver;
+    private final SortingValidator sortingValidator;
 
     @Override
     @Transactional(readOnly = true)
     public CategoryListResponse list(String sortBy, String sortDir) {
-        Sort sort = SortingValidator.resolveSort(
+        Sort sort = sortingValidator.resolveSort(
                 sortBy, sortDir,
                 ALLOWED_SORT_FIELDS, DEFAULT_SORT_BY, DEFAULT_SORT_DIR,
-                messageResolver.get("category.sort.unsupported-field", sortBy),
-                messageResolver.get("category.sort.unsupported-direction", sortDir));
+                "category.sort.unsupported-field", "category.sort.unsupported-direction");
 
         List<Category> categories = categoryRepository.findAll(sort);
         Map<Long, Long> counts = buildCountsMap();

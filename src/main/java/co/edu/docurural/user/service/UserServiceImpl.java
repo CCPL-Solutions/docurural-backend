@@ -49,15 +49,15 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final ActivityLogService activityLogService;
     private final MessageResolver messageResolver;
+    private final SortingValidator sortingValidator;
 
     @Override
     @Transactional(readOnly = true)
     public UserListResponse list(String sortBy, String sortDir) {
-        Sort sort = SortingValidator.resolveSort(
+        Sort sort = sortingValidator.resolveSort(
                 sortBy, sortDir,
                 ALLOWED_SORT_FIELDS, DEFAULT_SORT_BY, DEFAULT_SORT_DIR,
-                messageResolver.get("user.sort.unsupported-field", sortBy),
-                messageResolver.get("user.sort.unsupported-direction", sortDir));
+                "user.sort.unsupported-field", "user.sort.unsupported-direction");
 
         List<User> users = userRepository.findAll(sort);
         log.debug("Listado de usuarios: total={} sortBy={} sortDir={}",

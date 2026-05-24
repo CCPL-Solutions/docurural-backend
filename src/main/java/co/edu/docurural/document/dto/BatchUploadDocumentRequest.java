@@ -1,6 +1,7 @@
 package co.edu.docurural.document.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -25,10 +26,13 @@ public record BatchUploadDocumentRequest(
         @Schema(description = "Área responsable aplicada a todos los archivos del lote", example = "Rectoría")
         String responsibleArea,
 
+        @Valid
         @Schema(description = "Títulos por archivo (en el mismo orden que files[]). "
-                + "Si se omite o la posición está vacía, se usa el nombre original del archivo.",
+                + "Si se omite o la posición está vacía, se usa el nombre original del archivo. "
+                + "Cada título debe tener entre 2 y 255 caracteres.",
                 nullable = true,
                 example = "[\"Acta Enero 2026\", \"Acta Febrero 2026\"]")
-        List<String> titles
+        List<@NotBlank(message = "{validation.document.batch.title.blank}")
+             @Size(min = 2, max = 255, message = "{validation.document.batch.title.size}") String> titles
 ) {
 }

@@ -12,6 +12,7 @@ import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.util.MessageResolver;
+import co.edu.docurural.shared.util.SortingValidator;
 import co.edu.docurural.support.TestFixtures;
 import co.edu.docurural.user.entity.User;
 import co.edu.docurural.user.repository.UserRepository;
@@ -19,7 +20,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -60,15 +60,17 @@ class DocumentSearchServiceTest {
     @Mock
     MessageResolver messageResolver;
 
-    @InjectMocks
     DocumentSearchServiceImpl documentSearchService;
 
     @BeforeEach
-    void stubMessageResolver() {
+    void setUp() {
         lenient().when(messageResolver.get(anyString()))
                 .thenAnswer(inv -> inv.getArgument(0));
         lenient().when(messageResolver.get(anyString(), any()))
                 .thenAnswer(inv -> inv.getArgument(0));
+        documentSearchService = new DocumentSearchServiceImpl(
+                documentRepository, categoryRepository, userRepository,
+                activityLogService, messageResolver, new SortingValidator(messageResolver));
     }
 
     private Page<Document> emptyPage() {
