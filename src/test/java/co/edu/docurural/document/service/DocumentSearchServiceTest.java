@@ -1,6 +1,8 @@
 package co.edu.docurural.document.service;
 
+import co.edu.docurural.document.mapper.DocumentMapper;
 import co.edu.docurural.activitylog.enums.ActivityAction;
+import org.mapstruct.factory.Mappers;
 import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.repository.CategoryRepository;
@@ -70,7 +72,8 @@ class DocumentSearchServiceTest {
                 .thenAnswer(inv -> inv.getArgument(0));
         documentSearchService = new DocumentSearchServiceImpl(
                 documentRepository, categoryRepository, userRepository,
-                activityLogService, messageResolver, new SortingValidator(messageResolver));
+                activityLogService, messageResolver, new SortingValidator(messageResolver),
+                Mappers.getMapper(DocumentMapper.class));
     }
 
     private Page<Document> emptyPage() {

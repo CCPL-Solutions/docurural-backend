@@ -7,9 +7,10 @@ import co.edu.docurural.category.dto.UpdateCategoryResponse;
 import co.edu.docurural.category.dto.UpdateCategoryStatusResponse;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
-import co.edu.docurural.user.entity.User;
 import co.edu.docurural.support.TestFixtures;
+import co.edu.docurural.user.entity.User;
 import org.junit.jupiter.api.Test;
+import org.mapstruct.factory.Mappers;
 
 import java.util.List;
 import java.util.Map;
@@ -19,11 +20,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class CategoryMapperTest {
 
+    private final CategoryMapper mapper = Mappers.getMapper(CategoryMapper.class);
+
     @Test
     void toCreateResponse_mapsAllFields() {
         Category category = TestFixtures.categoryActive(9L, "Actas", "Actas de reuniones");
 
-        CreateCategoryResponse response = CategoryMapper.toCreateResponse(category, "Categoría creada exitosamente");
+        CreateCategoryResponse response = mapper.toCreateResponse(category, "Categoría creada exitosamente");
 
         assertThat(response.id()).isEqualTo(9L);
         assertThat(response.name()).isEqualTo("Actas");
@@ -37,7 +40,7 @@ class CategoryMapperTest {
     void toCreateResponse_withNullDescription_mapsDescriptionAsNull() {
         Category category = TestFixtures.categoryActive(1L, "Resoluciones");
 
-        CreateCategoryResponse response = CategoryMapper.toCreateResponse(category, "ok");
+        CreateCategoryResponse response = mapper.toCreateResponse(category, "ok");
 
         assertThat(response.description()).isNull();
     }
@@ -50,14 +53,14 @@ class CategoryMapperTest {
                 .createdAt(TestFixtures.FIXED_CREATED_AT)
                 .build();
 
-        CreateCategoryResponse response = CategoryMapper.toCreateResponse(category, "ok");
+        CreateCategoryResponse response = mapper.toCreateResponse(category, "ok");
 
         assertThat(response.status()).isNull();
     }
 
     @Test
     void toCreateResponse_withNullCategory_throwsNullPointerException() {
-        assertThatThrownBy(() -> CategoryMapper.toCreateResponse(null, "msg"))
+        assertThatThrownBy(() -> mapper.toCreateResponse(null, "msg"))
                 .isInstanceOf(NullPointerException.class);
     }
 
@@ -65,7 +68,7 @@ class CategoryMapperTest {
     void toCreateResponse_statusIsAlwaysActiveStringForNewCategory() {
         Category category = TestFixtures.categoryActive(5L, "Circulares");
 
-        CreateCategoryResponse response = CategoryMapper.toCreateResponse(category, "msg");
+        CreateCategoryResponse response = mapper.toCreateResponse(category, "msg");
 
         assertThat(response.status()).isEqualTo(CategoryStatus.ACTIVE.name());
     }
@@ -78,7 +81,7 @@ class CategoryMapperTest {
     void toUpdateResponse_mapsAllFields() {
         Category category = TestFixtures.categoryActive(9L, "Proyectos e Informes Biotecnología", "Descripción detallada");
 
-        UpdateCategoryResponse response = CategoryMapper.toUpdateResponse(category, "Categoría actualizada exitosamente");
+        UpdateCategoryResponse response = mapper.toUpdateResponse(category, "Categoría actualizada exitosamente");
 
         assertThat(response.id()).isEqualTo(9L);
         assertThat(response.name()).isEqualTo("Proyectos e Informes Biotecnología");
@@ -91,14 +94,14 @@ class CategoryMapperTest {
     void toUpdateResponse_withNullDescription_mapsDescriptionAsNull() {
         Category category = TestFixtures.categoryActive(3L, "Circulares");
 
-        UpdateCategoryResponse response = CategoryMapper.toUpdateResponse(category, "ok");
+        UpdateCategoryResponse response = mapper.toUpdateResponse(category, "ok");
 
         assertThat(response.description()).isNull();
     }
 
     @Test
     void toUpdateResponse_withNullCategory_throwsNullPointerException() {
-        assertThatThrownBy(() -> CategoryMapper.toUpdateResponse(null, "msg"))
+        assertThatThrownBy(() -> mapper.toUpdateResponse(null, "msg"))
                 .isInstanceOf(NullPointerException.class);
     }
 
@@ -110,7 +113,7 @@ class CategoryMapperTest {
     void toStatusResponse_mapsAllFields_whenCategoryActive() {
         Category category = TestFixtures.categoryActive(9L, "Proyectos e Informes Biotecnología");
 
-        UpdateCategoryStatusResponse response = CategoryMapper.toStatusResponse(category, "Categoría desactivada exitosamente");
+        UpdateCategoryStatusResponse response = mapper.toStatusResponse(category, "Categoría desactivada exitosamente");
 
         assertThat(response.id()).isEqualTo(9L);
         assertThat(response.name()).isEqualTo("Proyectos e Informes Biotecnología");
@@ -122,7 +125,7 @@ class CategoryMapperTest {
     void toStatusResponse_withInactiveCategory_mapsStatusAsInactive() {
         Category category = TestFixtures.categoryInactive(5L, "Actas");
 
-        UpdateCategoryStatusResponse response = CategoryMapper.toStatusResponse(category, "Categoría desactivada exitosamente");
+        UpdateCategoryStatusResponse response = mapper.toStatusResponse(category, "Categoría desactivada exitosamente");
 
         assertThat(response.status()).isEqualTo("INACTIVE");
     }
@@ -135,14 +138,14 @@ class CategoryMapperTest {
                 .createdAt(TestFixtures.FIXED_CREATED_AT)
                 .build();
 
-        UpdateCategoryStatusResponse response = CategoryMapper.toStatusResponse(category, "ok");
+        UpdateCategoryStatusResponse response = mapper.toStatusResponse(category, "ok");
 
         assertThat(response.status()).isNull();
     }
 
     @Test
     void toStatusResponse_withNullCategory_throwsNullPointerException() {
-        assertThatThrownBy(() -> CategoryMapper.toStatusResponse(null, "msg"))
+        assertThatThrownBy(() -> mapper.toStatusResponse(null, "msg"))
                 .isInstanceOf(NullPointerException.class);
     }
 
@@ -155,7 +158,7 @@ class CategoryMapperTest {
         User admin = TestFixtures.userAdmin(1L);
         Category category = TestFixtures.categoryActive(1L, "Actas", "Actas de reuniones", admin);
 
-        CategoryDetailResponse response = CategoryMapper.toDetailResponse(category, 23L);
+        CategoryDetailResponse response = mapper.toDetailResponse(category, 23L);
 
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.name()).isEqualTo("Actas");
@@ -170,7 +173,7 @@ class CategoryMapperTest {
     void toDetailResponse_withNullCreatedBy_mapsToSistema() {
         Category category = TestFixtures.categoryActive(2L, "Resoluciones");
 
-        CategoryDetailResponse response = CategoryMapper.toDetailResponse(category, 0L);
+        CategoryDetailResponse response = mapper.toDetailResponse(category, 0L);
 
         assertThat(response.createdBy()).isEqualTo("Sistema");
     }
@@ -183,7 +186,7 @@ class CategoryMapperTest {
                 .createdAt(TestFixtures.FIXED_CREATED_AT)
                 .build();
 
-        CategoryDetailResponse response = CategoryMapper.toDetailResponse(category, 5L);
+        CategoryDetailResponse response = mapper.toDetailResponse(category, 5L);
 
         assertThat(response.status()).isNull();
     }
@@ -192,14 +195,14 @@ class CategoryMapperTest {
     void toDetailResponse_withZeroDocumentCount_mapsToZero() {
         Category category = TestFixtures.categoryActive(4L, "Circulares");
 
-        CategoryDetailResponse response = CategoryMapper.toDetailResponse(category, 0L);
+        CategoryDetailResponse response = mapper.toDetailResponse(category, 0L);
 
         assertThat(response.documentCount()).isEqualTo(0);
     }
 
     @Test
     void toDetailResponse_withNullCategory_throwsNullPointerException() {
-        assertThatThrownBy(() -> CategoryMapper.toDetailResponse(null, 0L))
+        assertThatThrownBy(() -> mapper.toDetailResponse(null, 0L))
                 .isInstanceOf(NullPointerException.class);
     }
 
@@ -209,7 +212,7 @@ class CategoryMapperTest {
 
     @Test
     void toListResponse_emptyList_returnsZeroCounters_andEmptyList() {
-        CategoryListResponse response = CategoryMapper.toListResponse(List.of(), Map.of());
+        CategoryListResponse response = mapper.toListResponse(List.of(), Map.of());
 
         assertThat(response.totalCategories()).isEqualTo(0);
         assertThat(response.activeCategories()).isEqualTo(0);
@@ -223,7 +226,7 @@ class CategoryMapperTest {
         Category cat2 = TestFixtures.categoryActive(2L, "Informes");
         Category cat3 = TestFixtures.categoryInactive(3L, "Resoluciones");
 
-        CategoryListResponse response = CategoryMapper.toListResponse(
+        CategoryListResponse response = mapper.toListResponse(
                 List.of(cat1, cat2, cat3),
                 Map.of(1L, 10L, 2L, 5L));
 
@@ -239,20 +242,20 @@ class CategoryMapperTest {
     void toListResponse_missingCountInMap_treatedAsZero() {
         Category category = TestFixtures.categoryActive(9L, "Circulares");
 
-        CategoryListResponse response = CategoryMapper.toListResponse(List.of(category), Map.of());
+        CategoryListResponse response = mapper.toListResponse(List.of(category), Map.of());
 
         assertThat(response.categories().get(0).documentCount()).isEqualTo(0);
     }
 
     @Test
     void toListResponse_withNullCategories_throwsNullPointerException() {
-        assertThatThrownBy(() -> CategoryMapper.toListResponse(null, Map.of()))
+        assertThatThrownBy(() -> mapper.toListResponse(null, Map.of()))
                 .isInstanceOf(NullPointerException.class);
     }
 
     @Test
     void toListResponse_withNullCounts_throwsNullPointerException() {
-        assertThatThrownBy(() -> CategoryMapper.toListResponse(List.of(), null))
+        assertThatThrownBy(() -> mapper.toListResponse(List.of(), null))
                 .isInstanceOf(NullPointerException.class);
     }
 }

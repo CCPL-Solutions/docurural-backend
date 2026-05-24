@@ -26,6 +26,7 @@ public class DocumentQueryServiceImpl implements DocumentQueryService {
 
     private final DocumentRepository documentRepository;
     private final MessageResolver messageResolver;
+    private final DocumentMapper documentMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -33,7 +34,7 @@ public class DocumentQueryServiceImpl implements DocumentQueryService {
         Document document = documentRepository.findByIdAndStatus(id, DocumentStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         messageResolver.get("document.not-found", id)));
-        return DocumentMapper.toDetailResponse(document);
+        return documentMapper.toDetailResponse(document);
     }
 
     @Override

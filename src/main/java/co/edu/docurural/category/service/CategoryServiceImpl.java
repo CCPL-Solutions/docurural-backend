@@ -58,6 +58,7 @@ public class CategoryServiceImpl implements CategoryService {
     private final ActivityLogService activityLogService;
     private final MessageResolver messageResolver;
     private final SortingValidator sortingValidator;
+    private final CategoryMapper categoryMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -72,7 +73,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         log.debug("Listado de categorías: total={} sortBy={} sortDir={}",
                 categories.size(), sortBy, sortDir);
-        return CategoryMapper.toListResponse(categories, counts);
+        return categoryMapper.toListResponse(categories, counts);
     }
 
     @Override
@@ -84,7 +85,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         long count = categoryRepository.countActiveDocumentsByCategoryId(id);
 
-        return CategoryMapper.toDetailResponse(category, count);
+        return categoryMapper.toDetailResponse(category, count);
     }
 
     @Override
@@ -112,7 +113,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         log.info("Categoria creada: id={} name='{}' por adminId={}", saved.getId(), saved.getName(), adminId);
 
-        return CategoryMapper.toCreateResponse(saved, messageResolver.get("category.created.success"));
+        return categoryMapper.toCreateResponse(saved, messageResolver.get("category.created.success"));
     }
 
     @Override
@@ -143,7 +144,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         log.info("Categoria actualizada: id={} modifiedFields={} por adminId={}", updated.getId(), modifiedFields, audit.actorUserId());
 
-        return CategoryMapper.toUpdateResponse(updated, messageResolver.get("category.updated.success"));
+        return categoryMapper.toUpdateResponse(updated, messageResolver.get("category.updated.success"));
     }
 
     @Override
@@ -177,7 +178,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         log.info("Estado de categoría actualizado: id={} newStatus={} por adminId={}", updated.getId(), newStatus, adminId);
 
-        return CategoryMapper.toStatusResponse(updated, message);
+        return categoryMapper.toStatusResponse(updated, message);
     }
 
     @Override

@@ -1,6 +1,8 @@
 package co.edu.docurural.user.service;
 
+import co.edu.docurural.user.mapper.UserMapper;
 import co.edu.docurural.activitylog.enums.ActivityAction;
+import org.mapstruct.factory.Mappers;
 import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.user.entity.User;
@@ -71,7 +73,8 @@ class UserServiceTest {
         lenient().when(messageResolver.get(anyString(), any()))
                 .thenAnswer(inv -> inv.getArgument(0));
         userService = new UserServiceImpl(userRepository, passwordEncoder,
-                activityLogService, messageResolver, new SortingValidator(messageResolver));
+                activityLogService, messageResolver, new SortingValidator(messageResolver),
+                Mappers.getMapper(UserMapper.class));
     }
 
     // ------------------------------------------------------------------

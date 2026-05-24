@@ -11,11 +11,14 @@ import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.shared.util.MessageResolver;
 import co.edu.docurural.support.TestFixtures;
 import co.edu.docurural.user.entity.User;
+import co.edu.docurural.document.mapper.DocumentMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mapstruct.factory.Mappers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
@@ -41,6 +44,8 @@ class DocumentQueryServiceTest {
     MessageResolver messageResolver;
     @Mock
     ActivityLogService activityLogService;
+    @Spy
+    DocumentMapper documentMapper = Mappers.getMapper(DocumentMapper.class);
 
     @InjectMocks
     DocumentQueryServiceImpl documentQueryService;

@@ -56,6 +56,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final ActivityLogService activityLogService;
     private final MessageResolver messageResolver;
+    private final UserMapper userMapper;
 
     @Override
     @Transactional
@@ -83,7 +84,7 @@ public class AuthServiceImpl implements AuthService {
 
         log.info("Login exitoso para userId={} email={}", savedUser.getId(), normalizedEmail);
 
-        UserSummary summary = UserMapper.toSummary(savedUser);
+        UserSummary summary = userMapper.toSummary(savedUser);
         return LoginResponse.bearer(token, expiresInSeconds, summary);
     }
 

@@ -50,6 +50,7 @@ public class UserServiceImpl implements UserService {
     private final ActivityLogService activityLogService;
     private final MessageResolver messageResolver;
     private final SortingValidator sortingValidator;
+    private final UserMapper userMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -62,7 +63,7 @@ public class UserServiceImpl implements UserService {
         List<User> users = userRepository.findAll(sort);
         log.debug("Listado de usuarios: total={} sortBy={} sortDir={}",
                 users.size(), sortBy, sortDir);
-        return UserMapper.toListResponse(users);
+        return userMapper.toListResponse(users);
     }
 
     @Override
@@ -71,7 +72,7 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         messageResolver.get("user.not-found", id)));
-        return UserMapper.toResponse(user);
+        return userMapper.toResponse(user);
     }
 
     @Override
@@ -107,7 +108,7 @@ public class UserServiceImpl implements UserService {
         log.info("Usuario creado: id={} email={} role={} por adminId={}",
                 savedUser.getId(), savedUser.getEmail(), savedUser.getRole(), adminId);
 
-        return UserMapper.toCreateResponse(savedUser, messageResolver.get("user.created.success"));
+        return userMapper.toCreateResponse(savedUser, messageResolver.get("user.created.success"));
     }
 
     @Override
@@ -134,7 +135,7 @@ public class UserServiceImpl implements UserService {
         log.info("Usuario actualizado: id={} modifiedFields={} por adminId={}",
                 updatedUser.getId(), modifiedFields, adminId);
 
-        return UserMapper.toUpdateResponse(updatedUser, messageResolver.get("user.updated.success"));
+        return userMapper.toUpdateResponse(updatedUser, messageResolver.get("user.updated.success"));
     }
 
     @Override
@@ -175,7 +176,7 @@ public class UserServiceImpl implements UserService {
         log.info("Estado de usuario actualizado: id={} newStatus={} por adminId={}",
                 updatedUser.getId(), newStatus, adminId);
 
-        return UserMapper.toStatusResponse(updatedUser, message);
+        return userMapper.toStatusResponse(updatedUser, message);
     }
 
     private void validateEmailUniqueness(String newEmail, Long userId, User currentUser) {

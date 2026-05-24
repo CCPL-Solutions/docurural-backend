@@ -1,6 +1,8 @@
 package co.edu.docurural.category.service;
 
+import co.edu.docurural.category.mapper.CategoryMapper;
 import co.edu.docurural.activitylog.enums.ActivityAction;
+import org.mapstruct.factory.Mappers;
 import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.category.dto.CategoryDetailResponse;
 import co.edu.docurural.category.dto.CategoryListResponse;
@@ -71,7 +73,8 @@ class CategoryServiceTest {
         lenient().when(messageResolver.get(anyString(), any()))
                 .thenAnswer(inv -> inv.getArgument(0));
         categoryService = new CategoryServiceImpl(categoryRepository, userRepository,
-                activityLogService, messageResolver, new SortingValidator(messageResolver));
+                activityLogService, messageResolver, new SortingValidator(messageResolver),
+                Mappers.getMapper(CategoryMapper.class));
     }
 
     // ------------------------------------------------------------------

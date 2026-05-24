@@ -56,6 +56,7 @@ public class DocumentSearchServiceImpl implements DocumentSearchService {
     private final ActivityLogService activityLogService;
     private final MessageResolver messageResolver;
     private final SortingValidator sortingValidator;
+    private final DocumentMapper documentMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -124,7 +125,7 @@ public class DocumentSearchServiceImpl implements DocumentSearchService {
                     buildSearchDetail(normalizedQ, activeFilters, result.getTotalElements()));
         }
 
-        return DocumentMapper.toListResponse(result, resolvedPage, resolvedSize, normalizedQ, activeFilters);
+        return documentMapper.toListResponse(result, resolvedPage, resolvedSize, normalizedQ, activeFilters);
     }
 
     @Override

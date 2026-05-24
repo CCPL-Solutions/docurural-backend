@@ -54,6 +54,7 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
     private final FileValidationService fileValidationService;
     private final FileStorageService fileStorageService;
     private final MessageResolver messageResolver;
+    private final DocumentMapper documentMapper;
 
     @Override
     @Transactional
@@ -73,7 +74,7 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
         log.info("Documento cargado: id={} title='{}' format={} uploadedBy={}",
                 saved.getId(), saved.getTitle(), saved.getFileFormat(), actorId);
 
-        return DocumentMapper.toUploadResponse(saved, messageResolver.get("document.uploaded.success"));
+        return documentMapper.toUploadResponse(saved, messageResolver.get("document.uploaded.success"));
     }
 
     @Override
@@ -105,7 +106,7 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
         List<String> modifiedFields = applyMetadataUpdates(document, request, category);
         if (modifiedFields.isEmpty()) {
             log.info("Edición de metadatos sin cambios: documentId={} requestedBy={}", id, actorId);
-            return DocumentMapper.toUpdateMetadataResponse(
+            return documentMapper.toUpdateMetadataResponse(
                     document, messageResolver.get("document.updated.no-changes"));
         }
 
@@ -116,7 +117,7 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
         log.info("Metadatos actualizados: documentId={} modifiedFields={} requestedBy={}",
                 updated.getId(), modifiedFields, actorId);
 
-        return DocumentMapper.toUpdateMetadataResponse(updated, messageResolver.get("document.updated.success"));
+        return documentMapper.toUpdateMetadataResponse(updated, messageResolver.get("document.updated.success"));
     }
 
     @Override
@@ -136,7 +137,7 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
 
         log.info("Documento eliminado lógicamente: documentId={} requestedBy={}", deleted.getId(), actorId);
 
-        return DocumentMapper.toDeleteResponse(deleted, messageResolver.get("document.deleted.success"));
+        return documentMapper.toDeleteResponse(deleted, messageResolver.get("document.deleted.success"));
     }
 
     @Override
