@@ -17,6 +17,8 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -108,6 +110,60 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Archivo multipart supera el límite configurado en {@code spring.servlet.multipart.max-file-size} -> 413.
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiErrorResponse> handleMaxUploadSize(
+            MaxUploadSizeExceededException ex, HttpServletRequest request) {
+        log.warn("Archivo demasiado grande en {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
+        return buildResponse(HttpStatus.PAYLOAD_TOO_LARGE, resolve("document.file.too-large"));
+    }
+
+    /**
+     * Part {@code file} ausente en un request multipart (p. ej. {@code POST /documents}
+     * sin el part {@code file}) -> 400 con el mensaje de campo requerido.
+     */
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public ResponseEntity<ApiErrorResponse> handleMissingRequestPart(
+            MissingServletRequestPartException ex, HttpServletRequest request) {
+        log.warn("Part faltante en {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
+        Map<String, String> fieldErrors = Map.of(ex.getRequestPartName(),
+                resolve("validation.document.file.required"));
+        ApiErrorResponse body = ApiErrorResponse.ofValidation(
+                HttpStatus.BAD_REQUEST.value(),
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                resolve("error.validation"),
+                fieldErrors);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    /**
+     * Errores de binding en {@code @ModelAttribute} (p. ej. tipo de dato inválido en
+     * los campos de texto del request multipart) -> 400 con mapa {@code fieldErrors}.
+     * {@link MethodArgumentNotValidException} extiende {@link org.springframework.validation.BindException}
+     * pero tiene su propio handler más específico; este captura el resto de subtipos.
+     */
+    @ExceptionHandler(org.springframework.validation.BindException.class)
+    public ResponseEntity<ApiErrorResponse> handleBindException(
+            org.springframework.validation.BindException ex, HttpServletRequest request) {
+        Map<String, String> fieldErrors = new LinkedHashMap<>();
+        for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
+            fieldErrors.putIfAbsent(fieldError.getField(), fieldError.getDefaultMessage());
+        }
+        ex.getBindingResult().getGlobalErrors().forEach(globalError -> {
+            String key = globalError.getObjectName() == null ? "_global" : globalError.getObjectName();
+            fieldErrors.putIfAbsent(key, globalError.getDefaultMessage());
+        });
+        log.warn("Binding fallido en {} {}: {}", request.getMethod(), request.getRequestURI(), fieldErrors);
+        ApiErrorResponse body = ApiErrorResponse.ofValidation(
+                HttpStatus.BAD_REQUEST.value(),
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                resolve("error.validation"),
+                fieldErrors);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    /**
      * Recursos no encontrados por id (p. ej. usuario inexistente).
      */
     @ExceptionHandler(ResourceNotFoundException.class)
@@ -130,12 +186,14 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Violación de regla de negocio. Solo aquí se mapea código de dominio a HTTP.
+     * Violación de regla de negocio. El mapeo HTTP vive en {@link BusinessErrorCode}.
      */
     @ExceptionHandler(BusinessRuleException.class)
     public ResponseEntity<ApiErrorResponse> handleBusinessRule(
             BusinessRuleException ex, HttpServletRequest request) {
-        HttpStatus status = mapBusinessErrorCode(ex.getCode());
+        HttpStatus status = ex.getCode() != null
+                ? ex.getCode().httpStatus()
+                : HttpStatus.BAD_REQUEST;
         log.warn("Regla de negocio violada en {} {} [{}]: {}",
                 request.getMethod(), request.getRequestURI(), status.value(), ex.getMessage());
         return buildResponse(status, ex.getMessage());
@@ -189,6 +247,17 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Fallo de infraestructura al escribir un archivo en disco -> 500 con mensaje contractual.
+     */
+    @ExceptionHandler(FileStorageException.class)
+    public ResponseEntity<ApiErrorResponse> handleFileStorage(
+            FileStorageException ex, HttpServletRequest request) {
+        log.error("Fallo de almacenamiento en {} {}: {}",
+                request.getMethod(), request.getRequestURI(), ex.getMessage(), ex);
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
+    }
+
+    /**
      * Fallback de último recurso. Cualquier otra excepción es un bug: se logea
      * con stack trace completo pero al cliente solo se le devuelve el mensaje
      * genérico para no filtrar detalles internos.
@@ -207,16 +276,6 @@ public class GlobalExceptionHandler {
                 status.getReasonPhrase(),
                 message);
         return ResponseEntity.status(status).body(body);
-    }
-
-    private HttpStatus mapBusinessErrorCode(BusinessErrorCode code) {
-        if (code == null) {
-            return HttpStatus.BAD_REQUEST;
-        }
-        return switch (code) {
-            case INVALID_ARGUMENT -> HttpStatus.BAD_REQUEST;
-            case FORBIDDEN -> HttpStatus.FORBIDDEN;
-        };
     }
 
     private String resolve(String key, Object... args) {

@@ -3,14 +3,16 @@ package co.edu.docurural.user.service;
 import co.edu.docurural.activitylog.enums.ActivityAction;
 import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.shared.audit.AuditContext;
-import co.edu.docurural.shared.domain.entity.User;
-import co.edu.docurural.shared.domain.enums.UserStatus;
-import co.edu.docurural.shared.domain.repository.UserRepository;
+import co.edu.docurural.user.entity.User;
+import co.edu.docurural.user.enums.UserStatus;
+import co.edu.docurural.user.repository.UserRepository;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.exception.ConflictException;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
+import co.edu.docurural.shared.util.FieldUpdater;
 import co.edu.docurural.shared.util.MessageResolver;
+import co.edu.docurural.shared.util.SortingValidator;
 import co.edu.docurural.user.dto.CreateUserRequest;
 import co.edu.docurural.user.dto.CreateUserResponse;
 import co.edu.docurural.user.dto.UpdateStatusRequest;
@@ -81,27 +83,15 @@ public class UserService {
      */
     @Transactional(readOnly = true)
     public UserListResponse list(String sortBy, String sortDir) {
-        String resolvedSortBy = (sortBy == null || sortBy.isBlank()) ? DEFAULT_SORT_BY : sortBy;
-        String resolvedSortDir = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir;
+        Sort sort = SortingValidator.resolveSort(
+                sortBy, sortDir,
+                ALLOWED_SORT_FIELDS, DEFAULT_SORT_BY, DEFAULT_SORT_DIR,
+                messageResolver.get("user.sort.unsupported-field", sortBy),
+                messageResolver.get("user.sort.unsupported-direction", sortDir));
 
-        if (!ALLOWED_SORT_FIELDS.contains(resolvedSortBy)) {
-            throw new BusinessRuleException(
-                    BusinessErrorCode.INVALID_ARGUMENT,
-                    messageResolver.get("user.sort.unsupported-field", resolvedSortBy));
-        }
-
-        Sort.Direction direction;
-        try {
-            direction = Sort.Direction.fromString(resolvedSortDir.toLowerCase(Locale.ROOT));
-        } catch (IllegalArgumentException ex) {
-            throw new BusinessRuleException(
-                    BusinessErrorCode.INVALID_ARGUMENT,
-                    messageResolver.get("user.sort.unsupported-direction", resolvedSortDir));
-        }
-
-        List<User> users = userRepository.findAll(Sort.by(direction, resolvedSortBy));
+        List<User> users = userRepository.findAll(sort);
         log.debug("Listado de usuarios: total={} sortBy={} sortDir={}",
-                users.size(), resolvedSortBy, direction);
+                users.size(), sortBy, sortDir);
         return UserMapper.toListResponse(users);
     }
 
@@ -142,13 +132,14 @@ public class UserService {
             throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, messageResolver.get("user.passwords.mismatch"));
         }
 
-        if (userRepository.existsByEmail(request.email())) {
+        String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
+        if (userRepository.existsByEmail(normalizedEmail)) {
             throw new ConflictException(messageResolver.get("user.email.already-registered"));
         }
 
         User newUser = User.builder()
                 .fullName(request.fullName())
-                .email(request.email())
+                .email(normalizedEmail)
                 .passwordHash(passwordEncoder.encode(request.password()))
                 .role(request.role())
                 .status(UserStatus.ACTIVE)
@@ -198,13 +189,15 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         messageResolver.get("user.not-found", id)));
 
+        String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
+
         // Realizar validaciones
-        validateEmailUniqueness(request.email(), id, user);
+        validateEmailUniqueness(normalizedEmail, id, user);
         validateRoleChange(request.role(), user, id, adminId);
         validatePasswordConsistency(request.password(), request.confirmPassword());
 
         // Actualizar campos y registrar cambios
-        List<String> modifiedFields = applyUpdates(user, request);
+        List<String> modifiedFields = applyUpdates(user, request, normalizedEmail);
 
         User updatedUser = userRepository.save(user);
 
@@ -257,21 +250,17 @@ public class UserService {
      *
      * @return Lista con los nombres de los campos que fueron actualizados.
      */
-    private List<String> applyUpdates(User user, UpdateUserRequest request) {
-        List<String> modifiedFields = new ArrayList<>();
-
-        if (!request.fullName().equals(user.getFullName())) {
-            user.setFullName(request.fullName());
-            modifiedFields.add("fullName");
-        }
-
-        if (!request.email().equalsIgnoreCase(user.getEmail())) {
-            user.setEmail(request.email());
-            modifiedFields.add("email");
-        }
+    private List<String> applyUpdates(User user, UpdateUserRequest request, String normalizedEmail) {
+        List<String> modifiedFields = new ArrayList<>(
+                FieldUpdater.of(user)
+                        .setIfChanged("fullName", request.fullName(), user::getFullName, user::setFullName)
+                        .setIfChanged("email", normalizedEmail, user::getEmail, user::setEmail)
+                        .changedFields());
 
         if (request.role() != user.getRole()) {
             user.setRole(request.role());
+            // el cambio de rol invalida todos los tokens emitidos con el rol anterior
+            user.setTokenVersion((user.getTokenVersion() == null ? 0 : user.getTokenVersion()) + 1);
             modifiedFields.add("role");
         }
 
@@ -334,6 +323,10 @@ public class UserService {
         }
 
         user.setStatus(newStatus);
+        // al desactivar, invalida todos los tokens activos del usuario
+        if (newStatus == UserStatus.INACTIVE) {
+            user.setTokenVersion((user.getTokenVersion() == null ? 0 : user.getTokenVersion()) + 1);
+        }
         User updatedUser = userRepository.save(user);
 
         String message = newStatus == UserStatus.ACTIVE

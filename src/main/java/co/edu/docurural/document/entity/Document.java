@@ -1,9 +1,11 @@
 package co.edu.docurural.document.entity;
 
 import co.edu.docurural.category.entity.Category;
-import co.edu.docurural.shared.domain.entity.User;
+import co.edu.docurural.user.entity.User;
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.document.enums.DocumentStatus;
+import co.edu.docurural.shared.exception.BusinessErrorCode;
+import co.edu.docurural.shared.exception.BusinessRuleException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -84,6 +86,18 @@ public class Document {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private DocumentStatus status;
+
+    /** Garantiza que solo los documentos ACTIVE pueden editarse o descargarse. */
+    public void assertEditable(String errorMessage) {
+        if (this.status != DocumentStatus.ACTIVE) {
+            throw new BusinessRuleException(BusinessErrorCode.FORBIDDEN, errorMessage);
+        }
+    }
+
+    /** Marca el documento como eliminado lógicamente. */
+    public void markAsDeleted() {
+        this.status = DocumentStatus.DELETED;
+    }
 
     @PrePersist
     void onCreate() {

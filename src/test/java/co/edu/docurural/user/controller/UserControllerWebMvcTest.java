@@ -5,8 +5,8 @@ import co.edu.docurural.shared.config.SecurityConfig;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.audit.AuditContextResolver;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
-import co.edu.docurural.shared.domain.enums.UserRole;
-import co.edu.docurural.shared.domain.enums.UserStatus;
+import co.edu.docurural.user.enums.UserRole;
+import co.edu.docurural.user.enums.UserStatus;
 import co.edu.docurural.user.service.UserService;
 import co.edu.docurural.user.dto.CreateUserRequest;
 import co.edu.docurural.user.dto.CreateUserResponse;
@@ -160,8 +160,8 @@ class UserControllerWebMvcTest {
         CreateUserRequest request = new CreateUserRequest(
                 "Nora Nueva",
                 "nora.nueva@docurural.edu.co",
-                "supersecreta",
-                "supersecreta",
+                "Supersecreta1!",
+                "Supersecreta1!",
                 UserRole.READER);
 
         CreateUserResponse response = new CreateUserResponse(

@@ -6,7 +6,7 @@ spring:
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:docurural_db}
     username: ${DB_USER:docurural}
-    password: ${DB_PASSWORD:docurural}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -21,6 +21,11 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: ${docurural.storage.max-file-size:10MB}
+      max-request-size: ${docurural.storage.max-request-size:55MB}
   messages:
     basename: messages
     encoding: UTF-8
@@ -39,6 +44,10 @@ docurural:
       secret: ${JWT_SECRET}
       expiration-ms: ${JWT_EXPIRATION_MS:1800000}
       issuer: ${JWT_ISSUER:docurural}
+  storage:
+    base-path: ${DOCURURAL_STORAGE_BASE_PATH:./uploads/documents}
+    max-file-size: ${DOCURURAL_STORAGE_MAX_FILE_SIZE:10MB}
+    max-request-size: ${DOCURURAL_STORAGE_MAX_REQUEST_SIZE:55MB}
   seed:
     admin:
       email: ${ADMIN_SEED_EMAIL:}

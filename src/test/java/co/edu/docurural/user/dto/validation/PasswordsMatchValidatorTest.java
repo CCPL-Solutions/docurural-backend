@@ -1,6 +1,6 @@
 package co.edu.docurural.user.dto.validation;
 
-import co.edu.docurural.shared.domain.enums.UserRole;
+import co.edu.docurural.user.enums.UserRole;
 import co.edu.docurural.user.dto.CreateUserRequest;
 import co.edu.docurural.user.dto.UpdateUserRequest;
 import jakarta.validation.ConstraintViolation;
@@ -45,8 +45,8 @@ class PasswordsMatchValidatorTest {
         CreateUserRequest request = new CreateUserRequest(
                 "Ana Admin",
                 "ana.admin@docurural.edu.co",
-                "password123",
-                "password123",
+                "Password123!",
+                "Password123!",
                 UserRole.ADMIN
         );
 

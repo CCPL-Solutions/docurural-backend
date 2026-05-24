@@ -1,4 +1,4 @@
-package co.edu.docurural.shared.domain.enums;
+package co.edu.docurural.user.enums;
 
 public enum UserStatus {
     ACTIVE,

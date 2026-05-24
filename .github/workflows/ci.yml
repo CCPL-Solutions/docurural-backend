@@ -3,7 +3,8 @@ name: CI — Integración Continua
 on:
   push:
     branches-ignore:
-      - main      # main solo recibe merges desde develop, no pushes directos
+      - main
+      - develop
   pull_request:
     branches:
       - develop
@@ -12,7 +13,7 @@ on:
 jobs:
   build-and-test:
     name: Compilar y ejecutar pruebas
-    runs-on: ubuntu-latest  # Runner hosteado por GitHub — no necesita el EC2
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout del código
@@ -30,7 +31,7 @@ jobs:
 
       - name: Publicar reporte de pruebas
         uses: actions/upload-artifact@v4
-        if: always()   # Subir el reporte aunque las pruebas fallen
+        if: always()
         with:
           name: reporte-pruebas
           path: target/surefire-reports/
