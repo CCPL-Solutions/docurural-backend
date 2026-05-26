@@ -31,12 +31,12 @@ public class SensitivityPolicy {
 
     /**
      * Válida que el rol del actor tenga permiso para asignar el nivel indicado.
-     * Los EDITOR no pueden asignar CONFIDENTIAL.
+     * Los usuarios con rol EDITOR no pueden asignar RESTRICTED ni CONFIDENTIAL.
      *
      * @throws BusinessRuleException (FORBIDDEN / HTTP 403) si el rol no lo permite.
      */
     public void validateRolePermission(UserRole role, SensitivityLevel requested) {
-        if (role == UserRole.EDITOR && requested == SensitivityLevel.CONFIDENTIAL) {
+        if (role == UserRole.EDITOR && (requested == SensitivityLevel.RESTRICTED || requested == SensitivityLevel.CONFIDENTIAL)) {
             throw new BusinessRuleException(BusinessErrorCode.FORBIDDEN,
                     messageResolver.get("document.sensitivity.confidential.forbidden-for-editor"));
         }
