@@ -1,8 +1,8 @@
 package co.edu.docurural.dashboard.controller;
 
-import co.edu.docurural.dashboard.dto.DashboardStatsResponse;
+import co.edu.docurural.dashboard.dto.DashboardStatsResponseDto;
 import co.edu.docurural.dashboard.service.DashboardService;
-import co.edu.docurural.shared.dto.ApiErrorResponse;
+import co.edu.docurural.shared.dto.ApiErrorResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -43,15 +43,15 @@ public class DashboardController {
             @ApiResponse(responseCode = "200",
                     description = "Datos del dashboard retornados exitosamente. "
                             + "Los arrays pueden estar vacíos si el repositorio no tiene documentos.",
-                    content = @Content(schema = @Schema(implementation = DashboardStatsResponse.class))),
+                    content = @Content(schema = @Schema(implementation = DashboardStatsResponseDto.class))),
             @ApiResponse(responseCode = "401",
                     description = "Token JWT ausente, inválido o expirado.",
-                    content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
+                    content = @Content(schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "500",
                     description = "Error inesperado del servidor.",
-                    content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+                    content = @Content(schema = @Schema(implementation = ApiErrorResponseDto.class)))
     })
-    public ResponseEntity<DashboardStatsResponse> getStats() {
+    public ResponseEntity<DashboardStatsResponseDto> getStats() {
         return ResponseEntity.ok(dashboardService.getStats());
     }
 }

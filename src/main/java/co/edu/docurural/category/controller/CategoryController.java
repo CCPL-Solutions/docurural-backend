@@ -1,16 +1,16 @@
 package co.edu.docurural.category.controller;
 
-import co.edu.docurural.category.dto.CategoryDetailResponse;
-import co.edu.docurural.category.dto.CategoryListResponse;
-import co.edu.docurural.category.dto.CreateCategoryRequest;
-import co.edu.docurural.category.dto.CreateCategoryResponse;
-import co.edu.docurural.category.dto.UpdateCategoryRequest;
-import co.edu.docurural.category.dto.UpdateCategoryResponse;
-import co.edu.docurural.category.dto.UpdateCategoryStatusRequest;
-import co.edu.docurural.category.dto.UpdateCategoryStatusResponse;
+import co.edu.docurural.category.dto.CategoryDetailResponseDto;
+import co.edu.docurural.category.dto.CategoryListResponseDto;
+import co.edu.docurural.category.dto.CreateCategoryRequestDto;
+import co.edu.docurural.category.dto.CreateCategoryResponseDto;
+import co.edu.docurural.category.dto.UpdateCategoryRequestDto;
+import co.edu.docurural.category.dto.UpdateCategoryResponseDto;
+import co.edu.docurural.category.dto.UpdateCategoryStatusRequestDto;
+import co.edu.docurural.category.dto.UpdateCategoryStatusResponseDto;
 import co.edu.docurural.category.service.CategoryService;
 import co.edu.docurural.shared.audit.AuditContextResolver;
-import co.edu.docurural.shared.dto.ApiErrorResponse;
+import co.edu.docurural.shared.dto.ApiErrorResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -63,23 +63,23 @@ public class CategoryController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Listado retornado exitosamente",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = CategoryListResponse.class))),
+                            schema = @Schema(implementation = CategoryListResponseDto.class))),
             @ApiResponse(responseCode = "400", description = "Parámetros de ordenamiento inválidos",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "403", description = "Acceso denegado (no ADMIN)",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "500", description = "Error interno del servidor",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class)))
+                            schema = @Schema(implementation = ApiErrorResponseDto.class)))
     })
     @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
     @GetMapping
-    public ResponseEntity<CategoryListResponse> list(
+    public ResponseEntity<CategoryListResponseDto> list(
             @Parameter(name = "sortBy", description = "Campo de ordenamiento: name | createdAt", example = "name")
             @RequestParam(value = "sortBy", required = false) String sortBy,
             @Parameter(name = "sortDir", description = "Dirección: asc | desc", example = "asc")
@@ -97,23 +97,23 @@ public class CategoryController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Datos de la categoría retornados exitosamente",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = CategoryDetailResponse.class))),
+                            schema = @Schema(implementation = CategoryDetailResponseDto.class))),
             @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "403", description = "Acceso denegado (no ADMIN)",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "404", description = "Categoría no encontrada",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "500", description = "Error interno del servidor",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class)))
+                            schema = @Schema(implementation = ApiErrorResponseDto.class)))
     })
     @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
     @GetMapping("/{id}")
-    public ResponseEntity<CategoryDetailResponse> getById(
+    public ResponseEntity<CategoryDetailResponseDto> getById(
             @Parameter(name = "id", description = "ID de la categoría a consultar", example = "1")
             @PathVariable Long id) {
         log.debug("GET /categories/{}", id);
@@ -129,30 +129,30 @@ public class CategoryController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Categoría creada exitosamente",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = CreateCategoryResponse.class))),
+                            schema = @Schema(implementation = CreateCategoryResponseDto.class))),
             @ApiResponse(responseCode = "400", description = "Campos inválidos",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "403", description = "Acceso denegado (no ADMIN)",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "409", description = "Ya existe una categoría con ese nombre",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "500", description = "Error interno del servidor",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class)))
+                            schema = @Schema(implementation = ApiErrorResponseDto.class)))
     })
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
-    public ResponseEntity<CreateCategoryResponse> create(
-            @Valid @RequestBody CreateCategoryRequest request,
+    public ResponseEntity<CreateCategoryResponseDto> create(
+            @Valid @RequestBody CreateCategoryRequestDto request,
             HttpServletRequest httpRequest) {
         log.debug("POST /categories name='{}'", request.name());
-        CreateCategoryResponse response = categoryService.create(request, auditContextResolver.resolve(httpRequest));
+        CreateCategoryResponseDto response = categoryService.create(request, auditContextResolver.resolve(httpRequest));
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -165,32 +165,32 @@ public class CategoryController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Estado actualizado exitosamente",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = UpdateCategoryStatusResponse.class))),
+                            schema = @Schema(implementation = UpdateCategoryStatusResponseDto.class))),
             @ApiResponse(responseCode = "400", description = "Estado inválido o categoría ya en ese estado",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "403", description = "Acceso denegado (no ADMIN)",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "404", description = "Categoría no encontrada",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "500", description = "Error interno del servidor",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class)))
+                            schema = @Schema(implementation = ApiErrorResponseDto.class)))
     })
     @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{id}/status")
-    public ResponseEntity<UpdateCategoryStatusResponse> changeStatus(
+    public ResponseEntity<UpdateCategoryStatusResponseDto> changeStatus(
             @Parameter(name = "id", description = "ID de la categoría", example = "9")
             @PathVariable Long id,
-            @Valid @RequestBody UpdateCategoryStatusRequest request,
+            @Valid @RequestBody UpdateCategoryStatusRequestDto request,
             HttpServletRequest httpRequest) {
         log.debug("PATCH /categories/{}/status newStatus={}", id, request.status());
-        UpdateCategoryStatusResponse response = categoryService.changeStatus(
+        UpdateCategoryStatusResponseDto response = categoryService.changeStatus(
                 id, request, auditContextResolver.resolve(httpRequest));
         return ResponseEntity.ok(response);
     }
@@ -204,35 +204,35 @@ public class CategoryController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Categoría actualizada exitosamente",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = UpdateCategoryResponse.class))),
+                            schema = @Schema(implementation = UpdateCategoryResponseDto.class))),
             @ApiResponse(responseCode = "400", description = "Campos inválidos",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "403", description = "Acceso denegado (no ADMIN) o categoría INACTIVE",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "404", description = "Categoría no encontrada",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "409", description = "Ya existe una categoría con ese nombre",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "500", description = "Error interno del servidor",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class)))
+                            schema = @Schema(implementation = ApiErrorResponseDto.class)))
     })
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
-    public ResponseEntity<UpdateCategoryResponse> update(
+    public ResponseEntity<UpdateCategoryResponseDto> update(
             @Parameter(name = "id", description = "ID de la categoría a editar", example = "9")
             @PathVariable Long id,
-            @Valid @RequestBody UpdateCategoryRequest request,
+            @Valid @RequestBody UpdateCategoryRequestDto request,
             HttpServletRequest httpRequest) {
         log.debug("PUT /categories/{}", id);
-        UpdateCategoryResponse response = categoryService.update(id, request, auditContextResolver.resolve(httpRequest));
+        UpdateCategoryResponseDto response = categoryService.update(id, request, auditContextResolver.resolve(httpRequest));
         return ResponseEntity.ok(response);
     }
 }

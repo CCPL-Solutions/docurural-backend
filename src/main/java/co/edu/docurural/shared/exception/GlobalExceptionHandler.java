@@ -1,6 +1,6 @@
 package co.edu.docurural.shared.exception;
 
-import co.edu.docurural.shared.dto.ApiErrorResponse;
+import co.edu.docurural.shared.dto.ApiErrorResponseDto;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -27,7 +27,7 @@ import java.util.Map;
  * Manejador centralizado de excepciones para toda la capa web.
  *
  * <p>Traduce cualquier {@link Throwable} propagado desde controllers/services/filtros
- * a la estructura estándar {@link ApiErrorResponse} definida en
+ * a la estructura estándar {@link ApiErrorResponseDto} definida en
  * {@code docs/api-rest-sprint1.md} sección 1.2:
  *
  * <pre>
@@ -72,7 +72,7 @@ public class GlobalExceptionHandler {
      * con la clave {@code _global} o el nombre del campo objetivo del {@code ObjectError}.
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiErrorResponse> handleValidation(
+    public ResponseEntity<ApiErrorResponseDto> handleValidation(
             MethodArgumentNotValidException ex, HttpServletRequest request) {
 
         Map<String, String> fieldErrors = new LinkedHashMap<>();
@@ -88,7 +88,7 @@ public class GlobalExceptionHandler {
         log.warn("Validación fallida en {} {}: {}",
                 request.getMethod(), request.getRequestURI(), fieldErrors);
 
-        ApiErrorResponse body = ApiErrorResponse.ofValidation(
+        ApiErrorResponseDto body = ApiErrorResponseDto.ofValidation(
                 HttpStatus.BAD_REQUEST.value(),
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
                 resolve("error.validation"),
@@ -102,7 +102,7 @@ public class GlobalExceptionHandler {
      * (p. ej. {@code {"status":"FOO"}} en {@code PATCH /users/{id}/status}).
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ApiErrorResponse> handleHttpMessageNotReadable(
+    public ResponseEntity<ApiErrorResponseDto> handleHttpMessageNotReadable(
             HttpMessageNotReadableException ex, HttpServletRequest request) {
         log.warn("Cuerpo de petición inválido en {} {}: {}",
                 request.getMethod(), request.getRequestURI(), ex.getMostSpecificCause().getMessage());
@@ -113,7 +113,7 @@ public class GlobalExceptionHandler {
      * Archivo multipart supera el límite configurado en {@code spring.servlet.multipart.max-file-size} -> 413.
      */
     @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public ResponseEntity<ApiErrorResponse> handleMaxUploadSize(
+    public ResponseEntity<ApiErrorResponseDto> handleMaxUploadSize(
             MaxUploadSizeExceededException ex, HttpServletRequest request) {
         log.warn("Archivo demasiado grande en {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         return buildResponse(HttpStatus.PAYLOAD_TOO_LARGE, resolve("document.file.too-large"));
@@ -124,12 +124,12 @@ public class GlobalExceptionHandler {
      * sin el part {@code file}) -> 400 con el mensaje de campo requerido.
      */
     @ExceptionHandler(MissingServletRequestPartException.class)
-    public ResponseEntity<ApiErrorResponse> handleMissingRequestPart(
+    public ResponseEntity<ApiErrorResponseDto> handleMissingRequestPart(
             MissingServletRequestPartException ex, HttpServletRequest request) {
         log.warn("Part faltante en {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         Map<String, String> fieldErrors = Map.of(ex.getRequestPartName(),
                 resolve("validation.document.file.required"));
-        ApiErrorResponse body = ApiErrorResponse.ofValidation(
+        ApiErrorResponseDto body = ApiErrorResponseDto.ofValidation(
                 HttpStatus.BAD_REQUEST.value(),
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
                 resolve("error.validation"),
@@ -144,7 +144,7 @@ public class GlobalExceptionHandler {
      * pero tiene su propio handler más específico; este captura el resto de subtipos.
      */
     @ExceptionHandler(org.springframework.validation.BindException.class)
-    public ResponseEntity<ApiErrorResponse> handleBindException(
+    public ResponseEntity<ApiErrorResponseDto> handleBindException(
             org.springframework.validation.BindException ex, HttpServletRequest request) {
         Map<String, String> fieldErrors = new LinkedHashMap<>();
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
@@ -155,7 +155,7 @@ public class GlobalExceptionHandler {
             fieldErrors.putIfAbsent(key, globalError.getDefaultMessage());
         });
         log.warn("Binding fallido en {} {}: {}", request.getMethod(), request.getRequestURI(), fieldErrors);
-        ApiErrorResponse body = ApiErrorResponse.ofValidation(
+        ApiErrorResponseDto body = ApiErrorResponseDto.ofValidation(
                 HttpStatus.BAD_REQUEST.value(),
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
                 resolve("error.validation"),
@@ -167,7 +167,7 @@ public class GlobalExceptionHandler {
      * Recursos no encontrados por id (p. ej. usuario inexistente).
      */
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ApiErrorResponse> handleNotFound(
+    public ResponseEntity<ApiErrorResponseDto> handleNotFound(
             ResourceNotFoundException ex, HttpServletRequest request) {
         log.warn("Recurso no encontrado en {} {}: {}",
                 request.getMethod(), request.getRequestURI(), ex.getMessage());
@@ -178,7 +178,7 @@ public class GlobalExceptionHandler {
      * Conflictos de unicidad (p. ej. email ya registrado al crear o editar un usuario).
      */
     @ExceptionHandler(ConflictException.class)
-    public ResponseEntity<ApiErrorResponse> handleConflict(
+    public ResponseEntity<ApiErrorResponseDto> handleConflict(
             ConflictException ex, HttpServletRequest request) {
         log.warn("Conflicto en {} {}: {}",
                 request.getMethod(), request.getRequestURI(), ex.getMessage());
@@ -189,7 +189,7 @@ public class GlobalExceptionHandler {
      * Violación de regla de negocio. El mapeo HTTP vive en {@link BusinessErrorCode}.
      */
     @ExceptionHandler(BusinessRuleException.class)
-    public ResponseEntity<ApiErrorResponse> handleBusinessRule(
+    public ResponseEntity<ApiErrorResponseDto> handleBusinessRule(
             BusinessRuleException ex, HttpServletRequest request) {
         HttpStatus status = ex.getCode() != null
                 ? ex.getCode().httpStatus()
@@ -204,7 +204,7 @@ public class GlobalExceptionHandler {
      * con el mensaje exacto del contrato AUTH-01.
      */
     @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ApiErrorResponse> handleBadCredentials(
+    public ResponseEntity<ApiErrorResponseDto> handleBadCredentials(
             BadCredentialsException ex, HttpServletRequest request) {
         log.warn("Credenciales inválidas en {} {}", request.getMethod(), request.getRequestURI());
         return buildResponse(HttpStatus.UNAUTHORIZED, resolve("auth.login.invalid-credentials"));
@@ -214,7 +214,7 @@ public class GlobalExceptionHandler {
      * Cuenta desactivada (status = INACTIVE) -> 403 con el mensaje exacto del contrato AUTH-01.
      */
     @ExceptionHandler(DisabledException.class)
-    public ResponseEntity<ApiErrorResponse> handleDisabled(
+    public ResponseEntity<ApiErrorResponseDto> handleDisabled(
             DisabledException ex, HttpServletRequest request) {
         log.warn("Intento de login con cuenta desactivada en {} {}",
                 request.getMethod(), request.getRequestURI());
@@ -225,7 +225,7 @@ public class GlobalExceptionHandler {
      * Sin permisos suficientes (rechazo de {@code @PreAuthorize}) -> 403.
      */
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ApiErrorResponse> handleAccessDenied(
+    public ResponseEntity<ApiErrorResponseDto> handleAccessDenied(
             AccessDeniedException ex, HttpServletRequest request) {
         log.warn("Acceso denegado en {} {}: {}",
                 request.getMethod(), request.getRequestURI(), ex.getMessage());
@@ -239,7 +239,7 @@ public class GlobalExceptionHandler {
      * sesión expirada).
      */
     @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<ApiErrorResponse> handleAuthentication(
+    public ResponseEntity<ApiErrorResponseDto> handleAuthentication(
             AuthenticationException ex, HttpServletRequest request) {
         log.warn("Excepción de autenticación en {} {}: {}",
                 request.getMethod(), request.getRequestURI(), ex.getMessage());
@@ -250,7 +250,7 @@ public class GlobalExceptionHandler {
      * Fallo de infraestructura al escribir un archivo en disco -> 500 con mensaje contractual.
      */
     @ExceptionHandler(FileStorageException.class)
-    public ResponseEntity<ApiErrorResponse> handleFileStorage(
+    public ResponseEntity<ApiErrorResponseDto> handleFileStorage(
             FileStorageException ex, HttpServletRequest request) {
         log.error("Fallo de almacenamiento en {} {}: {}",
                 request.getMethod(), request.getRequestURI(), ex.getMessage(), ex);
@@ -263,15 +263,15 @@ public class GlobalExceptionHandler {
      * genérico para no filtrar detalles internos.
      */
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiErrorResponse> handleGeneric(
+    public ResponseEntity<ApiErrorResponseDto> handleGeneric(
             Exception ex, HttpServletRequest request) {
         log.error("Error inesperado en {} {}: {}",
                 request.getMethod(), request.getRequestURI(), ex.getMessage(), ex);
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, resolveInternalError());
     }
 
-    private ResponseEntity<ApiErrorResponse> buildResponse(HttpStatus status, String message) {
-        ApiErrorResponse body = ApiErrorResponse.of(
+    private ResponseEntity<ApiErrorResponseDto> buildResponse(HttpStatus status, String message) {
+        ApiErrorResponseDto body = ApiErrorResponseDto.of(
                 status.value(),
                 status.getReasonPhrase(),
                 message);

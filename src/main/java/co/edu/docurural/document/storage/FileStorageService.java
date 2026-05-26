@@ -96,7 +96,12 @@ public class FileStorageService {
      */
     public void delete(String relativePath) {
         try {
-            Path fullPath = Paths.get(storageProperties.getBasePath()).resolve(relativePath);
+            Path basePath = Paths.get(storageProperties.getBasePath()).toAbsolutePath().normalize();
+            Path fullPath = basePath.resolve(relativePath).normalize();
+            if (!fullPath.startsWith(basePath)) {
+                log.warn("Intento de path traversal en delete detectado: '{}'", relativePath);
+                return;
+            }
             boolean deleted = Files.deleteIfExists(fullPath);
             if (deleted) {
                 log.warn("Archivo huérfano eliminado tras rollback: {}", fullPath);

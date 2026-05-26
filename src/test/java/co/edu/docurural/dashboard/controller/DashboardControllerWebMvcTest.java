@@ -1,10 +1,10 @@
 package co.edu.docurural.dashboard.controller;
 
-import co.edu.docurural.dashboard.dto.CategoryDistributionItemResponse;
-import co.edu.docurural.dashboard.dto.DashboardStatsResponse;
-import co.edu.docurural.dashboard.dto.RecentDocumentResponse;
-import co.edu.docurural.dashboard.dto.SummaryResponse;
-import co.edu.docurural.dashboard.dto.TopCategoryResponse;
+import co.edu.docurural.dashboard.dto.CategoryDistributionItemResponseDto;
+import co.edu.docurural.dashboard.dto.DashboardStatsResponseDto;
+import co.edu.docurural.dashboard.dto.RecentDocumentResponseDto;
+import co.edu.docurural.dashboard.dto.SummaryResponseDto;
+import co.edu.docurural.dashboard.dto.TopCategoryResponseDto;
 import co.edu.docurural.dashboard.service.DashboardService;
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.shared.config.SecurityConfig;
@@ -50,7 +50,7 @@ class DashboardControllerWebMvcTest {
 
     @Test
     void getStats_returns200WithBody_whenServiceReturnsData() throws Exception {
-        DashboardStatsResponse response = buildFilledResponse();
+        DashboardStatsResponseDto response = buildFilledResponse();
         when(dashboardService.getStats()).thenReturn(response);
 
         mockMvc.perform(get("/dashboard/stats"))
@@ -74,8 +74,8 @@ class DashboardControllerWebMvcTest {
 
     @Test
     void getStats_returns200WithEmptyArraysAndNullTop_whenRepositoryIsEmpty() throws Exception {
-        DashboardStatsResponse emptyResponse = new DashboardStatsResponse(
-                new SummaryResponse(0L, 0L, null),
+        DashboardStatsResponseDto emptyResponse = new DashboardStatsResponseDto(
+                new SummaryResponseDto(0L, 0L, null),
                 List.of(),
                 List.of());
         when(dashboardService.getStats()).thenReturn(emptyResponse);
@@ -111,16 +111,16 @@ class DashboardControllerWebMvcTest {
     // Helpers
     // -------------------------------------------------------------------------
 
-    private static DashboardStatsResponse buildFilledResponse() {
-        SummaryResponse summary = new SummaryResponse(47L, 12L,
-                new TopCategoryResponse("Actas", 18L));
+    private static DashboardStatsResponseDto buildFilledResponse() {
+        SummaryResponseDto summary = new SummaryResponseDto(47L, 12L,
+                new TopCategoryResponseDto("Actas", 18L));
 
-        List<CategoryDistributionItemResponse> distribution = List.of(
-                new CategoryDistributionItemResponse("Actas", 18L, 38.30),
-                new CategoryDistributionItemResponse("Circulares", 11L, 23.40));
+        List<CategoryDistributionItemResponseDto> distribution = List.of(
+                new CategoryDistributionItemResponseDto("Actas", 18L, 38.30),
+                new CategoryDistributionItemResponseDto("Circulares", 11L, 23.40));
 
-        List<RecentDocumentResponse> recent = List.of(
-                new RecentDocumentResponse(
+        List<RecentDocumentResponseDto> recent = List.of(
+                new RecentDocumentResponseDto(
                         47L,
                         "Acta Consejo Directivo Mayo 2026",
                         "Actas",
@@ -128,6 +128,6 @@ class DashboardControllerWebMvcTest {
                         DocumentFormat.PDF,
                         LocalDateTime.of(2026, 5, 15, 8, 45)));
 
-        return new DashboardStatsResponse(summary, distribution, recent);
+        return new DashboardStatsResponseDto(summary, distribution, recent);
     }
 }

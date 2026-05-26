@@ -1,6 +1,11 @@
 package co.edu.docurural.user.service;
 
+import co.edu.docurural.user.dto.UpdateStatusResponseDto;
+import co.edu.docurural.user.dto.UpdateUserResponseDto;
+import co.edu.docurural.user.dto.UserResponseDto;
+import co.edu.docurural.user.mapper.UserMapper;
 import co.edu.docurural.activitylog.enums.ActivityAction;
+import org.mapstruct.factory.Mappers;
 import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.user.entity.User;
@@ -12,20 +17,17 @@ import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.exception.ConflictException;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.shared.util.MessageResolver;
+import co.edu.docurural.shared.util.SortingValidator;
 import co.edu.docurural.support.TestFixtures;
-import co.edu.docurural.user.dto.CreateUserRequest;
-import co.edu.docurural.user.dto.CreateUserResponse;
-import co.edu.docurural.user.dto.UpdateStatusRequest;
-import co.edu.docurural.user.dto.UpdateStatusResponse;
-import co.edu.docurural.user.dto.UpdateUserRequest;
-import co.edu.docurural.user.dto.UpdateUserResponse;
-import co.edu.docurural.user.dto.UserListResponse;
-import co.edu.docurural.user.dto.UserResponse;
+import co.edu.docurural.user.dto.CreateUserRequestDto;
+import co.edu.docurural.user.dto.CreateUserResponseDto;
+import co.edu.docurural.user.dto.UpdateStatusRequestDto;
+import co.edu.docurural.user.dto.UpdateUserRequestDto;
+import co.edu.docurural.user.dto.UserListResponseDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
@@ -49,6 +51,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
+
     private static final Long ADMIN_ID = 1L;
     private static final AuditContext AUDIT_ADMIN = new AuditContext(ADMIN_ID, "203.0.113.10");
 
@@ -61,13 +64,17 @@ class UserServiceTest {
     @Mock
     MessageResolver messageResolver;
 
-    @InjectMocks
-    UserService userService;
+    UserServiceImpl userService;
 
     @BeforeEach
-    void stubMessageResolver() {
+    void setUp() {
         lenient().when(messageResolver.get(anyString()))
                 .thenAnswer(inv -> inv.getArgument(0));
+        lenient().when(messageResolver.get(anyString(), any()))
+                .thenAnswer(inv -> inv.getArgument(0));
+        userService = new UserServiceImpl(userRepository, passwordEncoder,
+                activityLogService, messageResolver, new SortingValidator(messageResolver),
+                Mappers.getMapper(UserMapper.class));
     }
 
     // ------------------------------------------------------------------
@@ -79,7 +86,7 @@ class UserServiceTest {
         when(userRepository.findAll(any(Sort.class)))
                 .thenReturn(List.of(TestFixtures.userAdmin(1L), TestFixtures.userEditor(2L)));
 
-        UserListResponse response = userService.list(null, null);
+        UserListResponseDto response = userService.list(null, null);
 
         assertThat(response.totalUsers()).isEqualTo(2);
         assertThat(response.users()).hasSize(2);
@@ -139,7 +146,7 @@ class UserServiceTest {
         User editor = TestFixtures.userEditor(7L);
         when(userRepository.findById(7L)).thenReturn(Optional.of(editor));
 
-        UserResponse response = userService.findById(7L);
+        UserResponseDto response = userService.findById(7L);
 
         assertThat(response.id()).isEqualTo(7L);
         assertThat(response.fullName()).isEqualTo(editor.getFullName());
@@ -162,7 +169,7 @@ class UserServiceTest {
 
     @Test
     void create_withUniqueEmail_encodesPassword_persists_logsCreateUser_returnsMessage() {
-        CreateUserRequest request = TestFixtures.createUserRequest(
+        CreateUserRequestDto request = TestFixtures.createUserRequest(
                 "New Reader", "new.reader@docurural.edu.co", "plainpass1", UserRole.READER);
 
         when(userRepository.existsByEmail(request.email())).thenReturn(false);
@@ -173,7 +180,7 @@ class UserServiceTest {
             return u;
         });
 
-        CreateUserResponse response = userService.create(request, AUDIT_ADMIN);
+        CreateUserResponseDto response = userService.create(request, AUDIT_ADMIN);
 
         assertThat(response.id()).isEqualTo(50L);
         assertThat(response.email()).isEqualTo(request.email());
@@ -198,7 +205,7 @@ class UserServiceTest {
 
     @Test
     void create_withMismatchedPasswords_throwsBusinessRule400() {
-        CreateUserRequest request = TestFixtures.createUserRequest(
+        CreateUserRequestDto request = TestFixtures.createUserRequest(
                 "Name", "name@docurural.edu.co", "password1", "password2", UserRole.EDITOR);
 
         assertThatThrownBy(() -> userService.create(request, AUDIT_ADMIN))
@@ -211,7 +218,7 @@ class UserServiceTest {
 
     @Test
     void create_withExistingEmail_throwsConflict() {
-        CreateUserRequest request = TestFixtures.createUserRequest(
+        CreateUserRequestDto request = TestFixtures.createUserRequest(
                 "Existing", "existing@docurural.edu.co", "plainpass1", UserRole.EDITOR);
         when(userRepository.existsByEmail(request.email())).thenReturn(true);
 
@@ -229,13 +236,13 @@ class UserServiceTest {
     @Test
     void update_withNoChanges_savesUser_logsEmptyModifiedFieldsList() {
         User existing = TestFixtures.userEditor(20L);
-        UpdateUserRequest request = TestFixtures.updateUserRequest(
+        UpdateUserRequestDto request = TestFixtures.updateUserRequest(
                 existing.getFullName(), existing.getEmail(), existing.getRole());
 
         when(userRepository.findById(20L)).thenReturn(Optional.of(existing));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UpdateUserResponse response = userService.update(20L, request, AUDIT_ADMIN);
+        UpdateUserResponseDto response = userService.update(20L, request, AUDIT_ADMIN);
 
         assertThat(response.id()).isEqualTo(20L);
         assertThat(response.message()).isEqualTo("user.updated.success");
@@ -253,7 +260,7 @@ class UserServiceTest {
     @Test
     void update_changingEmailToExisting_throwsConflict() {
         User existing = TestFixtures.userEditor(20L);
-        UpdateUserRequest request = TestFixtures.updateUserRequest(
+        UpdateUserRequestDto request = TestFixtures.updateUserRequest(
                 existing.getFullName(), "already.taken@docurural.edu.co", existing.getRole());
 
         when(userRepository.findById(20L)).thenReturn(Optional.of(existing));
@@ -269,7 +276,7 @@ class UserServiceTest {
 
     @Test
     void update_missingUser_throwsResourceNotFound() {
-        UpdateUserRequest request = TestFixtures.updateUserRequest(
+        UpdateUserRequestDto request = TestFixtures.updateUserRequest(
                 "Name", "mail@docurural.edu.co", UserRole.READER);
         when(userRepository.findById(404L)).thenReturn(Optional.empty());
 
@@ -283,7 +290,7 @@ class UserServiceTest {
     @Test
     void update_adminChangingOwnRole_throwsBusinessRule403() {
         User selfAdmin = TestFixtures.userAdmin(ADMIN_ID);
-        UpdateUserRequest request = TestFixtures.updateUserRequest(
+        UpdateUserRequestDto request = TestFixtures.updateUserRequest(
                 selfAdmin.getFullName(), selfAdmin.getEmail(), UserRole.EDITOR);
 
         when(userRepository.findById(ADMIN_ID)).thenReturn(Optional.of(selfAdmin));
@@ -300,7 +307,7 @@ class UserServiceTest {
     @Test
     void update_withNewPassword_mismatched_throwsBusinessRule400() {
         User existing = TestFixtures.userEditor(20L);
-        UpdateUserRequest request = TestFixtures.updateUserRequest(
+        UpdateUserRequestDto request = TestFixtures.updateUserRequest(
                 existing.getFullName(), existing.getEmail(), existing.getRole(),
                 "newpass12", "differentpass");
 
@@ -319,7 +326,7 @@ class UserServiceTest {
     void update_withNewPassword_reencodes_addsPasswordToModifiedFields() {
         User existing = TestFixtures.userEditor(20L);
         String originalHash = existing.getPasswordHash();
-        UpdateUserRequest request = TestFixtures.updateUserRequest(
+        UpdateUserRequestDto request = TestFixtures.updateUserRequest(
                 existing.getFullName(), existing.getEmail(), existing.getRole(),
                 "newpass123", "newpass123");
 
@@ -345,7 +352,7 @@ class UserServiceTest {
     @Test
     void update_withFullChangeSet_returnsAllModifiedFields() {
         User existing = TestFixtures.userEditor(20L);
-        UpdateUserRequest request = TestFixtures.updateUserRequest(
+        UpdateUserRequestDto request = TestFixtures.updateUserRequest(
                 "Brand New Name",
                 "new.mail@docurural.edu.co",
                 UserRole.READER,
@@ -358,7 +365,7 @@ class UserServiceTest {
         when(passwordEncoder.encode("newpass123")).thenReturn("$2a$10$brandNew");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UpdateUserResponse response = userService.update(20L, request, AUDIT_ADMIN);
+        UpdateUserResponseDto response = userService.update(20L, request, AUDIT_ADMIN);
 
         assertThat(response.fullName()).isEqualTo("Brand New Name");
         assertThat(response.email()).isEqualTo("new.mail@docurural.edu.co");
@@ -379,7 +386,7 @@ class UserServiceTest {
     @Test
     void changeStatus_sameStatus_throwsBusinessRule400() {
         User existing = TestFixtures.userEditor(30L); // ACTIVE
-        UpdateStatusRequest request = TestFixtures.updateStatusRequest(UserStatus.ACTIVE);
+        UpdateStatusRequestDto request = TestFixtures.updateStatusRequest(UserStatus.ACTIVE);
 
         when(userRepository.findById(30L)).thenReturn(Optional.of(existing));
 
@@ -395,7 +402,7 @@ class UserServiceTest {
     @Test
     void changeStatus_adminDeactivatingSelf_throwsBusinessRule403() {
         User selfAdmin = TestFixtures.userAdmin(ADMIN_ID); // ACTIVE
-        UpdateStatusRequest request = TestFixtures.updateStatusRequest(UserStatus.INACTIVE);
+        UpdateStatusRequestDto request = TestFixtures.updateStatusRequest(UserStatus.INACTIVE);
 
         when(userRepository.findById(ADMIN_ID)).thenReturn(Optional.of(selfAdmin));
 
@@ -411,12 +418,12 @@ class UserServiceTest {
     @Test
     void changeStatus_activateInactiveUser_persists_logsDeactivateUser_returnsActivatedMessage() {
         User inactive = TestFixtures.userInactive(40L);
-        UpdateStatusRequest request = TestFixtures.updateStatusRequest(UserStatus.ACTIVE);
+        UpdateStatusRequestDto request = TestFixtures.updateStatusRequest(UserStatus.ACTIVE);
 
         when(userRepository.findById(40L)).thenReturn(Optional.of(inactive));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UpdateStatusResponse response = userService.changeStatus(40L, request, AUDIT_ADMIN);
+        UpdateStatusResponseDto response = userService.changeStatus(40L, request, AUDIT_ADMIN);
 
         assertThat(response.id()).isEqualTo(40L);
         assertThat(response.status()).isEqualTo("ACTIVE");
@@ -427,7 +434,7 @@ class UserServiceTest {
         assertThat(userCaptor.getValue().getStatus()).isEqualTo(UserStatus.ACTIVE);
 
         verify(activityLogService).record(
-                eq(ActivityAction.DEACTIVATE_USER),
+                eq(ActivityAction.ACTIVATE_USER),
                 eq(AUDIT_ADMIN),
                 isNull(),
                 eq("Nuevo estado: ACTIVE"));
@@ -436,12 +443,12 @@ class UserServiceTest {
     @Test
     void changeStatus_deactivateActiveUser_persists_returnsDeactivatedMessage() {
         User active = TestFixtures.userEditor(41L);
-        UpdateStatusRequest request = TestFixtures.updateStatusRequest(UserStatus.INACTIVE);
+        UpdateStatusRequestDto request = TestFixtures.updateStatusRequest(UserStatus.INACTIVE);
 
         when(userRepository.findById(41L)).thenReturn(Optional.of(active));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UpdateStatusResponse response = userService.changeStatus(41L, request, AUDIT_ADMIN);
+        UpdateStatusResponseDto response = userService.changeStatus(41L, request, AUDIT_ADMIN);
 
         assertThat(response.status()).isEqualTo("INACTIVE");
         assertThat(response.message()).isEqualTo("user.deactivated.success");
@@ -455,7 +462,7 @@ class UserServiceTest {
 
     @Test
     void changeStatus_missingUser_throwsResourceNotFound() {
-        UpdateStatusRequest request = TestFixtures.updateStatusRequest(UserStatus.INACTIVE);
+        UpdateStatusRequestDto request = TestFixtures.updateStatusRequest(UserStatus.INACTIVE);
         when(userRepository.findById(404L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.changeStatus(404L, request, AUDIT_ADMIN))

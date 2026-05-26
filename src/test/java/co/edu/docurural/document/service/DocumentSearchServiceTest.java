@@ -1,17 +1,20 @@
 package co.edu.docurural.document.service;
 
+import co.edu.docurural.document.mapper.DocumentMapper;
 import co.edu.docurural.activitylog.enums.ActivityAction;
+import org.mapstruct.factory.Mappers;
 import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.repository.CategoryRepository;
-import co.edu.docurural.document.dto.DocumentListResponse;
-import co.edu.docurural.document.dto.FilterOptionsResponse;
+import co.edu.docurural.document.dto.DocumentListResponseDto;
+import co.edu.docurural.document.dto.FilterOptionsResponseDto;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.repository.DocumentRepository;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.util.MessageResolver;
+import co.edu.docurural.shared.util.SortingValidator;
 import co.edu.docurural.support.TestFixtures;
 import co.edu.docurural.user.entity.User;
 import co.edu.docurural.user.repository.UserRepository;
@@ -19,7 +22,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -60,15 +62,18 @@ class DocumentSearchServiceTest {
     @Mock
     MessageResolver messageResolver;
 
-    @InjectMocks
-    DocumentSearchService documentSearchService;
+    DocumentSearchServiceImpl documentSearchService;
 
     @BeforeEach
-    void stubMessageResolver() {
+    void setUp() {
         lenient().when(messageResolver.get(anyString()))
                 .thenAnswer(inv -> inv.getArgument(0));
         lenient().when(messageResolver.get(anyString(), any()))
                 .thenAnswer(inv -> inv.getArgument(0));
+        documentSearchService = new DocumentSearchServiceImpl(
+                documentRepository, categoryRepository, userRepository,
+                activityLogService, messageResolver, new SortingValidator(messageResolver),
+                Mappers.getMapper(DocumentMapper.class));
     }
 
     private Page<Document> emptyPage() {
@@ -108,7 +113,7 @@ class DocumentSearchServiceTest {
     void search_treatsBlankQAsAbsent_andDoesNotAudit() {
         when(documentRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(emptyPage());
 
-        DocumentListResponse response = documentSearchService.search(
+        DocumentListResponseDto response = documentSearchService.search(
                 "   ", null, null, null, null, null,
                 null, null, null, null, false, AUDIT);
 
@@ -235,7 +240,7 @@ class DocumentSearchServiceTest {
     void search_ignoresUploadedBy_whenActorIsNotAdmin() {
         when(documentRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(emptyPage());
 
-        DocumentListResponse response = documentSearchService.search(
+        DocumentListResponseDto response = documentSearchService.search(
                 null, null, null, null, null, 99L,
                 null, null, null, null, false, AUDIT);
 
@@ -251,7 +256,7 @@ class DocumentSearchServiceTest {
         when(documentRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(emptyPage());
         when(userRepository.findById(99L)).thenReturn(Optional.of(uploader));
 
-        DocumentListResponse response = documentSearchService.search(
+        DocumentListResponseDto response = documentSearchService.search(
                 null, null, null, null, null, 99L,
                 null, null, null, null, true, AUDIT);
 
@@ -267,7 +272,7 @@ class DocumentSearchServiceTest {
     void search_setsActiveFiltersToNull_whenNoFiltersAndNoQ() {
         when(documentRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(emptyPage());
 
-        DocumentListResponse response = documentSearchService.search(
+        DocumentListResponseDto response = documentSearchService.search(
                 null, null, null, null, null, null,
                 null, null, null, null, false, AUDIT);
 
@@ -280,7 +285,7 @@ class DocumentSearchServiceTest {
         when(documentRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(emptyPage());
         when(categoryRepository.findById(999L)).thenReturn(Optional.empty());
 
-        DocumentListResponse response = documentSearchService.search(
+        DocumentListResponseDto response = documentSearchService.search(
                 null, 999L, null, null, null, null,
                 null, null, null, null, false, AUDIT);
 
@@ -293,7 +298,7 @@ class DocumentSearchServiceTest {
     void search_setsSearchTermToTrimmedQ() {
         when(documentRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(emptyPage());
 
-        DocumentListResponse response = documentSearchService.search(
+        DocumentListResponseDto response = documentSearchService.search(
                 "  acta  ", null, null, null, null, null,
                 null, null, null, null, false, AUDIT);
 
@@ -308,7 +313,7 @@ class DocumentSearchServiceTest {
         Page<Document> fakePage = new PageImpl<>(List.of(doc), PageRequest.of(0, 20), 1L);
         when(documentRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(fakePage);
 
-        DocumentListResponse response = documentSearchService.search(
+        DocumentListResponseDto response = documentSearchService.search(
                 null, null, null, null, null, null,
                 null, null, null, null, false, AUDIT);
 
@@ -331,7 +336,7 @@ class DocumentSearchServiceTest {
         when(categoryRepository.findAll()).thenReturn(List.of(actas, inactiva));
         when(userRepository.findAll()).thenReturn(List.of(admin));
 
-        FilterOptionsResponse response = documentSearchService.getFilterOptions(true);
+        FilterOptionsResponseDto response = documentSearchService.getFilterOptions(true);
 
         assertThat(response.categories()).hasSize(1);
         assertThat(response.categories().get(0).name()).isEqualTo("Actas");
@@ -345,7 +350,7 @@ class DocumentSearchServiceTest {
         Category actas = TestFixtures.categoryActive(1L, "Actas");
         when(categoryRepository.findAll()).thenReturn(List.of(actas));
 
-        FilterOptionsResponse response = documentSearchService.getFilterOptions(false);
+        FilterOptionsResponseDto response = documentSearchService.getFilterOptions(false);
 
         assertThat(response.categories()).hasSize(1);
         assertThat(response.users()).isNull();
@@ -361,7 +366,7 @@ class DocumentSearchServiceTest {
         when(categoryRepository.findAll()).thenReturn(List.of(activa, inactiva));
         when(userRepository.findAll()).thenReturn(List.of(activeUser, inactiveUser));
 
-        FilterOptionsResponse response = documentSearchService.getFilterOptions(true);
+        FilterOptionsResponseDto response = documentSearchService.getFilterOptions(true);
 
         assertThat(response.categories()).hasSize(1);
         assertThat(response.categories().get(0).id()).isEqualTo(1L);

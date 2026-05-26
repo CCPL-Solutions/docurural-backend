@@ -1,22 +1,22 @@
 package co.edu.docurural.support;
 
-import co.edu.docurural.auth.dto.LoginRequest;
-import co.edu.docurural.category.dto.CreateCategoryRequest;
-import co.edu.docurural.category.dto.UpdateCategoryRequest;
-import co.edu.docurural.category.dto.UpdateCategoryStatusRequest;
+import co.edu.docurural.auth.dto.LoginRequestDto;
+import co.edu.docurural.category.dto.CreateCategoryRequestDto;
+import co.edu.docurural.category.dto.UpdateCategoryRequestDto;
+import co.edu.docurural.category.dto.UpdateCategoryStatusRequestDto;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
-import co.edu.docurural.document.dto.UpdateDocumentMetadataRequest;
-import co.edu.docurural.document.dto.UploadDocumentRequest;
+import co.edu.docurural.document.dto.UpdateDocumentMetadataRequestDto;
+import co.edu.docurural.document.dto.UploadDocumentRequestDto;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.document.enums.DocumentStatus;
 import co.edu.docurural.user.entity.User;
 import co.edu.docurural.user.enums.UserRole;
 import co.edu.docurural.user.enums.UserStatus;
-import co.edu.docurural.user.dto.CreateUserRequest;
-import co.edu.docurural.user.dto.UpdateStatusRequest;
-import co.edu.docurural.user.dto.UpdateUserRequest;
+import co.edu.docurural.user.dto.CreateUserRequestDto;
+import co.edu.docurural.user.dto.UpdateStatusRequestDto;
+import co.edu.docurural.user.dto.UpdateUserRequestDto;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -64,32 +64,32 @@ public final class TestFixtures {
                 .build();
     }
 
-    public static LoginRequest loginRequest(String email, String password) {
-        return new LoginRequest(email, password);
+    public static LoginRequestDto loginRequest(String email, String password) {
+        return new LoginRequestDto(email, password);
     }
 
-    public static CreateUserRequest createUserRequest(
+    public static CreateUserRequestDto createUserRequest(
             String fullName, String email, String password, UserRole role) {
-        return new CreateUserRequest(fullName, email, password, password, role);
+        return new CreateUserRequestDto(fullName, email, password, password, role);
     }
 
-    public static CreateUserRequest createUserRequest(
+    public static CreateUserRequestDto createUserRequest(
             String fullName, String email, String password, String confirmPassword, UserRole role) {
-        return new CreateUserRequest(fullName, email, password, confirmPassword, role);
+        return new CreateUserRequestDto(fullName, email, password, confirmPassword, role);
     }
 
-    public static UpdateUserRequest updateUserRequest(
+    public static UpdateUserRequestDto updateUserRequest(
             String fullName, String email, UserRole role) {
-        return new UpdateUserRequest(fullName, email, role, null, null);
+        return new UpdateUserRequestDto(fullName, email, role, null, null);
     }
 
-    public static UpdateUserRequest updateUserRequest(
+    public static UpdateUserRequestDto updateUserRequest(
             String fullName, String email, UserRole role, String password, String confirmPassword) {
-        return new UpdateUserRequest(fullName, email, role, password, confirmPassword);
+        return new UpdateUserRequestDto(fullName, email, role, password, confirmPassword);
     }
 
-    public static UpdateStatusRequest updateStatusRequest(UserStatus status) {
-        return new UpdateStatusRequest(status);
+    public static UpdateStatusRequestDto updateStatusRequest(UserStatus status) {
+        return new UpdateStatusRequestDto(status);
     }
 
     public static Category categoryActive(Long id, String name) {
@@ -123,12 +123,12 @@ public final class TestFixtures {
                 .build();
     }
 
-    public static CreateCategoryRequest createCategoryRequest(String name, String description) {
-        return new CreateCategoryRequest(name, description);
+    public static CreateCategoryRequestDto createCategoryRequest(String name, String description) {
+        return new CreateCategoryRequestDto(name, description);
     }
 
-    public static UpdateCategoryRequest updateCategoryRequest(String name, String description) {
-        return new UpdateCategoryRequest(name, description);
+    public static UpdateCategoryRequestDto updateCategoryRequest(String name, String description) {
+        return new UpdateCategoryRequestDto(name, description);
     }
 
     public static Category categoryInactive(Long id, String name) {
@@ -140,12 +140,12 @@ public final class TestFixtures {
                 .build();
     }
 
-    public static UpdateCategoryStatusRequest updateCategoryStatusRequest(CategoryStatus status) {
-        return new UpdateCategoryStatusRequest(status);
+    public static UpdateCategoryStatusRequestDto updateCategoryStatusRequest(CategoryStatus status) {
+        return new UpdateCategoryStatusRequestDto(status);
     }
 
-    public static UploadDocumentRequest uploadDocumentRequest(Long categoryId) {
-        return new UploadDocumentRequest(
+    public static UploadDocumentRequestDto uploadDocumentRequest(Long categoryId) {
+        return new UploadDocumentRequestDto(
                 "Acta Consejo Directivo Marzo 2026",
                 categoryId,
                 "Rectoría",
@@ -153,8 +153,8 @@ public final class TestFixtures {
                 "Acta de reunión");
     }
 
-    public static UpdateDocumentMetadataRequest updateDocumentMetadataRequest(Long categoryId) {
-        return new UpdateDocumentMetadataRequest(
+    public static UpdateDocumentMetadataRequestDto updateDocumentMetadataRequest(Long categoryId) {
+        return new UpdateDocumentMetadataRequestDto(
                 "Acta Consejo Directivo Marzo 2026 - Revisado",
                 categoryId,
                 "Rectoría",
