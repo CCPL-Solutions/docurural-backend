@@ -45,6 +45,7 @@ co.edu.docurural/
     ├── audit/      # Resolucion del contexto de auditoria (actor e IP del cliente)
     ├── config/     # Configuracion de seguridad, CORS, OpenAPI y datos iniciales
     ├── dto/        # Tipos de respuesta compartidos entre modulos
+    ├── enums/      # Enums transversales usados por mas de un modulo
     ├── exception/  # Manejo centralizado de errores
     ├── security/   # Validacion de tokens JWT y filtros de autenticacion
     └── util/       # Utilidades transversales: i18n, nombres de archivo, ordenacion

@@ -15,6 +15,9 @@ public record UpdateCategoryResponseDto(
         String description,
         @Schema(description = "Estado actual de la categoría", example = "ACTIVE")
         String status,
+        @Schema(description = "Nivel de sensibilidad por defecto para documentos de esta categoría",
+                example = "INTERNAL", allowableValues = {"INTERNAL", "RESTRICTED", "CONFIDENTIAL"})
+        String defaultSensitivityLevel,
         @Schema(description = "Mensaje de confirmación", example = "Categoría actualizada exitosamente")
         String message
 ) {

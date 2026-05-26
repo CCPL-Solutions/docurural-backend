@@ -18,6 +18,7 @@ import co.edu.docurural.document.repository.DocumentRepository;
 import co.edu.docurural.document.storage.FileStorageService;
 import co.edu.docurural.document.storage.StoredFile;
 import co.edu.docurural.shared.audit.AuditContext;
+import co.edu.docurural.shared.enums.SensitivityLevel;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
@@ -37,7 +38,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Operaciones de escritura sobre documentos (DOC-03..DOC-06 / HU-09..HU-14).
@@ -55,6 +59,7 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
     private final FileStorageService fileStorageService;
     private final MessageResolver messageResolver;
     private final DocumentMapper documentMapper;
+    private final SensitivityPolicy sensitivityPolicy;
 
     @Override
     @Transactional
@@ -66,13 +71,20 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         messageResolver.get("document.category.not-found")));
 
+        User actor = userRepository.findById(actorId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        messageResolver.get("user.not-found", actorId)));
+
+        sensitivityPolicy.validateRequestedLevel(request.sensitivityLevel(), category.getDefaultSensitivityLevel());
+        sensitivityPolicy.validateRolePermission(actor.getRole(), request.sensitivityLevel());
+
         Document saved = processSingleFile(
                 file, request.title(), category,
                 request.responsibleArea(), request.documentDate(), request.description(),
-                "Archivo: ", actorId, audit);
+                request.sensitivityLevel(), "Archivo: ", actorId, audit);
 
-        log.info("Documento cargado: id={} title='{}' format={} uploadedBy={}",
-                saved.getId(), saved.getTitle(), saved.getFileFormat(), actorId);
+        log.info("Documento cargado: id={} title='{}' format={} sensitivityLevel={} uploadedBy={}",
+                saved.getId(), saved.getTitle(), saved.getFileFormat(), saved.getSensitivityLevel(), actorId);
 
         return documentMapper.toUploadResponse(saved, messageResolver.get("document.uploaded.success"));
     }
@@ -102,6 +114,9 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
             throw new BusinessRuleException(BusinessErrorCode.FORBIDDEN,
                     messageResolver.get("document.edit.forbidden"));
         }
+
+        sensitivityPolicy.validateRequestedLevel(request.sensitivityLevel(), category.getDefaultSensitivityLevel());
+        sensitivityPolicy.validateRolePermission(actor.getRole(), request.sensitivityLevel());
 
         List<String> modifiedFields = applyMetadataUpdates(document, request, category);
         if (modifiedFields.isEmpty()) {
@@ -143,7 +158,8 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
     @Override
     @Transactional
     public Document uploadSingleForBatch(MultipartFile file, String title, Long categoryId,
-                                          String responsibleArea, LocalDate documentDate, AuditContext audit) {
+                                          String responsibleArea, LocalDate documentDate,
+                                          SensitivityLevel sensitivityLevel, AuditContext audit) {
         Long actorId = requireActorUserId(audit);
 
         Category category = categoryRepository.findById(categoryId)
@@ -151,12 +167,19 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         messageResolver.get("document.category.not-found")));
 
+        User actor = userRepository.findById(actorId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        messageResolver.get("user.not-found", actorId)));
+
+        sensitivityPolicy.validateRequestedLevel(sensitivityLevel, category.getDefaultSensitivityLevel());
+        sensitivityPolicy.validateRolePermission(actor.getRole(), sensitivityLevel);
+
         Document saved = processSingleFile(
                 file, title, category, responsibleArea, documentDate,
-                null, "Carga múltiple — Archivo: ", actorId, audit);
+                null, sensitivityLevel, "Carga múltiple — Archivo: ", actorId, audit);
 
-        log.info("Documento cargado (lote): id={} title='{}' format={} uploadedBy={}",
-                saved.getId(), saved.getTitle(), saved.getFileFormat(), actorId);
+        log.info("Documento cargado (lote): id={} title='{}' format={} sensitivityLevel={} uploadedBy={}",
+                saved.getId(), saved.getTitle(), saved.getFileFormat(), saved.getSensitivityLevel(), actorId);
 
         return saved;
     }
@@ -179,18 +202,25 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
             document.setCategory(category);
             modifiedFields.add("categoryId");
         }
+
+        SensitivityLevel previousLevel = document.getSensitivityLevel();
+        if (previousLevel != request.sensitivityLevel()) {
+            document.setSensitivityLevel(request.sensitivityLevel());
+            modifiedFields.add("sensitivityLevel: " + previousLevel + " → " + request.sensitivityLevel());
+        }
+
         return modifiedFields;
     }
 
     private Document processSingleFile(MultipartFile file, String title, Category category,
                                        String responsibleArea, LocalDate documentDate,
-                                       String description, String activityDetailPrefix,
-                                       Long actorId, AuditContext audit) {
+                                       String description, SensitivityLevel sensitivityLevel,
+                                       String activityDetailPrefix, Long actorId, AuditContext audit) {
         validateFile(file);
         DocumentFormat format = fileValidationService.validate(file);
         StoredFile stored = storeWithRollback(file, format);
         Document document = buildDocument(title, category, responsibleArea, documentDate,
-                description, stored, format, file, actorId);
+                description, sensitivityLevel, stored, format, file, actorId);
         Document saved = documentRepository.save(document);
         activityLogService.record(ActivityAction.UPLOAD, audit, saved.getId(),
                 activityDetailPrefix + saved.getOriginalFileName());
@@ -222,8 +252,8 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
 
     private Document buildDocument(String title, Category category, String responsibleArea,
                                    LocalDate documentDate, String description,
-                                   StoredFile stored, DocumentFormat format,
-                                   MultipartFile file, Long actorId) {
+                                   SensitivityLevel sensitivityLevel, StoredFile stored,
+                                   DocumentFormat format, MultipartFile file, Long actorId) {
         return Document.builder()
                 .title(title)
                 .description(description)
@@ -235,7 +265,25 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
                 .fileFormat(format)
                 .fileSizeBytes(file.getSize())
                 .uploadedBy(userRepository.getReferenceById(actorId))
+                .sensitivityLevel(sensitivityLevel)
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public int raiseSensitivityForCategory(Long categoryId, SensitivityLevel newLevel, AuditContext audit) {
+        Collection<SensitivityLevel> levelsToUpdate = Arrays.stream(SensitivityLevel.values())
+                .filter(level -> level.compareTo(newLevel) < 0)
+                .collect(Collectors.toList());
+
+        if (levelsToUpdate.isEmpty()) {
+            return 0;
+        }
+
+        int updated = documentRepository.raiseSensitivityForActiveDocuments(categoryId, newLevel, levelsToUpdate);
+        log.info("Documentos reclasificados por cambio de categoría: categoryId={} newLevel={} count={}",
+                categoryId, newLevel, updated);
+        return updated;
     }
 
     private static Long requireActorUserId(AuditContext audit) {

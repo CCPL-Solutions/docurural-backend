@@ -14,6 +14,9 @@ public record CategoryDetailResponseDto(
         @Schema(description = "Cantidad de documentos ACTIVE asociados", example = "23") Long documentCount,
         @Schema(description = "Fecha de creación") LocalDateTime createdAt,
         @Schema(description = "Nombre completo del creador (\"Sistema\" si fue sembrada)", example = "Carlos Ramírez Pinzón")
-        String createdBy
+        String createdBy,
+        @Schema(description = "Nivel de sensibilidad por defecto para documentos de esta categoría",
+                example = "INTERNAL", allowableValues = {"INTERNAL", "RESTRICTED", "CONFIDENTIAL"})
+        String defaultSensitivityLevel
 ) {
 }

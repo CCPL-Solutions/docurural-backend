@@ -2,6 +2,7 @@ package co.edu.docurural.category.entity;
 
 import co.edu.docurural.user.entity.User;
 import co.edu.docurural.category.enums.CategoryStatus;
+import co.edu.docurural.shared.enums.SensitivityLevel;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import jakarta.persistence.Column;
@@ -57,6 +58,10 @@ public class Category {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "default_sensitivity_level", nullable = false, length = 20)
+    private SensitivityLevel defaultSensitivityLevel;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     private User createdBy;
@@ -75,6 +80,9 @@ public class Category {
         }
         if (status == null) {
             status = CategoryStatus.ACTIVE;
+        }
+        if (defaultSensitivityLevel == null) {
+            defaultSensitivityLevel = SensitivityLevel.INTERNAL;
         }
     }
 }

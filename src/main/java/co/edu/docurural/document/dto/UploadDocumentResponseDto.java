@@ -38,6 +38,10 @@ public record UploadDocumentResponseDto(
         @Schema(description = "Fecha y hora de carga al sistema", example = "2026-04-17T10:20:00")
         LocalDateTime createdAt,
 
+        @Schema(description = "Nivel de sensibilidad del documento", example = "INTERNAL",
+                allowableValues = {"INTERNAL", "RESTRICTED", "CONFIDENTIAL"})
+        String sensitivityLevel,
+
         @Schema(description = "Mensaje de confirmación", example = "Documento cargado exitosamente")
         String message
 ) {

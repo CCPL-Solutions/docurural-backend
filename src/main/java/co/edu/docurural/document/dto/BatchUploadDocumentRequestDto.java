@@ -1,5 +1,6 @@
 package co.edu.docurural.document.dto;
 
+import co.edu.docurural.shared.enums.SensitivityLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -9,7 +10,7 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 /**
- * Campos de texto del request multipart {@code POST /api/documents/batch} (DOC-04 / HU-10).
+ * Campos de texto del request multipart {@code POST /api/documents/batch} (DOC-04 / HU-10 / HU-28).
  *
  * <p>El array de archivos {@code files} se recibe como {@code @RequestPart} separado en el controller.
  * Los metadatos comunes aplican a todos los archivos del lote.
@@ -25,6 +26,11 @@ public record BatchUploadDocumentRequestDto(
         @Size(max = 100, message = "{validation.document.responsible-area.size}")
         @Schema(description = "Área responsable aplicada a todos los archivos del lote", example = "Rectoría")
         String responsibleArea,
+
+        @NotNull(message = "{validation.document.sensitivity.required}")
+        @Schema(description = "Nivel de sensibilidad aplicado a todos los archivos del lote",
+                example = "INTERNAL", allowableValues = {"INTERNAL", "RESTRICTED", "CONFIDENTIAL"})
+        SensitivityLevel sensitivityLevel,
 
         @Valid
         @Schema(description = "Títulos por archivo (en el mismo orden que files[]). "

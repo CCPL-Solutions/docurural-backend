@@ -1,5 +1,6 @@
 package co.edu.docurural.document.dto;
 
+import co.edu.docurural.shared.enums.SensitivityLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -8,7 +9,7 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
 /**
- * Campos de texto del request multipart {@code POST /api/documents} (DOC-03 / HU-09).
+ * Campos de texto del request multipart {@code POST /api/documents} (DOC-03 / HU-09 / HU-28).
  *
  * <p>El archivo {@code file} se recibe como {@code @RequestPart} separado en el controller.
  */
@@ -37,6 +38,11 @@ public record UploadDocumentRequestDto(
         @Schema(description = "Descripción opcional del contenido",
                 example = "Acta de la reunión del consejo directivo del 15 de marzo de 2026",
                 nullable = true)
-        String description
+        String description,
+
+        @NotNull(message = "{validation.document.sensitivity.required}")
+        @Schema(description = "Nivel de sensibilidad del documento. No puede ser inferior al default de su categoría",
+                example = "INTERNAL", allowableValues = {"INTERNAL", "RESTRICTED", "CONFIDENTIAL"})
+        SensitivityLevel sensitivityLevel
 ) {
 }

@@ -11,6 +11,7 @@ import co.edu.docurural.document.dto.UploadDocumentRequestDto;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.document.enums.DocumentStatus;
+import co.edu.docurural.shared.enums.SensitivityLevel;
 import co.edu.docurural.user.entity.User;
 import co.edu.docurural.user.enums.UserRole;
 import co.edu.docurural.user.enums.UserStatus;
@@ -98,6 +99,18 @@ public final class TestFixtures {
                 .name(name)
                 .description(null)
                 .status(CategoryStatus.ACTIVE)
+                .defaultSensitivityLevel(SensitivityLevel.INTERNAL)
+                .createdAt(FIXED_CREATED_AT)
+                .build();
+    }
+
+    public static Category categoryActive(Long id, String name, SensitivityLevel defaultSensitivityLevel) {
+        return Category.builder()
+                .id(id)
+                .name(name)
+                .description(null)
+                .status(CategoryStatus.ACTIVE)
+                .defaultSensitivityLevel(defaultSensitivityLevel)
                 .createdAt(FIXED_CREATED_AT)
                 .build();
     }
@@ -108,6 +121,7 @@ public final class TestFixtures {
                 .name(name)
                 .description(description)
                 .status(CategoryStatus.ACTIVE)
+                .defaultSensitivityLevel(SensitivityLevel.INTERNAL)
                 .createdAt(FIXED_CREATED_AT)
                 .build();
     }
@@ -118,17 +132,28 @@ public final class TestFixtures {
                 .name(name)
                 .description(description)
                 .status(CategoryStatus.ACTIVE)
+                .defaultSensitivityLevel(SensitivityLevel.INTERNAL)
                 .createdAt(FIXED_CREATED_AT)
                 .createdBy(createdBy)
                 .build();
     }
 
     public static CreateCategoryRequestDto createCategoryRequest(String name, String description) {
-        return new CreateCategoryRequestDto(name, description);
+        return new CreateCategoryRequestDto(name, description, SensitivityLevel.INTERNAL);
+    }
+
+    public static CreateCategoryRequestDto createCategoryRequest(String name, String description,
+                                                                  SensitivityLevel defaultSensitivityLevel) {
+        return new CreateCategoryRequestDto(name, description, defaultSensitivityLevel);
     }
 
     public static UpdateCategoryRequestDto updateCategoryRequest(String name, String description) {
-        return new UpdateCategoryRequestDto(name, description);
+        return new UpdateCategoryRequestDto(name, description, SensitivityLevel.INTERNAL);
+    }
+
+    public static UpdateCategoryRequestDto updateCategoryRequest(String name, String description,
+                                                                  SensitivityLevel defaultSensitivityLevel) {
+        return new UpdateCategoryRequestDto(name, description, defaultSensitivityLevel);
     }
 
     public static Category categoryInactive(Long id, String name) {
@@ -150,7 +175,18 @@ public final class TestFixtures {
                 categoryId,
                 "Rectoría",
                 LocalDate.of(2026, 3, 15),
-                "Acta de reunión");
+                "Acta de reunión",
+                SensitivityLevel.INTERNAL);
+    }
+
+    public static UploadDocumentRequestDto uploadDocumentRequest(Long categoryId, SensitivityLevel sensitivityLevel) {
+        return new UploadDocumentRequestDto(
+                "Acta Consejo Directivo Marzo 2026",
+                categoryId,
+                "Rectoría",
+                LocalDate.of(2026, 3, 15),
+                "Acta de reunión",
+                sensitivityLevel);
     }
 
     public static UpdateDocumentMetadataRequestDto updateDocumentMetadataRequest(Long categoryId) {
@@ -159,7 +195,19 @@ public final class TestFixtures {
                 categoryId,
                 "Rectoría",
                 LocalDate.of(2026, 3, 15),
-                "Versión corregida del acta");
+                "Versión corregida del acta",
+                SensitivityLevel.INTERNAL);
+    }
+
+    public static UpdateDocumentMetadataRequestDto updateDocumentMetadataRequest(Long categoryId,
+                                                                                  SensitivityLevel sensitivityLevel) {
+        return new UpdateDocumentMetadataRequestDto(
+                "Acta Consejo Directivo Marzo 2026 - Revisado",
+                categoryId,
+                "Rectoría",
+                LocalDate.of(2026, 3, 15),
+                "Versión corregida del acta",
+                sensitivityLevel);
     }
 
     public static Document documentActive(Long id, Category category, User uploadedBy) {
@@ -176,6 +224,27 @@ public final class TestFixtures {
                 .fileSizeBytes(524288L)
                 .uploadedBy(uploadedBy)
                 .status(DocumentStatus.ACTIVE)
+                .sensitivityLevel(SensitivityLevel.INTERNAL)
+                .createdAt(FIXED_CREATED_AT)
+                .build();
+    }
+
+    public static Document documentActive(Long id, Category category, User uploadedBy,
+                                          SensitivityLevel sensitivityLevel) {
+        return Document.builder()
+                .id(id)
+                .title("Acta Consejo Directivo Marzo 2026")
+                .description("Acta de reunión")
+                .category(category)
+                .responsibleArea("Rectoría")
+                .documentDate(LocalDate.of(2026, 3, 15))
+                .filePath("/uploads/documents/2026/05/uuid.pdf")
+                .originalFileName("acta.pdf")
+                .fileFormat(DocumentFormat.PDF)
+                .fileSizeBytes(524288L)
+                .uploadedBy(uploadedBy)
+                .status(DocumentStatus.ACTIVE)
+                .sensitivityLevel(sensitivityLevel)
                 .createdAt(FIXED_CREATED_AT)
                 .build();
     }

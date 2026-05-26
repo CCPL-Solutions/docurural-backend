@@ -21,6 +21,9 @@ public record UpdateDocumentMetadataResponseDto(
         LocalDate documentDate,
         @Schema(description = "Descripción actualizada del documento", example = "Versión revisada y aprobada por el consejo directivo.")
         String description,
+        @Schema(description = "Nivel de sensibilidad actual del documento", example = "INTERNAL",
+                allowableValues = {"INTERNAL", "RESTRICTED", "CONFIDENTIAL"})
+        String sensitivityLevel,
         @Schema(description = "Mensaje de confirmación", example = "Documento actualizado exitosamente")
         String message
 ) {

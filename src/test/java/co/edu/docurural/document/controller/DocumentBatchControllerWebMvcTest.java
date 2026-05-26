@@ -84,6 +84,7 @@ class DocumentBatchControllerWebMvcTest {
                         .param("categoryId", "1")
                         .param("responsibleArea", "Rectoría")
                         .param("documentDate", "2026-03-15")
+                        .param("sensitivityLevel", "INTERNAL")
                         .param("titles", "Acta Enero 2026")
                         .param("titles", "Acta Febrero 2026"))
                 .andExpect(status().isOk())
@@ -113,7 +114,8 @@ class DocumentBatchControllerWebMvcTest {
                         .file(new MockMultipartFile("files", "malo.pdf", "application/pdf", new byte[100]))
                         .param("categoryId", "1")
                         .param("responsibleArea", "Rectoría")
-                        .param("documentDate", "2026-03-15"))
+                        .param("documentDate", "2026-03-15")
+                        .param("sensitivityLevel", "INTERNAL"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalSuccessful").value(1))
                 .andExpect(jsonPath("$.totalFailed").value(1))
@@ -170,7 +172,8 @@ class DocumentBatchControllerWebMvcTest {
                         .file(new MockMultipartFile("files", "doc.pdf", "application/pdf", new byte[10]))
                         .param("categoryId", "99")
                         .param("responsibleArea", "Rectoría")
-                        .param("documentDate", "2026-03-15"))
+                        .param("documentDate", "2026-03-15")
+                        .param("sensitivityLevel", "INTERNAL"))
                 .andExpect(status().isNotFound());
     }
 }

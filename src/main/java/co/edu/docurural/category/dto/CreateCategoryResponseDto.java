@@ -27,6 +27,10 @@ public record CreateCategoryResponseDto(
         @Schema(description = "Fecha y hora de creación", example = "2026-04-17T10:15:00")
         LocalDateTime createdAt,
 
+        @Schema(description = "Nivel de sensibilidad por defecto para documentos de esta categoría",
+                example = "INTERNAL", allowableValues = {"INTERNAL", "RESTRICTED", "CONFIDENTIAL"})
+        String defaultSensitivityLevel,
+
         @Schema(description = "Mensaje de confirmación", example = "Categoría creada exitosamente")
         String message
 ) {

@@ -27,14 +27,20 @@ public abstract class CategoryMapper {
             expression = "java(category.getStatus() != null ? category.getStatus().name() : null)")
     @Mapping(target = "createdBy",
             expression = "java(category.getCreatedBy() != null ? category.getCreatedBy().getFullName() : \"Sistema\")")
+    @Mapping(target = "defaultSensitivityLevel",
+            expression = "java(category.getDefaultSensitivityLevel() != null ? category.getDefaultSensitivityLevel().name() : null)")
     public abstract CategoryDetailResponseDto toDetailResponse(Category category, long documentCount);
 
     @Mapping(target = "status",
             expression = "java(category.getStatus() != null ? category.getStatus().name() : null)")
+    @Mapping(target = "defaultSensitivityLevel",
+            expression = "java(category.getDefaultSensitivityLevel() != null ? category.getDefaultSensitivityLevel().name() : null)")
     public abstract CreateCategoryResponseDto toCreateResponse(Category category, String message);
 
     @Mapping(target = "status",
             expression = "java(category.getStatus() != null ? category.getStatus().name() : null)")
+    @Mapping(target = "defaultSensitivityLevel",
+            expression = "java(category.getDefaultSensitivityLevel() != null ? category.getDefaultSensitivityLevel().name() : null)")
     public abstract UpdateCategoryResponseDto toUpdateResponse(Category category, String message);
 
     @Mapping(target = "status",

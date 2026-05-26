@@ -27,6 +27,8 @@ public abstract class DocumentMapper {
     @Mapping(source = "document.category.name", target = "category")
     @Mapping(target = "fileFormat",
             expression = "java(document.getFileFormat() != null ? document.getFileFormat().name() : null)")
+    @Mapping(target = "sensitivityLevel",
+            expression = "java(document.getSensitivityLevel() != null ? document.getSensitivityLevel().name() : null)")
     public abstract UploadDocumentResponseDto toUploadResponse(Document document, String message);
 
     @Mapping(source = "category.id", target = "category.id")
@@ -35,9 +37,13 @@ public abstract class DocumentMapper {
     @Mapping(source = "uploadedBy.fullName", target = "uploadedBy.fullName")
     @Mapping(target = "fileFormat",
             expression = "java(document.getFileFormat() != null ? document.getFileFormat().name() : null)")
+    @Mapping(target = "sensitivityLevel",
+            expression = "java(document.getSensitivityLevel() != null ? document.getSensitivityLevel().name() : null)")
     public abstract DocumentDetailResponseDto toDetailResponse(Document document);
 
     @Mapping(source = "document.category.name", target = "category")
+    @Mapping(target = "sensitivityLevel",
+            expression = "java(document.getSensitivityLevel() != null ? document.getSensitivityLevel().name() : null)")
     public abstract UpdateDocumentMetadataResponseDto toUpdateMetadataResponse(Document document, String message);
 
     public abstract DeleteDocumentResponseDto toDeleteResponse(Document document, String message);
@@ -68,5 +74,7 @@ public abstract class DocumentMapper {
 
     @Mapping(source = "category.name", target = "category")
     @Mapping(source = "uploadedBy.fullName", target = "uploadedBy")
+    @Mapping(target = "sensitivityLevel",
+            expression = "java(document.getSensitivityLevel() != null ? document.getSensitivityLevel().name() : null)")
     protected abstract DocumentSummaryResponseDto toSummaryResponse(Document document);
 }

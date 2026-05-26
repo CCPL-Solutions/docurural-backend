@@ -6,6 +6,7 @@ import co.edu.docurural.document.dto.BatchUploadDocumentRequestDto;
 import co.edu.docurural.document.dto.BatchUploadDocumentResponseDto;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.shared.audit.AuditContext;
+import co.edu.docurural.shared.enums.SensitivityLevel;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.exception.FileStorageException;
@@ -74,8 +75,8 @@ class DocumentBatchServiceTest {
                 pdf("acta_febrero.pdf")
         };
 
-        when(documentService.uploadSingleForBatch(eq(files[0]), any(), eq(1L), any(), any(), eq(AUDIT))).thenReturn(doc1);
-        when(documentService.uploadSingleForBatch(eq(files[1]), any(), eq(1L), any(), any(), eq(AUDIT))).thenReturn(doc2);
+        when(documentService.uploadSingleForBatch(eq(files[0]), any(), eq(1L), any(), any(), any(), eq(AUDIT))).thenReturn(doc1);
+        when(documentService.uploadSingleForBatch(eq(files[1]), any(), eq(1L), any(), any(), any(), eq(AUDIT))).thenReturn(doc2);
 
         BatchUploadDocumentRequestDto request = request(1L, List.of("Acta Enero", "Acta Febrero"));
         BatchUploadDocumentResponseDto response = batchService.uploadBatch(request, files, AUDIT);
@@ -94,13 +95,13 @@ class DocumentBatchServiceTest {
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
 
         Document doc = TestFixtures.documentActive(48L, category, TestFixtures.userAdmin(ACTOR_ID));
-        when(documentService.uploadSingleForBatch(any(), eq("acta.pdf"), any(), any(), any(), any())).thenReturn(doc);
+        when(documentService.uploadSingleForBatch(any(), eq("acta.pdf"), any(), any(), any(), any(), any())).thenReturn(doc);
 
         MultipartFile[] files = {pdf("acta.pdf")};
         BatchUploadDocumentResponseDto response = batchService.uploadBatch(request(1L, null), files, AUDIT);
 
         assertThat(response.totalSuccessful()).isEqualTo(1);
-        verify(documentService).uploadSingleForBatch(any(), eq("acta.pdf"), any(), any(), any(), any());
+        verify(documentService).uploadSingleForBatch(any(), eq("acta.pdf"), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -112,8 +113,8 @@ class DocumentBatchServiceTest {
         Document doc2 = TestFixtures.documentActive(49L, category, TestFixtures.userAdmin(ACTOR_ID));
         MultipartFile[] files = {pdf("enero.pdf"), pdf("febrero.pdf")};
 
-        when(documentService.uploadSingleForBatch(eq(files[0]), eq("Título provisto"), any(), any(), any(), any())).thenReturn(doc1);
-        when(documentService.uploadSingleForBatch(eq(files[1]), eq("febrero.pdf"), any(), any(), any(), any())).thenReturn(doc2);
+        when(documentService.uploadSingleForBatch(eq(files[0]), eq("Título provisto"), any(), any(), any(), any(), any())).thenReturn(doc1);
+        when(documentService.uploadSingleForBatch(eq(files[1]), eq("febrero.pdf"), any(), any(), any(), any(), any())).thenReturn(doc2);
 
         BatchUploadDocumentResponseDto response = batchService.uploadBatch(
                 request(1L, List.of("Título provisto")), files, AUDIT);
@@ -133,8 +134,8 @@ class DocumentBatchServiceTest {
         Document doc = TestFixtures.documentActive(48L, category, TestFixtures.userAdmin(ACTOR_ID));
         MultipartFile[] files = {pdf("bueno.pdf"), pdf("malo.pdf")};
 
-        when(documentService.uploadSingleForBatch(eq(files[0]), any(), any(), any(), any(), any())).thenReturn(doc);
-        when(documentService.uploadSingleForBatch(eq(files[1]), any(), any(), any(), any(), any()))
+        when(documentService.uploadSingleForBatch(eq(files[0]), any(), any(), any(), any(), any(), any())).thenReturn(doc);
+        when(documentService.uploadSingleForBatch(eq(files[1]), any(), any(), any(), any(), any(), any()))
                 .thenThrow(new BusinessRuleException(BusinessErrorCode.PAYLOAD_TOO_LARGE, "too large"));
 
         BatchUploadDocumentResponseDto response = batchService.uploadBatch(request(1L, null), files, AUDIT);
@@ -153,7 +154,7 @@ class DocumentBatchServiceTest {
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
 
         MultipartFile[] files = {pdf("doc.pdf")};
-        when(documentService.uploadSingleForBatch(any(), any(), any(), any(), any(), any()))
+        when(documentService.uploadSingleForBatch(any(), any(), any(), any(), any(), any(), any()))
                 .thenThrow(new FileStorageException("disk full"));
 
         BatchUploadDocumentResponseDto response = batchService.uploadBatch(request(1L, null), files, AUDIT);
@@ -170,16 +171,16 @@ class DocumentBatchServiceTest {
         Document doc = TestFixtures.documentActive(50L, category, TestFixtures.userAdmin(ACTOR_ID));
         MultipartFile[] files = {pdf("a.pdf"), pdf("b.pdf"), pdf("c.pdf")};
 
-        when(documentService.uploadSingleForBatch(eq(files[0]), any(), any(), any(), any(), any()))
+        when(documentService.uploadSingleForBatch(eq(files[0]), any(), any(), any(), any(), any(), any()))
                 .thenThrow(new BusinessRuleException(BusinessErrorCode.UNSUPPORTED_MEDIA_TYPE, "bad mime"));
-        when(documentService.uploadSingleForBatch(eq(files[1]), any(), any(), any(), any(), any())).thenReturn(doc);
-        when(documentService.uploadSingleForBatch(eq(files[2]), any(), any(), any(), any(), any())).thenReturn(doc);
+        when(documentService.uploadSingleForBatch(eq(files[1]), any(), any(), any(), any(), any(), any())).thenReturn(doc);
+        when(documentService.uploadSingleForBatch(eq(files[2]), any(), any(), any(), any(), any(), any())).thenReturn(doc);
 
         BatchUploadDocumentResponseDto response = batchService.uploadBatch(request(1L, null), files, AUDIT);
 
         assertThat(response.totalSuccessful()).isEqualTo(2);
         assertThat(response.totalFailed()).isEqualTo(1);
-        verify(documentService, times(3)).uploadSingleForBatch(any(), any(), any(), any(), any(), any());
+        verify(documentService, times(3)).uploadSingleForBatch(any(), any(), any(), any(), any(), any(), any());
     }
 
     // ------------------------------------------------------------------
@@ -214,7 +215,7 @@ class DocumentBatchServiceTest {
                 .extracting(e -> ((BusinessRuleException) e).getCode())
                 .isEqualTo(BusinessErrorCode.INVALID_ARGUMENT);
 
-        verify(documentService, never()).uploadSingleForBatch(any(), any(), any(), any(), any(), any());
+        verify(documentService, never()).uploadSingleForBatch(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -240,7 +241,7 @@ class DocumentBatchServiceTest {
         assertThatThrownBy(() -> batchService.uploadBatch(request(99L, null), files, AUDIT))
                 .isInstanceOf(ResourceNotFoundException.class);
 
-        verify(documentService, never()).uploadSingleForBatch(any(), any(), any(), any(), any(), any());
+        verify(documentService, never()).uploadSingleForBatch(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -273,6 +274,6 @@ class DocumentBatchServiceTest {
     }
 
     private static BatchUploadDocumentRequestDto request(Long categoryId, List<String> titles) {
-        return new BatchUploadDocumentRequestDto(categoryId, "Rectoría", titles);
+        return new BatchUploadDocumentRequestDto(categoryId, "Rectoría", SensitivityLevel.INTERNAL, titles);
     }
 }

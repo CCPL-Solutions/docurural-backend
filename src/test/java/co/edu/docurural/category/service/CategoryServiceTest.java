@@ -16,7 +16,9 @@ import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.repository.CategoryRepository;
 import co.edu.docurural.category.repository.projection.CategoryCountView;
+import co.edu.docurural.document.service.DocumentCommandService;
 import co.edu.docurural.shared.audit.AuditContext;
+import co.edu.docurural.shared.enums.SensitivityLevel;
 import co.edu.docurural.user.repository.UserRepository;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
@@ -63,6 +65,8 @@ class CategoryServiceTest {
     ActivityLogService activityLogService;
     @Mock
     MessageResolver messageResolver;
+    @Mock
+    DocumentCommandService documentCommandService;
 
     CategoryServiceImpl categoryService;
 
@@ -74,7 +78,7 @@ class CategoryServiceTest {
                 .thenAnswer(inv -> inv.getArgument(0));
         categoryService = new CategoryServiceImpl(categoryRepository, userRepository,
                 activityLogService, messageResolver, new SortingValidator(messageResolver),
-                Mappers.getMapper(CategoryMapper.class));
+                Mappers.getMapper(CategoryMapper.class), documentCommandService);
     }
 
     // ------------------------------------------------------------------
@@ -304,7 +308,7 @@ class CategoryServiceTest {
     @Test
     void update_throwsConflict_whenNewNameUsedByAnother() {
         Long categoryId = 9L;
-        Category existing = TestFixtures.categoryActive(categoryId, "Proyectos Biotecnología", null);
+        Category existing = TestFixtures.categoryActive(categoryId, "Proyectos Biotecnología", (String) null);
         UpdateCategoryRequestDto request = TestFixtures.updateCategoryRequest("Actas", null);
 
         when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(existing));
@@ -449,7 +453,7 @@ class CategoryServiceTest {
     @Test
     void list_returnsAllCategoriesWithCounts_andSummary() {
         Category cat1 = TestFixtures.categoryActive(1L, "Actas", "Actas de reuniones");
-        Category cat2 = TestFixtures.categoryActive(3L, "Informes", null);
+        Category cat2 = TestFixtures.categoryActive(3L, "Informes", (String) null);
         Category cat3 = TestFixtures.categoryInactive(5L, "Resoluciones");
 
         when(categoryRepository.findAll(any(Sort.class))).thenReturn(List.of(cat1, cat2, cat3));
@@ -575,6 +579,79 @@ class CategoryServiceTest {
 
         assertThatThrownBy(() -> categoryService.findById(99L))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    // ------------------------------------------------------------------
+    // HU-28B — Sensibilidad por defecto de categoría
+    // ------------------------------------------------------------------
+
+    @Test
+    void create_persistsDefaultSensitivityLevel_fromRequest() {
+        CreateCategoryRequestDto request = TestFixtures.createCategoryRequest(
+                "Matrículas", "Documentos de matrícula", SensitivityLevel.RESTRICTED);
+
+        when(categoryRepository.existsByName(request.name())).thenReturn(false);
+        when(userRepository.getReferenceById(ADMIN_ID)).thenReturn(TestFixtures.userAdmin(ADMIN_ID));
+        when(categoryRepository.save(any(Category.class))).thenAnswer(inv -> {
+            Category c = inv.getArgument(0);
+            c.setId(12L);
+            c.setStatus(CategoryStatus.ACTIVE);
+            c.setCreatedAt(TestFixtures.FIXED_CREATED_AT);
+            return c;
+        });
+
+        categoryService.create(request, AUDIT_ADMIN);
+
+        ArgumentCaptor<Category> captor = ArgumentCaptor.forClass(Category.class);
+        verify(categoryRepository).save(captor.capture());
+        assertThat(captor.getValue().getDefaultSensitivityLevel()).isEqualTo(SensitivityLevel.RESTRICTED);
+    }
+
+    @Test
+    void update_raisesDefaultSensitivityLevel_invokesCascade() {
+        Long categoryId = 9L;
+        Category existing = TestFixtures.categoryActive(categoryId, "Actas", SensitivityLevel.INTERNAL);
+        UpdateCategoryRequestDto request = TestFixtures.updateCategoryRequest("Actas", null, SensitivityLevel.RESTRICTED);
+
+        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(existing));
+        when(categoryRepository.save(any(Category.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(documentCommandService.raiseSensitivityForCategory(categoryId, SensitivityLevel.RESTRICTED, AUDIT_ADMIN))
+                .thenReturn(5);
+
+        categoryService.update(categoryId, request, AUDIT_ADMIN);
+
+        verify(documentCommandService).raiseSensitivityForCategory(categoryId, SensitivityLevel.RESTRICTED, AUDIT_ADMIN);
+    }
+
+    @Test
+    void update_lowersDefaultSensitivityLevel_doesNotInvokeCascade() {
+        Long categoryId = 9L;
+        Category existing = TestFixtures.categoryActive(categoryId, "Matrículas", SensitivityLevel.RESTRICTED);
+        UpdateCategoryRequestDto request = TestFixtures.updateCategoryRequest("Matrículas", null, SensitivityLevel.INTERNAL);
+
+        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(existing));
+        when(categoryRepository.save(any(Category.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        categoryService.update(categoryId, request, AUDIT_ADMIN);
+
+        verify(documentCommandService, never()).raiseSensitivityForCategory(any(), any(), any());
+    }
+
+    @Test
+    void update_changesDefaultSensitivityLevel_logsTransitionInActivityDetail() {
+        Long categoryId = 9L;
+        Category existing = TestFixtures.categoryActive(categoryId, "Actas", SensitivityLevel.INTERNAL);
+        UpdateCategoryRequestDto request = TestFixtures.updateCategoryRequest("Actas", null, SensitivityLevel.RESTRICTED);
+
+        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(existing));
+        when(categoryRepository.save(any(Category.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        categoryService.update(categoryId, request, AUDIT_ADMIN);
+
+        ArgumentCaptor<String> detailCaptor = ArgumentCaptor.forClass(String.class);
+        verify(activityLogService).record(
+                eq(ActivityAction.EDIT_CATEGORY), eq(AUDIT_ADMIN), isNull(), detailCaptor.capture());
+        assertThat(detailCaptor.getValue()).contains("defaultSensitivityLevel: INTERNAL → RESTRICTED");
     }
 
     // ------------------------------------------------------------------

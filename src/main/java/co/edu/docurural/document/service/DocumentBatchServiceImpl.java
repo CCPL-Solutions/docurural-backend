@@ -91,7 +91,8 @@ public class DocumentBatchServiceImpl implements DocumentBatchService {
         try {
             Document saved = documentService.uploadSingleForBatch(
                     file, resolvedTitle, request.categoryId(),
-                    request.responsibleArea(), LocalDate.now(), audit);
+                    request.responsibleArea(), LocalDate.now(),
+                    request.sensitivityLevel(), audit);
             return new BatchUploadItemResultDto(fileName, true, saved.getId(), null);
         } catch (BusinessRuleException e) {
             log.warn("Archivo '{}' rechazado en lote: {}", fileName, e.getMessage());

@@ -4,6 +4,7 @@ import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.user.entity.User;
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.document.enums.DocumentStatus;
+import co.edu.docurural.shared.enums.SensitivityLevel;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import jakarta.persistence.Column;
@@ -87,6 +88,10 @@ public class Document {
     @Column(name = "status", nullable = false, length = 20)
     private DocumentStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "sensitivity_level", nullable = false, length = 20)
+    private SensitivityLevel sensitivityLevel;
+
     /** Garantiza que solo los documentos ACTIVE pueden editarse o descargarse. */
     public void assertEditable(String errorMessage) {
         if (this.status != DocumentStatus.ACTIVE) {
@@ -106,6 +111,9 @@ public class Document {
         }
         if (status == null) {
             status = DocumentStatus.ACTIVE;
+        }
+        if (sensitivityLevel == null) {
+            sensitivityLevel = SensitivityLevel.INTERNAL;
         }
     }
 }
