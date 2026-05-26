@@ -18,7 +18,7 @@ public class SensitivityPolicy {
     private final MessageResolver messageResolver;
 
     /**
-     * Válida que el nivel solicitado para un documento no sea inferior al mínimo de su categoría.
+     * Valida que el nivel solicitado para un documento no sea inferior al mínimo de su categoría.
      *
      * @throws BusinessRuleException (INVALID_ARGUMENT / HTTP 400) si el nivel está por debajo.
      */
@@ -30,7 +30,7 @@ public class SensitivityPolicy {
     }
 
     /**
-     * Válida que el rol del actor tenga permiso para asignar el nivel indicado.
+     * Valida que el rol del actor tenga permiso para asignar el nivel indicado.
      * Los usuarios con rol EDITOR no pueden asignar RESTRICTED ni CONFIDENTIAL.
      *
      * @throws BusinessRuleException (FORBIDDEN / HTTP 403) si el rol no lo permite.
