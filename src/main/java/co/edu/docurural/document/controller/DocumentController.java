@@ -194,9 +194,10 @@ public class DocumentController {
     })
     @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'READER')")
     @GetMapping("/{id}")
-    public ResponseEntity<DocumentDetailResponseDto> getById(@PathVariable Long id) {
+    public ResponseEntity<DocumentDetailResponseDto> getById(@PathVariable Long id, HttpServletRequest httpRequest) {
         log.debug("GET /documents/{}", id);
-        return ResponseEntity.ok(documentQueryService.findDetailById(id));
+        AuditContext audit = auditContextResolver.resolve(httpRequest);
+        return ResponseEntity.ok(documentQueryService.findDetailById(id, audit));
     }
 
     /**

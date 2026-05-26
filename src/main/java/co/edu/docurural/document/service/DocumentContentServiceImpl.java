@@ -31,6 +31,7 @@ public class DocumentContentServiceImpl implements DocumentContentService {
     private final FileStorageService fileStorageService;
     private final ActivityLogService activityLogService;
     private final MessageResolver messageResolver;
+    private final DocumentAccessValidator documentAccessValidator;
 
     @Override
     @Transactional
@@ -49,15 +50,17 @@ public class DocumentContentServiceImpl implements DocumentContentService {
     }
 
     private DocumentFileContentDto loadAndAudit(Long id, AuditContext audit,
-                                                ActivityAction action,
-                                                Function<Document, String> detailBuilder,
-                                                String logVerb) {
+                                                 ActivityAction action,
+                                                 Function<Document, String> detailBuilder,
+                                                 String logVerb) {
         if (audit == null) throw new IllegalArgumentException("audit.actorUserId no puede ser null");
         audit.requireActorUserId();
 
         Document document = documentRepository.findByIdAndStatus(id, DocumentStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         messageResolver.get("document.not-found", id)));
+
+        documentAccessValidator.validateAccess(document, audit);
 
         Resource resource = fileStorageService.load(document.getFilePath());
         activityLogService.record(action, audit, document.getId(), detailBuilder.apply(document));

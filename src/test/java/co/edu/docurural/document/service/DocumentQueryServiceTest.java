@@ -44,6 +44,8 @@ class DocumentQueryServiceTest {
     MessageResolver messageResolver;
     @Mock
     ActivityLogService activityLogService;
+    @Mock
+    DocumentAccessValidator documentAccessValidator;
     @Spy
     DocumentMapper documentMapper = Mappers.getMapper(DocumentMapper.class);
 
@@ -71,7 +73,7 @@ class DocumentQueryServiceTest {
         when(documentRepository.findByIdAndStatus(48L, DocumentStatus.ACTIVE))
                 .thenReturn(Optional.of(doc));
 
-        DocumentDetailResponseDto response = documentQueryService.findDetailById(48L);
+        DocumentDetailResponseDto response = documentQueryService.findDetailById(48L, AUDIT);
 
         assertThat(response.id()).isEqualTo(48L);
         assertThat(response.title()).isEqualTo(doc.getTitle());
@@ -89,7 +91,7 @@ class DocumentQueryServiceTest {
         when(documentRepository.findByIdAndStatus(99L, DocumentStatus.ACTIVE))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> documentQueryService.findDetailById(99L))
+        assertThatThrownBy(() -> documentQueryService.findDetailById(99L, AUDIT))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 }

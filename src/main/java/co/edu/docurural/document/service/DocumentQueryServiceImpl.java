@@ -6,6 +6,7 @@ import co.edu.docurural.document.enums.DocumentStatus;
 import co.edu.docurural.document.mapper.DocumentMapper;
 import co.edu.docurural.document.repository.DocumentRepository;
 import co.edu.docurural.document.repository.projection.CategoryDocumentCount;
+import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.shared.util.MessageResolver;
 import lombok.RequiredArgsConstructor;
@@ -27,13 +28,17 @@ public class DocumentQueryServiceImpl implements DocumentQueryService {
     private final DocumentRepository documentRepository;
     private final MessageResolver messageResolver;
     private final DocumentMapper documentMapper;
+    private final DocumentAccessValidator documentAccessValidator;
 
     @Override
     @Transactional(readOnly = true)
-    public DocumentDetailResponseDto findDetailById(Long id) {
+    public DocumentDetailResponseDto findDetailById(Long id, AuditContext audit) {
         Document document = documentRepository.findByIdAndStatus(id, DocumentStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         messageResolver.get("document.not-found", id)));
+
+        documentAccessValidator.validateAccess(document, audit);
+
         return documentMapper.toDetailResponse(document);
     }
 

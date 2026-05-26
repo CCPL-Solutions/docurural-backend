@@ -13,6 +13,7 @@ import co.edu.docurural.document.mapper.DocumentMapper;
 import co.edu.docurural.document.repository.DocumentRepository;
 import co.edu.docurural.document.repository.DocumentSpecifications;
 import co.edu.docurural.shared.audit.AuditContext;
+import co.edu.docurural.shared.enums.SensitivityLevel;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.util.MessageResolver;
@@ -85,7 +86,8 @@ public class DocumentSearchServiceImpl implements DocumentSearchService {
                 .and(DocumentSpecifications.responsibleAreaContains(normalizedArea))
                 .and(DocumentSpecifications.documentDateGte(dateFrom))
                 .and(DocumentSpecifications.documentDateLte(dateTo))
-                .and(DocumentSpecifications.uploadedByEquals(uploadedByEffective));
+                .and(DocumentSpecifications.uploadedByEquals(uploadedByEffective))
+                .and(actorIsAdmin ? null : DocumentSpecifications.sensitivityLevelEquals(SensitivityLevel.INTERNAL));
 
         Page<Document> result = documentRepository.findAll(spec, pageable);
 

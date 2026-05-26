@@ -19,5 +19,6 @@ public enum ActivityAction {
     EDIT_CATEGORY,
     ACTIVATE_CATEGORY,
     DEACTIVATE_CATEGORY,
-    SEARCH
+    SEARCH,
+    ACCESS_DENIED
 }

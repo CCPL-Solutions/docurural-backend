@@ -372,7 +372,7 @@ class DocumentControllerWebMvcTest {
                 LocalDateTime.of(2026, 4, 10, 9, 30),
                 "INTERNAL");
 
-        when(documentQueryService.findDetailById(48L)).thenReturn(response);
+        when(documentQueryService.findDetailById(eq(48L), any())).thenReturn(response);
 
         mockMvc.perform(get("/documents/48"))
                 .andExpect(status().isOk())
@@ -387,7 +387,7 @@ class DocumentControllerWebMvcTest {
 
     @Test
     void getById_returns404_whenDocumentNotFound() throws Exception {
-        when(documentQueryService.findDetailById(99L))
+        when(documentQueryService.findDetailById(eq(99L), any()))
                 .thenThrow(new ResourceNotFoundException("document.not-found"));
 
         mockMvc.perform(get("/documents/99"))

@@ -2,6 +2,7 @@ package co.edu.docurural.document.repository;
 
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.enums.DocumentStatus;
+import co.edu.docurural.shared.enums.SensitivityLevel;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
@@ -19,7 +20,9 @@ public final class DocumentSpecifications {
     private DocumentSpecifications() {
     }
 
-    /** Solo documentos con {@code status = ACTIVE}. */
+    /**
+     * Solo documentos con {@code status = ACTIVE}.
+     */
     public static Specification<Document> isActive() {
         return (root, query, cb) -> cb.equal(root.get("status"), DocumentStatus.ACTIVE);
     }
@@ -92,6 +95,18 @@ public final class DocumentSpecifications {
                 cb.like(cb.lower(root.get("description")), pattern),
                 cb.like(cb.lower(root.get("originalFileName")), pattern)
         );
+    }
+
+    /**
+     * Filtra por el nivel de sensibilidad exacto.
+     *
+     * @param level Nivel de sensibilidad
+     * @return {@code null} si {@code level} es {@code null}
+     */
+    public static Specification<Document> sensitivityLevelEquals(SensitivityLevel level) {
+        return (root, query, cb) -> level == null
+                ? null
+                : cb.equal(root.get("sensitivityLevel"), level);
     }
 
     private static String escapeLikeWildcards(String value) {
