@@ -1,5 +1,6 @@
 package co.edu.docurural.document.dto;
 
+import co.edu.docurural.shared.enums.SensitivityLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -8,7 +9,7 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
 /**
- * Request body de {@code PUT /api/documents/{id}} (DOC-05 / HU-13).
+ * Request body de {@code PUT /api/documents/{id}} (DOC-05 / HU-13 / HU-28).
  *
  * <p>Si {@code description} se omite o llega en {@code null}, el backend mantiene
  * la descripción actual del documento.
@@ -37,7 +38,12 @@ public record UpdateDocumentMetadataRequestDto(
         @Size(max = 500, message = "{validation.document.description.size}")
         @Schema(description = "Descripción opcional. Si se omite, se conserva la actual", nullable = true,
                 example = "Versión corregida del acta del 15 de marzo")
-        String description
+        String description,
+
+        @NotNull(message = "{validation.document.sensitivity.required}")
+        @Schema(description = "Nivel de sensibilidad del documento. No puede ser inferior al default de su categoría",
+                example = "INTERNAL", allowableValues = {"INTERNAL", "RESTRICTED", "CONFIDENTIAL"})
+        SensitivityLevel sensitivityLevel
 ) {
 }
 

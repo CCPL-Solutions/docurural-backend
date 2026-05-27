@@ -16,7 +16,9 @@ import co.edu.docurural.category.mapper.CategoryMapper;
 import co.edu.docurural.category.repository.CategoryRepository;
 import co.edu.docurural.category.repository.projection.CategoryCountView;
 import co.edu.docurural.category.repository.projection.CategoryNameView;
+import co.edu.docurural.document.service.DocumentCommandService;
 import co.edu.docurural.shared.audit.AuditContext;
+import co.edu.docurural.shared.enums.SensitivityLevel;
 import co.edu.docurural.user.repository.UserRepository;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
@@ -59,6 +61,7 @@ public class CategoryServiceImpl implements CategoryService {
     private final MessageResolver messageResolver;
     private final SortingValidator sortingValidator;
     private final CategoryMapper categoryMapper;
+    private final DocumentCommandService documentCommandService;
 
     @Override
     @Transactional(readOnly = true)
@@ -100,6 +103,7 @@ public class CategoryServiceImpl implements CategoryService {
         Category newCategory = Category.builder()
                 .name(request.name())
                 .description(request.description())
+                .defaultSensitivityLevel(request.defaultSensitivityLevel())
                 .createdBy(userRepository.getReferenceById(adminId))
                 .build();
 
@@ -132,9 +136,15 @@ public class CategoryServiceImpl implements CategoryService {
             throw new ConflictException(messageResolver.get("category.name.already-registered"));
         }
 
-        List<String> modifiedFields = applyUpdates(category, request, nameChanged);
+        SensitivityLevel previousLevel = category.getDefaultSensitivityLevel();
+        List<String> modifiedFields = applyUpdates(category, request, nameChanged, previousLevel);
 
         Category updated = categoryRepository.save(category);
+
+        if (request.defaultSensitivityLevel().compareTo(previousLevel) > 0) {
+            int reclassified = documentCommandService.raiseSensitivityForCategory(id, request.defaultSensitivityLevel(), audit);
+            log.info("Documentos reclasificados por subida de sensibilidad de categoría: categoryId={} count={}", id, reclassified);
+        }
 
         activityLogService.record(
                 ActivityAction.EDIT_CATEGORY,
@@ -195,7 +205,8 @@ public class CategoryServiceImpl implements CategoryService {
                 .collect(Collectors.toMap(CategoryCountView::getCategoryId, CategoryCountView::getCount));
     }
 
-    private List<String> applyUpdates(Category category, UpdateCategoryRequestDto request, boolean nameChanged) {
+    private List<String> applyUpdates(Category category, UpdateCategoryRequestDto request,
+                                       boolean nameChanged, SensitivityLevel previousLevel) {
         List<String> modifiedFields = new ArrayList<>(
                 FieldUpdater.of(category)
                         .setIfPresent("description", request.description(),
@@ -205,6 +216,11 @@ public class CategoryServiceImpl implements CategoryService {
         if (nameChanged) {
             category.setName(request.name());
             modifiedFields.add(0, "name");
+        }
+
+        if (request.defaultSensitivityLevel() != previousLevel) {
+            category.setDefaultSensitivityLevel(request.defaultSensitivityLevel());
+            modifiedFields.add("defaultSensitivityLevel: " + previousLevel + " → " + request.defaultSensitivityLevel());
         }
 
         return modifiedFields;

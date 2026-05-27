@@ -36,6 +36,10 @@ public record DocumentSummaryResponseDto(
         String uploadedBy,
 
         @Schema(description = "Fecha y hora de carga al sistema (ISO 8601)", example = "2026-04-10T09:30:00")
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+
+        @Schema(description = "Nivel de sensibilidad del documento", example = "INTERNAL",
+                allowableValues = {"INTERNAL", "RESTRICTED", "CONFIDENTIAL"})
+        String sensitivityLevel
 ) {
 }

@@ -1,11 +1,13 @@
 package co.edu.docurural.category.dto;
 
+import co.edu.docurural.shared.enums.SensitivityLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /**
- * Request body de {@code POST /api/categories} (CAT-03 / HU-16).
+ * Request body de {@code POST /api/categories} (CAT-03 / HU-16 / HU-28B).
  */
 @Schema(description = "Datos para crear una nueva categoría documental")
 public record CreateCategoryRequestDto(
@@ -18,6 +20,11 @@ public record CreateCategoryRequestDto(
         @Size(max = 500, message = "{validation.category.description.size}")
         @Schema(description = "Descripción opcional del tipo de documentos que agrupa",
                 example = "Proyectos e informes del laboratorio de biotecnología en tejido vegetal")
-        String description
+        String description,
+
+        @NotNull(message = "{validation.category.default-sensitivity.required}")
+        @Schema(description = "Nivel de sensibilidad que heredan los documentos de esta categoría por defecto",
+                example = "INTERNAL", allowableValues = {"INTERNAL", "RESTRICTED", "CONFIDENTIAL"})
+        SensitivityLevel defaultSensitivityLevel
 ) {
 }

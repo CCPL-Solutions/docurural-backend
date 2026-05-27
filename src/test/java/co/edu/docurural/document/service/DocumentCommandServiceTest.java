@@ -16,6 +16,7 @@ import co.edu.docurural.document.repository.DocumentRepository;
 import co.edu.docurural.document.storage.FileStorageService;
 import co.edu.docurural.document.storage.StoredFile;
 import co.edu.docurural.shared.audit.AuditContext;
+import co.edu.docurural.shared.enums.SensitivityLevel;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
@@ -37,6 +38,9 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import co.edu.docurural.user.enums.UserRole;
+
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,6 +50,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -71,6 +76,8 @@ class DocumentCommandServiceTest {
     FileStorageService fileStorageService;
     @Mock
     MessageResolver messageResolver;
+    @Mock
+    SensitivityPolicy sensitivityPolicy;
     @Spy
     DocumentMapper documentMapper = Mappers.getMapper(DocumentMapper.class);
 
@@ -97,6 +104,7 @@ class DocumentCommandServiceTest {
         MockMultipartFile file = new MockMultipartFile("file", "acta.pdf", "application/pdf", new byte[100]);
 
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(userRepository.findById(ACTOR_ID)).thenReturn(Optional.of(uploader));
         when(fileValidationService.validate(file)).thenReturn(DocumentFormat.PDF);
         when(fileStorageService.store(file, DocumentFormat.PDF))
                 .thenReturn(new StoredFile("2026/05/uuid.pdf"));
@@ -170,10 +178,12 @@ class DocumentCommandServiceTest {
     @Test
     void upload_propagatesPayloadTooLarge_fromValidationService() {
         Category category = TestFixtures.categoryActive(1L, "Actas");
+        User uploader = TestFixtures.userAdmin(ACTOR_ID);
         UploadDocumentRequestDto request = TestFixtures.uploadDocumentRequest(1L);
         MockMultipartFile file = new MockMultipartFile("file", "big.pdf", "application/pdf", new byte[100]);
 
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(userRepository.findById(ACTOR_ID)).thenReturn(Optional.of(uploader));
         when(fileValidationService.validate(file))
                 .thenThrow(new BusinessRuleException(BusinessErrorCode.PAYLOAD_TOO_LARGE, "too large"));
 
@@ -188,10 +198,12 @@ class DocumentCommandServiceTest {
     @Test
     void upload_propagatesUnsupportedMediaType_fromValidationService() {
         Category category = TestFixtures.categoryActive(1L, "Actas");
+        User uploader = TestFixtures.userAdmin(ACTOR_ID);
         UploadDocumentRequestDto request = TestFixtures.uploadDocumentRequest(1L);
         MockMultipartFile file = new MockMultipartFile("file", "hack.pdf", "text/plain", new byte[100]);
 
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(userRepository.findById(ACTOR_ID)).thenReturn(Optional.of(uploader));
         when(fileValidationService.validate(file))
                 .thenThrow(new BusinessRuleException(BusinessErrorCode.UNSUPPORTED_MEDIA_TYPE, "bad mime"));
 
@@ -214,7 +226,7 @@ class DocumentCommandServiceTest {
         Document doc = TestFixtures.documentActive(48L, currentCategory, uploader);
         UpdateDocumentMetadataRequestDto request = new UpdateDocumentMetadataRequestDto(
                 "Acta Consejo Directivo Marzo 2026 - Revisado", 2L, "Secretaría",
-                doc.getDocumentDate().plusDays(1), "Versión corregida del acta");
+                doc.getDocumentDate().plusDays(1), "Versión corregida del acta", SensitivityLevel.INTERNAL);
 
         when(documentRepository.findByIdAndStatus(48L, DocumentStatus.ACTIVE)).thenReturn(Optional.of(doc));
         when(categoryRepository.findById(2L)).thenReturn(Optional.of(newCategory));
@@ -241,7 +253,7 @@ class DocumentCommandServiceTest {
         String originalDescription = doc.getDescription();
         UpdateDocumentMetadataRequestDto request = new UpdateDocumentMetadataRequestDto(
                 "Acta Consejo Directivo Marzo 2026 - Revisado", 1L,
-                doc.getResponsibleArea(), doc.getDocumentDate(), null);
+                doc.getResponsibleArea(), doc.getDocumentDate(), null, SensitivityLevel.INTERNAL);
 
         when(documentRepository.findByIdAndStatus(48L, DocumentStatus.ACTIVE)).thenReturn(Optional.of(doc));
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
@@ -260,7 +272,7 @@ class DocumentCommandServiceTest {
         User admin = TestFixtures.userAdmin(ACTOR_ID);
         Document doc = TestFixtures.documentActive(48L, category, TestFixtures.userEditor(30L));
         UpdateDocumentMetadataRequestDto request = new UpdateDocumentMetadataRequestDto(
-                doc.getTitle(), category.getId(), doc.getResponsibleArea(), doc.getDocumentDate(), null);
+                doc.getTitle(), category.getId(), doc.getResponsibleArea(), doc.getDocumentDate(), null, SensitivityLevel.INTERNAL);
 
         when(documentRepository.findByIdAndStatus(48L, DocumentStatus.ACTIVE)).thenReturn(Optional.of(doc));
         when(categoryRepository.findById(category.getId())).thenReturn(Optional.of(category));
@@ -366,6 +378,7 @@ class DocumentCommandServiceTest {
         MockMultipartFile file = new MockMultipartFile("file", "acta.pdf", "application/pdf", new byte[100]);
 
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(userRepository.findById(ACTOR_ID)).thenReturn(Optional.of(uploader));
         when(fileValidationService.validate(file)).thenReturn(DocumentFormat.PDF);
         when(fileStorageService.store(file, DocumentFormat.PDF)).thenReturn(new StoredFile("2026/05/uuid.pdf"));
         when(userRepository.getReferenceById(ACTOR_ID)).thenReturn(uploader);
@@ -398,6 +411,7 @@ class DocumentCommandServiceTest {
         MockMultipartFile file = new MockMultipartFile("file", "acta.pdf", "application/pdf", new byte[100]);
 
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(userRepository.findById(ACTOR_ID)).thenReturn(Optional.of(uploader));
         when(fileValidationService.validate(file)).thenReturn(DocumentFormat.PDF);
         when(fileStorageService.store(file, DocumentFormat.PDF)).thenReturn(new StoredFile("2026/05/uuid.pdf"));
         when(userRepository.getReferenceById(ACTOR_ID)).thenReturn(uploader);
@@ -430,6 +444,7 @@ class DocumentCommandServiceTest {
         MockMultipartFile file = new MockMultipartFile("file", "acta.pdf", "application/pdf", new byte[100]);
 
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(userRepository.findById(ACTOR_ID)).thenReturn(Optional.of(uploader));
         when(fileValidationService.validate(file)).thenReturn(DocumentFormat.PDF);
         when(fileStorageService.store(file, DocumentFormat.PDF)).thenReturn(new StoredFile("2026/05/uuid.pdf"));
         when(userRepository.getReferenceById(ACTOR_ID)).thenReturn(uploader);
@@ -451,5 +466,161 @@ class DocumentCommandServiceTest {
         } finally {
             TransactionSynchronizationManager.clearSynchronization();
         }
+    }
+
+    // ------------------------------------------------------------------
+    // HU-28 — Clasificación de sensibilidad documental
+    // ------------------------------------------------------------------
+
+    @Test
+    void upload_levelBelowCategoryDefault_throwsBusinessRule() {
+        Category category = TestFixtures.categoryActive(1L, "Matrículas", SensitivityLevel.RESTRICTED);
+        User uploader = TestFixtures.userAdmin(ACTOR_ID);
+        UploadDocumentRequestDto request = TestFixtures.uploadDocumentRequest(1L, SensitivityLevel.INTERNAL);
+        MockMultipartFile file = new MockMultipartFile("file", "doc.pdf", "application/pdf", new byte[100]);
+
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(userRepository.findById(ACTOR_ID)).thenReturn(Optional.of(uploader));
+        doThrow(new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
+                "document.sensitivity.below-category-default"))
+                .when(sensitivityPolicy).validateRequestedLevel(SensitivityLevel.INTERNAL, SensitivityLevel.RESTRICTED);
+
+        assertThatThrownBy(() -> documentCommandService.upload(request, file, AUDIT))
+                .isInstanceOf(BusinessRuleException.class)
+                .extracting(e -> ((BusinessRuleException) e).getCode())
+                .isEqualTo(BusinessErrorCode.INVALID_ARGUMENT);
+
+        verify(documentRepository, never()).save(any());
+    }
+
+    @Test
+    void upload_editorRequestsConfidential_throwsForbidden() {
+        Category category = TestFixtures.categoryActive(1L, "Actas");
+        User editor = TestFixtures.userEditor(ACTOR_ID);
+        UploadDocumentRequestDto request = TestFixtures.uploadDocumentRequest(1L, SensitivityLevel.CONFIDENTIAL);
+        MockMultipartFile file = new MockMultipartFile("file", "doc.pdf", "application/pdf", new byte[100]);
+
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(userRepository.findById(ACTOR_ID)).thenReturn(Optional.of(editor));
+        doThrow(new BusinessRuleException(BusinessErrorCode.FORBIDDEN,
+                "document.sensitivity.confidential.forbidden-for-editor"))
+                .when(sensitivityPolicy).validateRolePermission(UserRole.EDITOR, SensitivityLevel.CONFIDENTIAL);
+
+        assertThatThrownBy(() -> documentCommandService.upload(request, file, AUDIT))
+                .isInstanceOf(BusinessRuleException.class)
+                .extracting(e -> ((BusinessRuleException) e).getCode())
+                .isEqualTo(BusinessErrorCode.FORBIDDEN);
+
+        verify(documentRepository, never()).save(any());
+    }
+
+    @Test
+    void upload_persistsSensitivityLevel_fromRequest() {
+        Category category = TestFixtures.categoryActive(1L, "Actas");
+        User uploader = TestFixtures.userAdmin(ACTOR_ID);
+        UploadDocumentRequestDto request = TestFixtures.uploadDocumentRequest(1L, SensitivityLevel.RESTRICTED);
+        MockMultipartFile file = new MockMultipartFile("file", "acta.pdf", "application/pdf", new byte[100]);
+
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(userRepository.findById(ACTOR_ID)).thenReturn(Optional.of(uploader));
+        when(fileValidationService.validate(file)).thenReturn(DocumentFormat.PDF);
+        when(fileStorageService.store(file, DocumentFormat.PDF)).thenReturn(new StoredFile("2026/05/uuid.pdf"));
+        when(userRepository.getReferenceById(ACTOR_ID)).thenReturn(uploader);
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> {
+            Document d = inv.getArgument(0);
+            d.setId(50L);
+            return d;
+        });
+
+        documentCommandService.upload(request, file, AUDIT);
+
+        ArgumentCaptor<Document> captor = ArgumentCaptor.forClass(Document.class);
+        verify(documentRepository).save(captor.capture());
+        assertThat(captor.getValue().getSensitivityLevel()).isEqualTo(SensitivityLevel.RESTRICTED);
+    }
+
+    @Test
+    void updateMetadata_changesSensitivityLevel_appendsTransitionToActivityDetail() {
+        Category category = TestFixtures.categoryActive(1L, "Actas");
+        User admin = TestFixtures.userAdmin(ACTOR_ID);
+        Document doc = TestFixtures.documentActive(48L, category, TestFixtures.userEditor(20L));
+        UpdateDocumentMetadataRequestDto request = new UpdateDocumentMetadataRequestDto(
+                doc.getTitle(), 1L, doc.getResponsibleArea(), doc.getDocumentDate(), null,
+                SensitivityLevel.RESTRICTED);
+
+        when(documentRepository.findByIdAndStatus(48L, DocumentStatus.ACTIVE)).thenReturn(Optional.of(doc));
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(userRepository.findById(ACTOR_ID)).thenReturn(Optional.of(admin));
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        documentCommandService.updateMetadata(48L, request, AUDIT);
+
+        ArgumentCaptor<String> detailCaptor = ArgumentCaptor.forClass(String.class);
+        verify(activityLogService).record(eq(ActivityAction.EDIT_DOC), eq(AUDIT), eq(48L), detailCaptor.capture());
+        assertThat(detailCaptor.getValue()).contains("sensitivityLevel: INTERNAL → RESTRICTED");
+    }
+
+    @Test
+    void updateMetadata_levelBelowCategoryDefault_throwsBusinessRule() {
+        Category category = TestFixtures.categoryActive(1L, "Matrículas", SensitivityLevel.RESTRICTED);
+        User admin = TestFixtures.userAdmin(ACTOR_ID);
+        Document doc = TestFixtures.documentActive(48L, category, TestFixtures.userEditor(20L));
+        UpdateDocumentMetadataRequestDto request = new UpdateDocumentMetadataRequestDto(
+                doc.getTitle(), 1L, doc.getResponsibleArea(), doc.getDocumentDate(), null,
+                SensitivityLevel.INTERNAL);
+
+        when(documentRepository.findByIdAndStatus(48L, DocumentStatus.ACTIVE)).thenReturn(Optional.of(doc));
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(userRepository.findById(ACTOR_ID)).thenReturn(Optional.of(admin));
+        doThrow(new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
+                "document.sensitivity.below-category-default"))
+                .when(sensitivityPolicy).validateRequestedLevel(SensitivityLevel.INTERNAL, SensitivityLevel.RESTRICTED);
+
+        assertThatThrownBy(() -> documentCommandService.updateMetadata(48L, request, AUDIT))
+                .isInstanceOf(BusinessRuleException.class)
+                .extracting(e -> ((BusinessRuleException) e).getCode())
+                .isEqualTo(BusinessErrorCode.INVALID_ARGUMENT);
+
+        verify(documentRepository, never()).save(any());
+    }
+
+    @Test
+    void raiseSensitivityForCategory_returnsZero_whenNewLevelIsLowest() {
+        int result = documentCommandService.raiseSensitivityForCategory(1L, SensitivityLevel.INTERNAL, AUDIT);
+
+        assertThat(result).isEqualTo(0);
+        verify(documentRepository, never()).raiseSensitivityForActiveDocuments(any(), any(), any());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void raiseSensitivityForCategory_passesLowerLevelsToRepo_whenNewLevelIsRestricted() {
+        when(documentRepository.raiseSensitivityForActiveDocuments(
+                eq(5L), eq(SensitivityLevel.RESTRICTED), any())).thenReturn(3);
+
+        int result = documentCommandService.raiseSensitivityForCategory(5L, SensitivityLevel.RESTRICTED, AUDIT);
+
+        assertThat(result).isEqualTo(3);
+        ArgumentCaptor<Collection> levelsCaptor = ArgumentCaptor.forClass(Collection.class);
+        verify(documentRepository).raiseSensitivityForActiveDocuments(
+                eq(5L), eq(SensitivityLevel.RESTRICTED), levelsCaptor.capture());
+        assertThat(levelsCaptor.getValue())
+                .containsExactlyInAnyOrder(SensitivityLevel.INTERNAL);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void raiseSensitivityForCategory_passesAllLowerLevelsToRepo_whenNewLevelIsConfidential() {
+        when(documentRepository.raiseSensitivityForActiveDocuments(
+                eq(5L), eq(SensitivityLevel.CONFIDENTIAL), any())).thenReturn(7);
+
+        int result = documentCommandService.raiseSensitivityForCategory(5L, SensitivityLevel.CONFIDENTIAL, AUDIT);
+
+        assertThat(result).isEqualTo(7);
+        ArgumentCaptor<Collection> levelsCaptor = ArgumentCaptor.forClass(Collection.class);
+        verify(documentRepository).raiseSensitivityForActiveDocuments(
+                eq(5L), eq(SensitivityLevel.CONFIDENTIAL), levelsCaptor.capture());
+        assertThat(levelsCaptor.getValue())
+                .containsExactlyInAnyOrder(SensitivityLevel.INTERNAL, SensitivityLevel.RESTRICTED);
     }
 }

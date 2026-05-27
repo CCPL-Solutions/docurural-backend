@@ -84,6 +84,7 @@ class CategoryControllerWebMvcTest {
                 "Proyectos e informes del laboratorio",
                 "ACTIVE",
                 LocalDateTime.of(2026, 4, 17, 10, 15),
+                "INTERNAL",
                 "Categoría creada exitosamente");
 
         when(categoryService.create(any(CreateCategoryRequestDto.class), eq(ADMIN_AUDIT)))
@@ -113,6 +114,7 @@ class CategoryControllerWebMvcTest {
         CreateCategoryResponseDto response = new CreateCategoryResponseDto(
                 10L, "Circulares", null, "ACTIVE",
                 LocalDateTime.of(2026, 4, 17, 10, 15),
+                "INTERNAL",
                 "Categoría creada exitosamente");
 
         when(categoryService.create(any(CreateCategoryRequestDto.class), eq(ADMIN_AUDIT)))
@@ -212,6 +214,7 @@ class CategoryControllerWebMvcTest {
                 "Proyectos e Informes Biotecnología",
                 "Proyectos e informes detallados",
                 "ACTIVE",
+                "INTERNAL",
                 "Categoría actualizada exitosamente");
 
         when(categoryService.update(eq(9L), any(UpdateCategoryRequestDto.class), eq(ADMIN_AUDIT)))
@@ -240,7 +243,7 @@ class CategoryControllerWebMvcTest {
         UpdateCategoryRequestDto request = TestFixtures.updateCategoryRequest("Circulares", null);
 
         UpdateCategoryResponseDto response = new UpdateCategoryResponseDto(
-                10L, "Circulares", null, "ACTIVE", "Categoría actualizada exitosamente");
+                10L, "Circulares", null, "ACTIVE", "INTERNAL", "Categoría actualizada exitosamente");
 
         when(categoryService.update(eq(10L), any(UpdateCategoryRequestDto.class), eq(ADMIN_AUDIT)))
                 .thenReturn(response);
@@ -473,7 +476,7 @@ class CategoryControllerWebMvcTest {
     void list_returns200WithListResponse() throws Exception {
         CategoryDetailResponseDto item = new CategoryDetailResponseDto(
                 1L, "Actas", "Actas de reuniones, consejos directivos",
-                "ACTIVE", 23L, LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema");
+                "ACTIVE", 23L, LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema", "INTERNAL");
 
         CategoryListResponseDto response = new CategoryListResponseDto(1, 1, 0, List.of(item));
 
@@ -535,7 +538,7 @@ class CategoryControllerWebMvcTest {
     void getById_returns200WithDetailResponse() throws Exception {
         CategoryDetailResponseDto response = new CategoryDetailResponseDto(
                 1L, "Actas", "Actas de reuniones, consejos directivos",
-                "ACTIVE", 23L, LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema");
+                "ACTIVE", 23L, LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema", "INTERNAL");
 
         when(categoryService.findById(1L)).thenReturn(response);
 
@@ -564,7 +567,7 @@ class CategoryControllerWebMvcTest {
     void getById_returnsCreatedBySistema_whenCreatorMissing() throws Exception {
         CategoryDetailResponseDto response = new CategoryDetailResponseDto(
                 2L, "Resoluciones", null, "ACTIVE", 0L,
-                LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema");
+                LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema", "INTERNAL");
 
         when(categoryService.findById(2L)).thenReturn(response);
 

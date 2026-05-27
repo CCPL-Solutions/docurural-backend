@@ -50,6 +50,8 @@ class DocumentContentServiceTest {
     ActivityLogService activityLogService;
     @Mock
     MessageResolver messageResolver;
+    @Mock
+    DocumentAccessValidator documentAccessValidator;
 
     @InjectMocks
     DocumentContentServiceImpl documentContentService;

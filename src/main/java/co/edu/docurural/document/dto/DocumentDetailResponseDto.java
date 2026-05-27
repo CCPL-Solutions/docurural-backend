@@ -28,7 +28,10 @@ public record DocumentDetailResponseDto(
         @Schema(description = "Usuario que cargó el documento.")
         UploadedByRef uploadedBy,
         @Schema(description = "Fecha y hora de creación del registro.")
-        LocalDateTime createdAt) {
+        LocalDateTime createdAt,
+        @Schema(description = "Nivel de sensibilidad del documento.", example = "INTERNAL",
+                allowableValues = {"INTERNAL", "RESTRICTED", "CONFIDENTIAL"})
+        String sensitivityLevel) {
 
     @Schema(description = "Referencia resumida de la categoría del documento.")
     public record CategoryRef(

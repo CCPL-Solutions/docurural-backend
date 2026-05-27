@@ -101,6 +101,7 @@ class DocumentControllerWebMvcTest {
                 524288L,
                 "acta.pdf",
                 LocalDateTime.of(2026, 4, 17, 10, 20),
+                "INTERNAL",
                 "Documento cargado exitosamente");
 
         when(documentCommandService.upload(any(), any(), any())).thenReturn(response);
@@ -112,7 +113,8 @@ class DocumentControllerWebMvcTest {
                         .param("title", "Acta Consejo Directivo Marzo 2026")
                         .param("categoryId", "1")
                         .param("responsibleArea", "Rectoría")
-                        .param("documentDate", "2026-03-15"))
+                        .param("documentDate", "2026-03-15")
+                        .param("sensitivityLevel", "INTERNAL"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(48))
                 .andExpect(jsonPath("$.title").value("Acta Consejo Directivo Marzo 2026"))
@@ -166,7 +168,8 @@ class DocumentControllerWebMvcTest {
                         .param("title", "Acta")
                         .param("categoryId", "99")
                         .param("responsibleArea", "Rectoría")
-                        .param("documentDate", "2026-03-15"))
+                        .param("documentDate", "2026-03-15")
+                        .param("sensitivityLevel", "INTERNAL"))
                 .andExpect(status().isNotFound());
     }
 
@@ -183,7 +186,8 @@ class DocumentControllerWebMvcTest {
                         .param("title", "Acta")
                         .param("categoryId", "1")
                         .param("responsibleArea", "Rectoría")
-                        .param("documentDate", "2026-03-15"))
+                        .param("documentDate", "2026-03-15")
+                        .param("sensitivityLevel", "INTERNAL"))
                 .andExpect(status().isPayloadTooLarge());
     }
 
@@ -200,7 +204,8 @@ class DocumentControllerWebMvcTest {
                         .param("title", "Acta")
                         .param("categoryId", "1")
                         .param("responsibleArea", "Rectoría")
-                        .param("documentDate", "2026-03-15"))
+                        .param("documentDate", "2026-03-15")
+                        .param("sensitivityLevel", "INTERNAL"))
                 .andExpect(status().isUnsupportedMediaType());
     }
 
@@ -217,7 +222,8 @@ class DocumentControllerWebMvcTest {
                         .param("title", "Acta")
                         .param("categoryId", "1")
                         .param("responsibleArea", "Rectoría")
-                        .param("documentDate", "2026-03-15"))
+                        .param("documentDate", "2026-03-15")
+                        .param("sensitivityLevel", "INTERNAL"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.message").value("No se pudo almacenar el archivo en el servidor"));
     }
@@ -231,7 +237,8 @@ class DocumentControllerWebMvcTest {
                         .param("title", "Acta")
                         .param("categoryId", "1")
                         .param("responsibleArea", "Rectoría")
-                        .param("documentDate", "2026-03-15"))
+                        .param("documentDate", "2026-03-15")
+                        .param("sensitivityLevel", "INTERNAL"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrors.file").exists());
     }
@@ -251,6 +258,7 @@ class DocumentControllerWebMvcTest {
                 "Rectoría",
                 LocalDate.of(2026, 3, 15),
                 "Descripción",
+                "INTERNAL",
                 "Documento actualizado exitosamente");
 
         when(documentCommandService.updateMetadata(eq(47L), any(), any())).thenReturn(response);
@@ -263,7 +271,8 @@ class DocumentControllerWebMvcTest {
                                   "categoryId": 1,
                                   "responsibleArea": "Rectoría",
                                   "documentDate": "2026-03-15",
-                                  "description": "Versión corregida del acta"
+                                  "description": "Versión corregida del acta",
+                                  "sensitivityLevel": "INTERNAL"
                                 }
                                 """))
                 .andExpect(status().isOk())
@@ -305,7 +314,8 @@ class DocumentControllerWebMvcTest {
                                   "title": "Acta Consejo Directivo Marzo 2026 - Revisado",
                                   "categoryId": 1,
                                   "responsibleArea": "Rectoría",
-                                  "documentDate": "2026-03-15"
+                                  "documentDate": "2026-03-15",
+                                  "sensitivityLevel": "INTERNAL"
                                 }
                                 """))
                 .andExpect(status().isForbidden())
@@ -359,9 +369,10 @@ class DocumentControllerWebMvcTest {
                 524288L,
                 "acta.pdf",
                 new DocumentDetailResponseDto.UploadedByRef(10L, "Ana Admin"),
-                LocalDateTime.of(2026, 4, 10, 9, 30));
+                LocalDateTime.of(2026, 4, 10, 9, 30),
+                "INTERNAL");
 
-        when(documentQueryService.findDetailById(48L)).thenReturn(response);
+        when(documentQueryService.findDetailById(eq(48L), any())).thenReturn(response);
 
         mockMvc.perform(get("/documents/48"))
                 .andExpect(status().isOk())
@@ -376,7 +387,7 @@ class DocumentControllerWebMvcTest {
 
     @Test
     void getById_returns404_whenDocumentNotFound() throws Exception {
-        when(documentQueryService.findDetailById(99L))
+        when(documentQueryService.findDetailById(eq(99L), any()))
                 .thenThrow(new ResourceNotFoundException("document.not-found"));
 
         mockMvc.perform(get("/documents/99"))
@@ -552,7 +563,8 @@ class DocumentControllerWebMvcTest {
                 DocumentFormat.PDF,
                 524288L,
                 "Ana Admin",
-                LocalDateTime.of(2026, 4, 10, 9, 30));
+                LocalDateTime.of(2026, 4, 10, 9, 30),
+                "INTERNAL");
 
         DocumentListResponseDto listResponse = new DocumentListResponseDto(47, 3, 1, 20, null, null, List.of(summary));
         when(documentSearchService.search(any(), any(), any(), any(), any(), any(),
