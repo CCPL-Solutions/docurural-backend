@@ -29,6 +29,10 @@ public record DocumentDetailResponseDto(
         UploadedByRef uploadedBy,
         @Schema(description = "Fecha y hora de creación del registro.")
         LocalDateTime createdAt,
+        @Schema(description = "Hash SHA-256 del archivo (64 caracteres hex). Null para documentos históricos.",
+                nullable = true,
+                example = "b1946ac92492d2347c6235b4d2611184e8b5f4e7f7c7f72f7f6f6f9f4c3b2a1d")
+        String fileHash,
         @Schema(description = "Nivel de sensibilidad del documento.", example = "INTERNAL",
                 allowableValues = {"INTERNAL", "RESTRICTED", "CONFIDENTIAL"})
         String sensitivityLevel) {

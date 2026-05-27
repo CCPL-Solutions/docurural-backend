@@ -47,7 +47,6 @@ import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -370,6 +369,7 @@ class DocumentControllerWebMvcTest {
                 "acta.pdf",
                 new DocumentDetailResponseDto.UploadedByRef(10L, "Ana Admin"),
                 LocalDateTime.of(2026, 4, 10, 9, 30),
+                "3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7",
                 "INTERNAL");
 
         when(documentQueryService.findDetailById(eq(48L), any())).thenReturn(response);
@@ -382,6 +382,7 @@ class DocumentControllerWebMvcTest {
                 .andExpect(jsonPath("$.category.name").value("Actas"))
                 .andExpect(jsonPath("$.uploadedBy.id").value(10))
                 .andExpect(jsonPath("$.uploadedBy.fullName").value("Ana Admin"))
+                .andExpect(jsonPath("$.fileHash").value("3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7"))
                 .andExpect(jsonPath("$.fileFormat").value("PDF"));
     }
 

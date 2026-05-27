@@ -232,7 +232,7 @@ Todos los endpoints de categorías requieren rol **`ADMIN`**.
 |--------|-----------------------------------|-----------------------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
 | `GET`  | `/documents`                      | `ADMIN`, `EDITOR`, `READER` | HU-15/20/21/22 | Lista paginada con búsqueda y filtrado. Ver sección [Búsqueda y filtrado](#búsqueda-y-filtrado-de-documentos).                                      |
 | `GET`  | `/documents/filter-options`       | `ADMIN`, `EDITOR`, `READER` | HU-21          | Opciones para los selectores del panel de filtros: categorías activas y (solo ADMIN) usuarios activos.                                             |
-| `GET`  | `/documents/{id}`                 | `ADMIN`, `EDITOR`, `READER` | HU-11          | Retorna la ficha completa de metadatos de un documento activo (DOC-02).                                                                            |
+| `GET`  | `/documents/{id}`                 | `ADMIN`, `EDITOR`, `READER` | HU-11/HU-30    | Retorna la ficha completa de metadatos de un documento activo, incluyendo `fileHash` SHA-256 cuando esté disponible (DOC-02).                      |
 | `PUT`  | `/documents/{id}`                 | `ADMIN`, `EDITOR`           | HU-13          | Edita metadatos (`title`, `description`, `categoryId`, `responsibleArea`, `documentDate`). `EDITOR` solo puede editar documentos propios (DOC-05). |
 | `DELETE` | `/documents/{id}`               | `ADMIN`                     | HU-14          | Eliminación lógica del documento (status → DELETED). Registra acción `DELETE_DOC`.                                                                 |
 | `GET`  | `/documents/{id}/view`            | `ADMIN`, `EDITOR`, `READER` | HU-11          | Stream del archivo. PDF/JPG/PNG → `inline`; DOCX/XLSX → `attachment` (DOC-07). Registra acción `VIEW`.                                             |
@@ -251,6 +251,9 @@ Todos los endpoints de categorías requieren rol **`ADMIN`**.
 Los archivos se almacenan en `{DOCURURAL_STORAGE_BASE_PATH}/{año}/{mes}/{uuid}.{ext}`. La ruta absoluta se persiste en
 el campo `file_path` de la tabla `documents`; el nombre original del archivo se guarda en `original_file_name`. El tipo
 MIME se valida por contenido real (magic bytes) mediante Apache Tika, no solo por extensión.
+
+Para HU-30, durante la carga se calcula y persiste `file_hash` (SHA-256 en hexadecimal). Si el cálculo falla, la carga se
+completa y el campo queda en `NULL`.
 
 ### Formato de errores
 
@@ -304,8 +307,11 @@ src/main/resources/db/migration/
 ├── V1__init_schema.sql             # Crea las 4 tablas base del sistema
 ├── V2__seed_categories.sql         # Carga las 8 categorías documentales predefinidas
 ├── V3__add_token_version.sql       # Agrega token_version a users (revocación de JWT)
-├── V4__normalize_email_lowercase.sql  # Normalización de emails e índice funcional
-└── V5__add_document_date_index.sql # Índice en documents.document_date (Sprint 3)
+├── V4__normalize_email_lowercase.sql      # Normalización de emails e índice funcional
+├── V5__add_document_date_index.sql        # Índice en documents.document_date (Sprint 3)
+├── V6__add_category_default_sensitivity_level.sql  # Sensibilidad por defecto en categorías (HU-28B)
+├── V7__add_document_sensitivity_level.sql # Sensibilidad en documentos (HU-28/HU-29)
+└── V8__add_document_file_hash.sql         # Hash SHA-256 por documento (HU-30)
 ```
 
 El modo DDL de Hibernate es `validate`: **nunca crea ni modifica tablas automáticamente**.

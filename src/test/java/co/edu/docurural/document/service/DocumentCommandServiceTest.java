@@ -73,6 +73,8 @@ class DocumentCommandServiceTest {
     @Mock
     FileValidationService fileValidationService;
     @Mock
+    DocumentHashService documentHashService;
+    @Mock
     FileStorageService fileStorageService;
     @Mock
     MessageResolver messageResolver;
@@ -90,6 +92,8 @@ class DocumentCommandServiceTest {
                 .thenAnswer(inv -> inv.getArgument(0));
         lenient().when(messageResolver.get(anyString(), any()))
                 .thenAnswer(inv -> inv.getArgument(0));
+        lenient().when(documentHashService.calculateSha256(any()))
+                .thenReturn(Optional.empty());
     }
 
     // ------------------------------------------------------------------
@@ -466,6 +470,60 @@ class DocumentCommandServiceTest {
         } finally {
             TransactionSynchronizationManager.clearSynchronization();
         }
+    }
+
+    @Test
+    void upload_persistsFileHash_whenSha256IsCalculated() {
+        Category category = TestFixtures.categoryActive(1L, "Actas");
+        User uploader = TestFixtures.userAdmin(ACTOR_ID);
+        UploadDocumentRequestDto request = TestFixtures.uploadDocumentRequest(1L);
+        MockMultipartFile file = new MockMultipartFile("file", "acta.pdf", "application/pdf", new byte[100]);
+
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(userRepository.findById(ACTOR_ID)).thenReturn(Optional.of(uploader));
+        when(documentHashService.calculateSha256(file))
+                .thenReturn(Optional.of("3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7"));
+        when(fileValidationService.validate(file)).thenReturn(DocumentFormat.PDF);
+        when(fileStorageService.store(file, DocumentFormat.PDF)).thenReturn(new StoredFile("2026/05/uuid.pdf"));
+        when(userRepository.getReferenceById(ACTOR_ID)).thenReturn(uploader);
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> {
+            Document d = inv.getArgument(0);
+            d.setId(48L);
+            return d;
+        });
+
+        documentCommandService.upload(request, file, AUDIT);
+
+        ArgumentCaptor<Document> captor = ArgumentCaptor.forClass(Document.class);
+        verify(documentRepository).save(captor.capture());
+        assertThat(captor.getValue().getFileHash())
+                .isEqualTo("3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7");
+    }
+
+    @Test
+    void upload_persistsNullFileHash_whenSha256CannotBeCalculated() {
+        Category category = TestFixtures.categoryActive(1L, "Actas");
+        User uploader = TestFixtures.userAdmin(ACTOR_ID);
+        UploadDocumentRequestDto request = TestFixtures.uploadDocumentRequest(1L);
+        MockMultipartFile file = new MockMultipartFile("file", "acta.pdf", "application/pdf", new byte[100]);
+
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(userRepository.findById(ACTOR_ID)).thenReturn(Optional.of(uploader));
+        when(documentHashService.calculateSha256(file)).thenReturn(Optional.empty());
+        when(fileValidationService.validate(file)).thenReturn(DocumentFormat.PDF);
+        when(fileStorageService.store(file, DocumentFormat.PDF)).thenReturn(new StoredFile("2026/05/uuid.pdf"));
+        when(userRepository.getReferenceById(ACTOR_ID)).thenReturn(uploader);
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> {
+            Document d = inv.getArgument(0);
+            d.setId(48L);
+            return d;
+        });
+
+        documentCommandService.upload(request, file, AUDIT);
+
+        ArgumentCaptor<Document> captor = ArgumentCaptor.forClass(Document.class);
+        verify(documentRepository).save(captor.capture());
+        assertThat(captor.getValue().getFileHash()).isNull();
     }
 
     // ------------------------------------------------------------------
