@@ -1,0 +1,19 @@
+spring:
+  config:
+    import: optional:aws-parameterstore:/docurural/qa/
+  jpa:
+    show-sql: false
+
+docurural:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+server:
+  error:
+    include-stacktrace: never
+    include-message: never
+
+logging:
+  level:
+    root: INFO
+    co.edu.docurural: INFO
