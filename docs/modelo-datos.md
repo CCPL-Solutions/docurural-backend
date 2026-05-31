@@ -145,6 +145,7 @@ Metadatos de los documentos cargados al sistema.
 | `created_at`         | `TIMESTAMP`    | NOT NULL DEFAULT NOW()                                           | Fecha y hora de carga del documento.                                      |
 | `status`             | `VARCHAR(20)`  | NOT NULL DEFAULT 'ACTIVE', CHECK (ACTIVE, DELETED)               | Estado del documento (borrado lógico).                                    |
 | `sensitivity_level`  | `VARCHAR(20)`  | NOT NULL DEFAULT 'INTERNAL', CHECK (INTERNAL, RESTRICTED, CONFIDENTIAL) | Nivel de sensibilidad del documento; controla quién puede descargarlo. |
+| `file_hash`          | `VARCHAR(64)`  | NULL                                                             | Hash SHA-256 del archivo al momento de carga. `NULL` para históricos o fallos de cálculo. |
 
 **Restricciones:**
 
@@ -164,6 +165,8 @@ Metadatos de los documentos cargados al sistema.
 
 > **V7:** `sensitivity_level` se inicializa heredando `default_sensitivity_level` de la categoría para los documentos
 > preexistentes activos. El nivel de acceso para descarga se resuelve según la jerarquía `INTERNAL < RESTRICTED < CONFIDENTIAL`.
+
+> **V8:** se añadió `file_hash` (`VARCHAR(64)`, nullable) para almacenar la huella SHA-256 del binario cargado.
 
 ---
 

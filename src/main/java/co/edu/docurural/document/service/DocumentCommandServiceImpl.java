@@ -56,6 +56,7 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
     private final UserRepository userRepository;
     private final ActivityLogService activityLogService;
     private final FileValidationService fileValidationService;
+    private final DocumentHashService documentHashService;
     private final FileStorageService fileStorageService;
     private final MessageResolver messageResolver;
     private final DocumentMapper documentMapper;
@@ -217,10 +218,11 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
                                        String description, SensitivityLevel sensitivityLevel,
                                        String activityDetailPrefix, Long actorId, AuditContext audit) {
         validateFile(file);
+        String fileHash = documentHashService.calculateSha256(file).orElse(null);
         DocumentFormat format = fileValidationService.validate(file);
         StoredFile stored = storeWithRollback(file, format);
         Document document = buildDocument(title, category, responsibleArea, documentDate,
-                description, sensitivityLevel, stored, format, file, actorId);
+                description, sensitivityLevel, stored, format, file, actorId, fileHash);
         Document saved = documentRepository.save(document);
         activityLogService.record(ActivityAction.UPLOAD, audit, saved.getId(),
                 activityDetailPrefix + saved.getOriginalFileName());
@@ -253,7 +255,8 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
     private Document buildDocument(String title, Category category, String responsibleArea,
                                    LocalDate documentDate, String description,
                                    SensitivityLevel sensitivityLevel, StoredFile stored,
-                                   DocumentFormat format, MultipartFile file, Long actorId) {
+                                   DocumentFormat format, MultipartFile file, Long actorId,
+                                   String fileHash) {
         return Document.builder()
                 .title(title)
                 .description(description)
@@ -264,6 +267,7 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
                 .originalFileName(FileNameSanitizer.sanitize(file.getOriginalFilename()))
                 .fileFormat(format)
                 .fileSizeBytes(file.getSize())
+                .fileHash(fileHash)
                 .uploadedBy(userRepository.getReferenceById(actorId))
                 .sensitivityLevel(sensitivityLevel)
                 .build();

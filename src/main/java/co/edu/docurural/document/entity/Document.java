@@ -77,6 +77,9 @@ public class Document {
     @Column(name = "file_size_bytes", nullable = false)
     private Long fileSizeBytes;
 
+    @Column(name = "file_hash", length = 64)
+    private String fileHash;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "uploaded_by", nullable = false)
     private User uploadedBy;

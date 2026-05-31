@@ -69,6 +69,7 @@ class DocumentMapperTest {
         var category = TestFixtures.categoryActive(1L, "Actas", "Actas de reuniones");
         var user = TestFixtures.userAdmin(10L);
         Document doc = TestFixtures.documentActive(48L, category, user);
+        doc.setFileHash("3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7");
 
         DocumentDetailResponseDto response = mapper.toDetailResponse(doc);
 
@@ -85,6 +86,7 @@ class DocumentMapperTest {
         assertThat(response.uploadedBy().id()).isEqualTo(10L);
         assertThat(response.uploadedBy().fullName()).isEqualTo(user.getFullName());
         assertThat(response.createdAt()).isEqualTo(TestFixtures.FIXED_CREATED_AT);
+        assertThat(response.fileHash()).isEqualTo("3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7");
     }
 
     @Test
