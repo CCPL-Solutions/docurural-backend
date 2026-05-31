@@ -6,7 +6,7 @@ spring:
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:docurural_db}
     username: ${DB_USER:docurural}
-    password: ${DB_PASSWORD}
+    password: ${db-password:${DB_PASSWORD:}}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -42,13 +42,18 @@ docurural:
   security:
     bcrypt-strength: ${DOCURURAL_BCRYPT_STRENGTH:12}
     jwt:
-      secret: ${JWT_SECRET}
+      secret: ${jwt-secret:${JWT_SECRET:}}
       expiration-ms: ${JWT_EXPIRATION_MS:1800000}
       issuer: ${JWT_ISSUER:docurural}
   storage:
+    provider: ${DOCURURAL_STORAGE_PROVIDER:s3}
     base-path: ${DOCURURAL_STORAGE_BASE_PATH:./uploads/documents}
     max-file-size: ${DOCURURAL_STORAGE_MAX_FILE_SIZE:10MB}
     max-request-size: ${DOCURURAL_STORAGE_MAX_REQUEST_SIZE:55MB}
+    s3:
+      bucket: ${s3-bucket-docs:${DOCURURAL_STORAGE_S3_BUCKET:}}
+      region: ${aws-region:${AWS_REGION:us-east-1}}
+      key-prefix: ${DOCURURAL_STORAGE_S3_KEY_PREFIX:documents}
   seed:
     admin:
       email: ${ADMIN_SEED_EMAIL:}

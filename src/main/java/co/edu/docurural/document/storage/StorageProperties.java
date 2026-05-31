@@ -23,9 +23,24 @@ import org.springframework.util.unit.DataUnit;
 @ConfigurationProperties(prefix = "docurural.storage")
 public class StorageProperties {
 
+    /**
+     * Proveedor de almacenamiento: local | s3.
+     */
+    private String provider = "local";
+
     private String basePath = "./uploads/documents";
 
     @DataSizeUnit(DataUnit.MEGABYTES)
     private DataSize maxFileSize = DataSize.ofMegabytes(10);
+
+    private S3Properties s3 = new S3Properties();
+
+    @Setter
+    @Getter
+    public static class S3Properties {
+        private String bucket;
+        private String region = "us-east-1";
+        private String keyPrefix = "documents";
+    }
 
 }
