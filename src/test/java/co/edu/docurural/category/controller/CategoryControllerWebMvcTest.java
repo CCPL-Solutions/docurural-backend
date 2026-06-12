@@ -1,13 +1,13 @@
 package co.edu.docurural.category.controller;
 
-import co.edu.docurural.category.dto.CategoryDetailResponse;
-import co.edu.docurural.category.dto.CategoryListResponse;
-import co.edu.docurural.category.dto.CreateCategoryRequest;
-import co.edu.docurural.category.dto.CreateCategoryResponse;
-import co.edu.docurural.category.dto.UpdateCategoryRequest;
-import co.edu.docurural.category.dto.UpdateCategoryResponse;
-import co.edu.docurural.category.dto.UpdateCategoryStatusRequest;
-import co.edu.docurural.category.dto.UpdateCategoryStatusResponse;
+import co.edu.docurural.category.dto.CategoryDetailResponseDto;
+import co.edu.docurural.category.dto.CategoryListResponseDto;
+import co.edu.docurural.category.dto.CreateCategoryRequestDto;
+import co.edu.docurural.category.dto.CreateCategoryResponseDto;
+import co.edu.docurural.category.dto.UpdateCategoryRequestDto;
+import co.edu.docurural.category.dto.UpdateCategoryResponseDto;
+import co.edu.docurural.category.dto.UpdateCategoryStatusRequestDto;
+import co.edu.docurural.category.dto.UpdateCategoryStatusResponseDto;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.service.CategoryService;
 import co.edu.docurural.shared.audit.AuditContext;
@@ -74,19 +74,20 @@ class CategoryControllerWebMvcTest {
     void create_returns201AndPayload() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
-        CreateCategoryRequest request = TestFixtures.createCategoryRequest(
+        CreateCategoryRequestDto request = TestFixtures.createCategoryRequest(
                 "Proyectos Biotecnología",
                 "Proyectos e informes del laboratorio");
 
-        CreateCategoryResponse response = new CreateCategoryResponse(
+        CreateCategoryResponseDto response = new CreateCategoryResponseDto(
                 9L,
                 "Proyectos Biotecnología",
                 "Proyectos e informes del laboratorio",
                 "ACTIVE",
                 LocalDateTime.of(2026, 4, 17, 10, 15),
+                "INTERNAL",
                 "Categoría creada exitosamente");
 
-        when(categoryService.create(any(CreateCategoryRequest.class), eq(ADMIN_AUDIT)))
+        when(categoryService.create(any(CreateCategoryRequestDto.class), eq(ADMIN_AUDIT)))
                 .thenReturn(response);
 
         mockMvc.perform(post("/categories")
@@ -108,14 +109,15 @@ class CategoryControllerWebMvcTest {
     void create_withNullDescription_returns201() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
-        CreateCategoryRequest request = TestFixtures.createCategoryRequest("Circulares", null);
+        CreateCategoryRequestDto request = TestFixtures.createCategoryRequest("Circulares", null);
 
-        CreateCategoryResponse response = new CreateCategoryResponse(
+        CreateCategoryResponseDto response = new CreateCategoryResponseDto(
                 10L, "Circulares", null, "ACTIVE",
                 LocalDateTime.of(2026, 4, 17, 10, 15),
+                "INTERNAL",
                 "Categoría creada exitosamente");
 
-        when(categoryService.create(any(CreateCategoryRequest.class), eq(ADMIN_AUDIT)))
+        when(categoryService.create(any(CreateCategoryRequestDto.class), eq(ADMIN_AUDIT)))
                 .thenReturn(response);
 
         mockMvc.perform(post("/categories")
@@ -182,9 +184,9 @@ class CategoryControllerWebMvcTest {
     void create_whenNameAlreadyExists_returns409() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
-        CreateCategoryRequest request = TestFixtures.createCategoryRequest("Actas", null);
+        CreateCategoryRequestDto request = TestFixtures.createCategoryRequest("Actas", null);
 
-        when(categoryService.create(any(CreateCategoryRequest.class), eq(ADMIN_AUDIT)))
+        when(categoryService.create(any(CreateCategoryRequestDto.class), eq(ADMIN_AUDIT)))
                 .thenThrow(new ConflictException("Ya existe una categoría con este nombre"));
 
         mockMvc.perform(post("/categories")
@@ -203,18 +205,19 @@ class CategoryControllerWebMvcTest {
     void update_returns200AndPayload() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
-        UpdateCategoryRequest request = TestFixtures.updateCategoryRequest(
+        UpdateCategoryRequestDto request = TestFixtures.updateCategoryRequest(
                 "Proyectos e Informes Biotecnología",
                 "Proyectos e informes detallados");
 
-        UpdateCategoryResponse response = new UpdateCategoryResponse(
+        UpdateCategoryResponseDto response = new UpdateCategoryResponseDto(
                 9L,
                 "Proyectos e Informes Biotecnología",
                 "Proyectos e informes detallados",
                 "ACTIVE",
+                "INTERNAL",
                 "Categoría actualizada exitosamente");
 
-        when(categoryService.update(eq(9L), any(UpdateCategoryRequest.class), eq(ADMIN_AUDIT)))
+        when(categoryService.update(eq(9L), any(UpdateCategoryRequestDto.class), eq(ADMIN_AUDIT)))
                 .thenReturn(response);
 
         mockMvc.perform(put("/categories/9")
@@ -237,12 +240,12 @@ class CategoryControllerWebMvcTest {
     void update_withNullDescription_returns200() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
-        UpdateCategoryRequest request = TestFixtures.updateCategoryRequest("Circulares", null);
+        UpdateCategoryRequestDto request = TestFixtures.updateCategoryRequest("Circulares", null);
 
-        UpdateCategoryResponse response = new UpdateCategoryResponse(
-                10L, "Circulares", null, "ACTIVE", "Categoría actualizada exitosamente");
+        UpdateCategoryResponseDto response = new UpdateCategoryResponseDto(
+                10L, "Circulares", null, "ACTIVE", "INTERNAL", "Categoría actualizada exitosamente");
 
-        when(categoryService.update(eq(10L), any(UpdateCategoryRequest.class), eq(ADMIN_AUDIT)))
+        when(categoryService.update(eq(10L), any(UpdateCategoryRequestDto.class), eq(ADMIN_AUDIT)))
                 .thenReturn(response);
 
         mockMvc.perform(put("/categories/10")
@@ -309,9 +312,9 @@ class CategoryControllerWebMvcTest {
     void update_whenCategoryNotFound_returns404() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
-        UpdateCategoryRequest request = TestFixtures.updateCategoryRequest("Nombre Válido", null);
+        UpdateCategoryRequestDto request = TestFixtures.updateCategoryRequest("Nombre Válido", null);
 
-        when(categoryService.update(eq(99L), any(UpdateCategoryRequest.class), eq(ADMIN_AUDIT)))
+        when(categoryService.update(eq(99L), any(UpdateCategoryRequestDto.class), eq(ADMIN_AUDIT)))
                 .thenThrow(new ResourceNotFoundException("Categoría no encontrada con id 99"));
 
         mockMvc.perform(put("/categories/99")
@@ -326,9 +329,9 @@ class CategoryControllerWebMvcTest {
     void update_whenCategoryInactive_returns403() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
-        UpdateCategoryRequest request = TestFixtures.updateCategoryRequest("Nombre Válido", null);
+        UpdateCategoryRequestDto request = TestFixtures.updateCategoryRequest("Nombre Válido", null);
 
-        when(categoryService.update(eq(5L), any(UpdateCategoryRequest.class), eq(ADMIN_AUDIT)))
+        when(categoryService.update(eq(5L), any(UpdateCategoryRequestDto.class), eq(ADMIN_AUDIT)))
                 .thenThrow(new BusinessRuleException(
                         BusinessErrorCode.FORBIDDEN, "No se puede editar una categoría inactiva"));
 
@@ -344,9 +347,9 @@ class CategoryControllerWebMvcTest {
     void update_whenNameAlreadyExists_returns409() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
-        UpdateCategoryRequest request = TestFixtures.updateCategoryRequest("Actas", null);
+        UpdateCategoryRequestDto request = TestFixtures.updateCategoryRequest("Actas", null);
 
-        when(categoryService.update(eq(9L), any(UpdateCategoryRequest.class), eq(ADMIN_AUDIT)))
+        when(categoryService.update(eq(9L), any(UpdateCategoryRequestDto.class), eq(ADMIN_AUDIT)))
                 .thenThrow(new ConflictException("Ya existe una categoría con este nombre"));
 
         mockMvc.perform(put("/categories/9")
@@ -365,12 +368,12 @@ class CategoryControllerWebMvcTest {
     void changeStatus_returns200AndPayload_whenDeactivating() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
-        UpdateCategoryStatusRequest request = TestFixtures.updateCategoryStatusRequest(CategoryStatus.INACTIVE);
+        UpdateCategoryStatusRequestDto request = TestFixtures.updateCategoryStatusRequest(CategoryStatus.INACTIVE);
 
-        UpdateCategoryStatusResponse response = new UpdateCategoryStatusResponse(
+        UpdateCategoryStatusResponseDto response = new UpdateCategoryStatusResponseDto(
                 9L, "Proyectos e Informes Biotecnología", "INACTIVE", "Categoría desactivada exitosamente");
 
-        when(categoryService.changeStatus(eq(9L), any(UpdateCategoryStatusRequest.class), eq(ADMIN_AUDIT)))
+        when(categoryService.changeStatus(eq(9L), any(UpdateCategoryStatusRequestDto.class), eq(ADMIN_AUDIT)))
                 .thenReturn(response);
 
         mockMvc.perform(patch("/categories/9/status")
@@ -394,12 +397,12 @@ class CategoryControllerWebMvcTest {
     void changeStatus_returns200AndPayload_whenReactivating() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
-        UpdateCategoryStatusRequest request = TestFixtures.updateCategoryStatusRequest(CategoryStatus.ACTIVE);
+        UpdateCategoryStatusRequestDto request = TestFixtures.updateCategoryStatusRequest(CategoryStatus.ACTIVE);
 
-        UpdateCategoryStatusResponse response = new UpdateCategoryStatusResponse(
+        UpdateCategoryStatusResponseDto response = new UpdateCategoryStatusResponseDto(
                 9L, "Proyectos e Informes Biotecnología", "ACTIVE", "Categoría activada exitosamente");
 
-        when(categoryService.changeStatus(eq(9L), any(UpdateCategoryStatusRequest.class), eq(ADMIN_AUDIT)))
+        when(categoryService.changeStatus(eq(9L), any(UpdateCategoryStatusRequestDto.class), eq(ADMIN_AUDIT)))
                 .thenReturn(response);
 
         mockMvc.perform(patch("/categories/9/status")
@@ -438,7 +441,7 @@ class CategoryControllerWebMvcTest {
     void changeStatus_whenCategoryNotFound_returns404() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
-        when(categoryService.changeStatus(eq(99L), any(UpdateCategoryStatusRequest.class), eq(ADMIN_AUDIT)))
+        when(categoryService.changeStatus(eq(99L), any(UpdateCategoryStatusRequestDto.class), eq(ADMIN_AUDIT)))
                 .thenThrow(new ResourceNotFoundException("Categoría no encontrada con id 99"));
 
         mockMvc.perform(patch("/categories/99/status")
@@ -453,7 +456,7 @@ class CategoryControllerWebMvcTest {
     void changeStatus_whenAlreadyInStatus_returns400() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
-        when(categoryService.changeStatus(eq(9L), any(UpdateCategoryStatusRequest.class), eq(ADMIN_AUDIT)))
+        when(categoryService.changeStatus(eq(9L), any(UpdateCategoryStatusRequestDto.class), eq(ADMIN_AUDIT)))
                 .thenThrow(new BusinessRuleException(
                         BusinessErrorCode.INVALID_ARGUMENT, "La categoría ya se encuentra en el estado solicitado"));
 
@@ -471,11 +474,11 @@ class CategoryControllerWebMvcTest {
 
     @Test
     void list_returns200WithListResponse() throws Exception {
-        CategoryDetailResponse item = new CategoryDetailResponse(
+        CategoryDetailResponseDto item = new CategoryDetailResponseDto(
                 1L, "Actas", "Actas de reuniones, consejos directivos",
-                "ACTIVE", 23L, LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema");
+                "ACTIVE", 23L, LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema", "INTERNAL");
 
-        CategoryListResponse response = new CategoryListResponse(1, 1, 0, List.of(item));
+        CategoryListResponseDto response = new CategoryListResponseDto(1, 1, 0, List.of(item));
 
         when(categoryService.list(any(), any())).thenReturn(response);
 
@@ -493,7 +496,7 @@ class CategoryControllerWebMvcTest {
     @Test
     void list_withSortParams_passesParamsToService() throws Exception {
         when(categoryService.list("createdAt", "desc"))
-                .thenReturn(new CategoryListResponse(0, 0, 0, List.of()));
+                .thenReturn(new CategoryListResponseDto(0, 0, 0, List.of()));
 
         mockMvc.perform(get("/categories")
                         .param("sortBy", "createdAt")
@@ -533,9 +536,9 @@ class CategoryControllerWebMvcTest {
 
     @Test
     void getById_returns200WithDetailResponse() throws Exception {
-        CategoryDetailResponse response = new CategoryDetailResponse(
+        CategoryDetailResponseDto response = new CategoryDetailResponseDto(
                 1L, "Actas", "Actas de reuniones, consejos directivos",
-                "ACTIVE", 23L, LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema");
+                "ACTIVE", 23L, LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema", "INTERNAL");
 
         when(categoryService.findById(1L)).thenReturn(response);
 
@@ -562,9 +565,9 @@ class CategoryControllerWebMvcTest {
 
     @Test
     void getById_returnsCreatedBySistema_whenCreatorMissing() throws Exception {
-        CategoryDetailResponse response = new CategoryDetailResponse(
+        CategoryDetailResponseDto response = new CategoryDetailResponseDto(
                 2L, "Resoluciones", null, "ACTIVE", 0L,
-                LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema");
+                LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema", "INTERNAL");
 
         when(categoryService.findById(2L)).thenReturn(response);
 

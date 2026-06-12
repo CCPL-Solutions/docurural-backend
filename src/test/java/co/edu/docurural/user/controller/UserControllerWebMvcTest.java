@@ -5,17 +5,17 @@ import co.edu.docurural.shared.config.SecurityConfig;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.audit.AuditContextResolver;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
+import co.edu.docurural.user.dto.UpdateStatusResponseDto;
+import co.edu.docurural.user.dto.UpdateUserResponseDto;
+import co.edu.docurural.user.dto.UserResponseDto;
 import co.edu.docurural.user.enums.UserRole;
 import co.edu.docurural.user.enums.UserStatus;
 import co.edu.docurural.user.service.UserService;
-import co.edu.docurural.user.dto.CreateUserRequest;
-import co.edu.docurural.user.dto.CreateUserResponse;
-import co.edu.docurural.user.dto.UpdateStatusRequest;
-import co.edu.docurural.user.dto.UpdateStatusResponse;
-import co.edu.docurural.user.dto.UpdateUserRequest;
-import co.edu.docurural.user.dto.UpdateUserResponse;
-import co.edu.docurural.user.dto.UserListResponse;
-import co.edu.docurural.user.dto.UserResponse;
+import co.edu.docurural.user.dto.CreateUserRequestDto;
+import co.edu.docurural.user.dto.CreateUserResponseDto;
+import co.edu.docurural.user.dto.UpdateStatusRequestDto;
+import co.edu.docurural.user.dto.UpdateUserRequestDto;
+import co.edu.docurural.user.dto.UserListResponseDto;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.exception.ConflictException;
 import co.edu.docurural.shared.exception.GlobalExceptionHandler;
@@ -71,7 +71,7 @@ class UserControllerWebMvcTest {
 
     @Test
     void list_returns200AndPayload() throws Exception {
-        UserResponse user = new UserResponse(
+        UserResponseDto user = new UserResponseDto(
                 2L,
                 "Erik Editor",
                 "erik.editor@docurural.edu.co",
@@ -79,7 +79,7 @@ class UserControllerWebMvcTest {
                 "ACTIVE",
                 LocalDateTime.of(2026, 1, 1, 8, 0),
                 null);
-        when(userService.list("fullName", "asc")).thenReturn(new UserListResponse(1, List.of(user)));
+        when(userService.list("fullName", "asc")).thenReturn(new UserListResponseDto(1, List.of(user)));
 
         mockMvc.perform(get("/users")
                         .param("sortBy", "fullName")
@@ -94,7 +94,7 @@ class UserControllerWebMvcTest {
 
     @Test
     void list_withoutParams_delegatesNullsToService() throws Exception {
-        when(userService.list(null, null)).thenReturn(new UserListResponse(0, List.of()));
+        when(userService.list(null, null)).thenReturn(new UserListResponseDto(0, List.of()));
 
         mockMvc.perform(get("/users"))
                 .andExpect(status().isOk())
@@ -121,7 +121,7 @@ class UserControllerWebMvcTest {
 
     @Test
     void getById_returns200AndPayload() throws Exception {
-        UserResponse user = new UserResponse(
+        UserResponseDto user = new UserResponseDto(
                 2L,
                 "Erik Editor",
                 "erik.editor@docurural.edu.co",
@@ -157,14 +157,14 @@ class UserControllerWebMvcTest {
     void create_asAdmin_returns201AndDelegatesWithAdminId() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
-        CreateUserRequest request = new CreateUserRequest(
+        CreateUserRequestDto request = new CreateUserRequestDto(
                 "Nora Nueva",
                 "nora.nueva@docurural.edu.co",
                 "Supersecreta1!",
                 "Supersecreta1!",
                 UserRole.READER);
 
-        CreateUserResponse response = new CreateUserResponse(
+        CreateUserResponseDto response = new CreateUserResponseDto(
                 55L,
                 "Nora Nueva",
                 "nora.nueva@docurural.edu.co",
@@ -173,7 +173,7 @@ class UserControllerWebMvcTest {
                 LocalDateTime.of(2026, 1, 2, 9, 0),
                 "Usuario creado exitosamente");
 
-        when(userService.create(any(CreateUserRequest.class), eq(ADMIN_AUDIT)))
+        when(userService.create(any(CreateUserRequestDto.class), eq(ADMIN_AUDIT)))
                 .thenReturn(response);
 
         mockMvc.perform(post("/users")
@@ -218,14 +218,14 @@ class UserControllerWebMvcTest {
     void update_asAdmin_returns200AndDelegates() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
-        UpdateUserRequest request = new UpdateUserRequest(
+        UpdateUserRequestDto request = new UpdateUserRequestDto(
                 "Erik Editor Renombrado",
                 "erik.editor@docurural.edu.co",
                 UserRole.EDITOR,
                 null,
                 null);
 
-        UpdateUserResponse response = new UpdateUserResponse(
+        UpdateUserResponseDto response = new UpdateUserResponseDto(
                 2L,
                 "Erik Editor Renombrado",
                 "erik.editor@docurural.edu.co",
@@ -233,7 +233,7 @@ class UserControllerWebMvcTest {
                 "ACTIVE",
                 "Usuario actualizado exitosamente");
 
-        when(userService.update(eq(2L), any(UpdateUserRequest.class), eq(ADMIN_AUDIT)))
+        when(userService.update(eq(2L), any(UpdateUserRequestDto.class), eq(ADMIN_AUDIT)))
                 .thenReturn(response);
 
         mockMvc.perform(put("/users/2")
@@ -281,14 +281,14 @@ class UserControllerWebMvcTest {
     void update_whenEmailConflict_returns409MappedError() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
-        UpdateUserRequest request = new UpdateUserRequest(
+        UpdateUserRequestDto request = new UpdateUserRequestDto(
                 "Erik Editor",
                 "existe@docurural.edu.co",
                 UserRole.EDITOR,
                 null,
                 null);
 
-        when(userService.update(eq(2L), any(UpdateUserRequest.class), eq(ADMIN_AUDIT)))
+        when(userService.update(eq(2L), any(UpdateUserRequestDto.class), eq(ADMIN_AUDIT)))
                 .thenThrow(new ConflictException("Ya existe un usuario registrado con este correo electrónico"));
 
         mockMvc.perform(put("/users/2")
@@ -303,14 +303,14 @@ class UserControllerWebMvcTest {
     void update_whenNotFound_returns404MappedError() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
-        UpdateUserRequest request = new UpdateUserRequest(
+        UpdateUserRequestDto request = new UpdateUserRequestDto(
                 "Erik Editor",
                 "erik.editor@docurural.edu.co",
                 UserRole.EDITOR,
                 null,
                 null);
 
-        when(userService.update(eq(999L), any(UpdateUserRequest.class), eq(ADMIN_AUDIT)))
+        when(userService.update(eq(999L), any(UpdateUserRequestDto.class), eq(ADMIN_AUDIT)))
                 .thenThrow(new ResourceNotFoundException("Usuario no encontrado con id 999"));
 
         mockMvc.perform(put("/users/999")
@@ -325,14 +325,14 @@ class UserControllerWebMvcTest {
     void changeStatus_asAdmin_returns200() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
-        UpdateStatusRequest request = new UpdateStatusRequest(UserStatus.INACTIVE);
-        UpdateStatusResponse response = new UpdateStatusResponse(
+        UpdateStatusRequestDto request = new UpdateStatusRequestDto(UserStatus.INACTIVE);
+        UpdateStatusResponseDto response = new UpdateStatusResponseDto(
                 2L,
                 "Erik Editor",
                 "INACTIVE",
                 "Usuario desactivado exitosamente");
 
-        when(userService.changeStatus(eq(2L), any(UpdateStatusRequest.class), eq(ADMIN_AUDIT)))
+        when(userService.changeStatus(eq(2L), any(UpdateStatusRequestDto.class), eq(ADMIN_AUDIT)))
                 .thenReturn(response);
 
         mockMvc.perform(patch("/users/2/status")
@@ -347,9 +347,9 @@ class UserControllerWebMvcTest {
     void changeStatus_whenSelfDeactivation_returns403MappedError() throws Exception {
         when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
 
-        UpdateStatusRequest request = new UpdateStatusRequest(UserStatus.INACTIVE);
+        UpdateStatusRequestDto request = new UpdateStatusRequestDto(UserStatus.INACTIVE);
 
-        when(userService.changeStatus(eq(10L), any(UpdateStatusRequest.class), eq(ADMIN_AUDIT)))
+        when(userService.changeStatus(eq(10L), any(UpdateStatusRequestDto.class), eq(ADMIN_AUDIT)))
                 .thenThrow(new BusinessRuleException(
                         BusinessErrorCode.FORBIDDEN,
                         "No puede desactivar su propia cuenta de administrador"));

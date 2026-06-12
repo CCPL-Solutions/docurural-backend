@@ -2,7 +2,7 @@ package co.edu.docurural.document.service;
 
 import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.category.entity.Category;
-import co.edu.docurural.document.dto.DocumentDetailResponse;
+import co.edu.docurural.document.dto.DocumentDetailResponseDto;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.enums.DocumentStatus;
 import co.edu.docurural.document.repository.DocumentRepository;
@@ -11,11 +11,14 @@ import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.shared.util.MessageResolver;
 import co.edu.docurural.support.TestFixtures;
 import co.edu.docurural.user.entity.User;
+import co.edu.docurural.document.mapper.DocumentMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mapstruct.factory.Mappers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
@@ -41,9 +44,13 @@ class DocumentQueryServiceTest {
     MessageResolver messageResolver;
     @Mock
     ActivityLogService activityLogService;
+    @Mock
+    DocumentAccessValidator documentAccessValidator;
+    @Spy
+    DocumentMapper documentMapper = Mappers.getMapper(DocumentMapper.class);
 
     @InjectMocks
-    DocumentQueryService documentQueryService;
+    DocumentQueryServiceImpl documentQueryService;
 
     @BeforeEach
     void stubMessageResolver() {
@@ -66,7 +73,7 @@ class DocumentQueryServiceTest {
         when(documentRepository.findByIdAndStatus(48L, DocumentStatus.ACTIVE))
                 .thenReturn(Optional.of(doc));
 
-        DocumentDetailResponse response = documentQueryService.findDetailById(48L);
+        DocumentDetailResponseDto response = documentQueryService.findDetailById(48L, AUDIT);
 
         assertThat(response.id()).isEqualTo(48L);
         assertThat(response.title()).isEqualTo(doc.getTitle());
@@ -84,7 +91,7 @@ class DocumentQueryServiceTest {
         when(documentRepository.findByIdAndStatus(99L, DocumentStatus.ACTIVE))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> documentQueryService.findDetailById(99L))
+        assertThatThrownBy(() -> documentQueryService.findDetailById(99L, AUDIT))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 }

@@ -2,93 +2,82 @@ package co.edu.docurural.shared.util;
 
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Component;
 
 import java.util.Locale;
 import java.util.Set;
 
 /**
- * Centraliza la resolución de parámetros de ordenamiento y paginación,
- * eliminando la lógica duplicada en {@code DocumentService}, {@code UserService}
- * y {@code CategoryService}.
- *
- * <p>Los mensajes de error se pasan ya resueltos (vía {@link MessageResolver})
- * para que la utilidad no dependa de Spring i18n.
+ * Centraliza la resolución de parámetros de ordenamiento y paginación.
+ * Los callers pasan claves de mensaje (no mensajes ya resueltos), reduciendo el
+ * boilerplate de {@link MessageResolver} en cada servicio.
  */
-public final class SortingValidator {
+@Component
+@RequiredArgsConstructor
+public class SortingValidator {
 
-    private SortingValidator() {
-    }
+    private final MessageResolver messages;
 
     /**
-     * Valida y construye un {@link Sort} a partir de parámetros de ordenamiento.
-     *
-     * @param sortBy        campo de ordenamiento recibido (puede ser null/blank).
-     * @param sortDir       dirección asc/desc recibida (puede ser null/blank).
-     * @param allowedFields conjunto de campos permitidos.
-     * @param defaultField  campo por defecto.
-     * @param defaultDir    dirección por defecto.
-     * @param fieldErrorMsg mensaje de error ya resuelto para campo inválido.
-     * @param dirErrorMsg   mensaje de error ya resuelto para dirección inválida.
+     * Encapsula la configuración fija de paginación para un endpoint concreto,
+     * eliminando el long parameter list de {@link #resolvePageable}.
      */
-    public static Sort resolveSort(String sortBy, String sortDir,
-                                   Set<String> allowedFields,
-                                   String defaultField, String defaultDir,
-                                   String fieldErrorMsg, String dirErrorMsg) {
+    public record PageableConfig(
+            Set<String> allowedFields,
+            String defaultSortBy,
+            String defaultSortDir,
+            int defaultPage,
+            int defaultSize,
+            int maxSize,
+            String pageMsgKey,
+            String sizeMsgKey,
+            String fieldMsgKey,
+            String dirMsgKey
+    ) {}
+
+    public Sort resolveSort(String sortBy, String sortDir,
+                            Set<String> allowedFields,
+                            String defaultField, String defaultDir,
+                            String fieldMsgKey, String dirMsgKey) {
         String field = (sortBy == null || sortBy.isBlank()) ? defaultField : sortBy;
         String dir = (sortDir == null || sortDir.isBlank()) ? defaultDir : sortDir;
 
         if (!allowedFields.contains(field)) {
-            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, fieldErrorMsg);
+            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
+                    messages.get(fieldMsgKey, field));
         }
         Sort.Direction direction;
         try {
             direction = Sort.Direction.fromString(dir.toLowerCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
-            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, dirErrorMsg);
+            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
+                    messages.get(dirMsgKey, dir));
         }
         return Sort.by(direction, field);
     }
 
-    /**
-     * Valida y construye un {@link Pageable} con página, tamaño y ordenamiento.
-     *
-     * @param page          número de página 1-based (null → defaultPage).
-     * @param size          tamaño de página (null → defaultSize).
-     * @param sortBy        campo de ordenamiento (null → defaultField).
-     * @param sortDir       dirección asc/desc (null → defaultDir).
-     * @param allowedFields campos permitidos.
-     * @param defaultField  campo por defecto.
-     * @param defaultDir    dirección por defecto.
-     * @param defaultPage   página por defecto (1-based).
-     * @param defaultSize   tamaño por defecto.
-     * @param maxSize       tamaño máximo permitido.
-     * @param pageErrorMsg  mensaje de error ya resuelto para página inválida.
-     * @param sizeErrorMsg  mensaje de error ya resuelto para tamaño inválido.
-     * @param fieldErrorMsg mensaje de error ya resuelto para campo inválido.
-     * @param dirErrorMsg   mensaje de error ya resuelto para dirección inválida.
-     */
-    public static Pageable resolvePageable(Integer page, Integer size,
-                                           String sortBy, String sortDir,
-                                           Set<String> allowedFields,
-                                           String defaultField, String defaultDir,
-                                           int defaultPage, int defaultSize, int maxSize,
-                                           String pageErrorMsg, String sizeErrorMsg,
-                                           String fieldErrorMsg, String dirErrorMsg) {
-        int resolvedPage = (page == null) ? defaultPage : page;
-        int resolvedSize = (size == null) ? defaultSize : size;
+    public Pageable resolvePageable(Integer page, Integer size,
+                                    String sortBy, String sortDir,
+                                    PageableConfig config) {
+        int resolvedPage = (page == null) ? config.defaultPage() : page;
+        int resolvedSize = (size == null) ? config.defaultSize() : size;
 
         if (resolvedPage < 1) {
-            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, pageErrorMsg);
+            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
+                    messages.get(config.pageMsgKey()));
         }
-        if (resolvedSize < 1 || resolvedSize > maxSize) {
-            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, sizeErrorMsg);
+        if (resolvedSize < 1 || resolvedSize > config.maxSize()) {
+            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
+                    messages.get(config.sizeMsgKey()));
         }
 
-        Sort sort = resolveSort(sortBy, sortDir, allowedFields, defaultField, defaultDir,
-                fieldErrorMsg, dirErrorMsg);
+        Sort sort = resolveSort(sortBy, sortDir, config.allowedFields(),
+                config.defaultSortBy(), config.defaultSortDir(),
+                config.fieldMsgKey(), config.dirMsgKey());
         return PageRequest.of(resolvedPage - 1, resolvedSize, sort);
     }
 }

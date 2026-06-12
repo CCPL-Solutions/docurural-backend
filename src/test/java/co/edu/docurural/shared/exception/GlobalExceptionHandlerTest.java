@@ -1,7 +1,7 @@
 package co.edu.docurural.shared.exception;
 
-import co.edu.docurural.shared.dto.ApiErrorResponse;
-import co.edu.docurural.user.dto.CreateUserRequest;
+import co.edu.docurural.shared.dto.ApiErrorResponseDto;
+import co.edu.docurural.user.dto.CreateUserRequestDto;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -67,7 +67,7 @@ class GlobalExceptionHandlerTest {
 
         MethodArgumentNotValidException ex = new MethodArgumentNotValidException(dummyMethodParameter(), bindingResult);
 
-        ResponseEntity<ApiErrorResponse> response = handler.handleValidation(ex, request);
+        ResponseEntity<ApiErrorResponseDto> response = handler.handleValidation(ex, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
@@ -87,7 +87,7 @@ class GlobalExceptionHandlerTest {
                 new IllegalArgumentException("enum value out of range")
         );
 
-        ResponseEntity<ApiErrorResponse> response = handler.handleHttpMessageNotReadable(ex, request);
+        ResponseEntity<ApiErrorResponseDto> response = handler.handleHttpMessageNotReadable(ex, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
@@ -99,7 +99,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void handleNotFound_status404() {
-        ResponseEntity<ApiErrorResponse> response = handler.handleNotFound(
+        ResponseEntity<ApiErrorResponseDto> response = handler.handleNotFound(
                 new ResourceNotFoundException("Usuario no encontrado con id 99"),
                 request
         );
@@ -112,7 +112,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void handleConflict_status409() {
-        ResponseEntity<ApiErrorResponse> response = handler.handleConflict(
+        ResponseEntity<ApiErrorResponseDto> response = handler.handleConflict(
                 new ConflictException("Ya existe un usuario registrado con este correo electrónico"),
                 request
         );
@@ -126,12 +126,12 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void handleBusinessRule_withCustomStatus_respectsStatus() {
-        ResponseEntity<ApiErrorResponse> badRequest = handler.handleBusinessRule(
+        ResponseEntity<ApiErrorResponseDto> badRequest = handler.handleBusinessRule(
                 new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, "El usuario ya se encuentra en el estado solicitado"),
                 request
         );
 
-        ResponseEntity<ApiErrorResponse> forbidden = handler.handleBusinessRule(
+        ResponseEntity<ApiErrorResponseDto> forbidden = handler.handleBusinessRule(
                 new BusinessRuleException(BusinessErrorCode.FORBIDDEN, "No puede desactivar su propia cuenta"),
                 request
         );
@@ -150,7 +150,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void handleBadCredentials_status401_spanishMessage() {
-        ResponseEntity<ApiErrorResponse> response = handler.handleBadCredentials(
+        ResponseEntity<ApiErrorResponseDto> response = handler.handleBadCredentials(
                 new BadCredentialsException("bad credentials"),
                 request
         );
@@ -163,7 +163,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void handleDisabled_status403_spanishMessage() {
-        ResponseEntity<ApiErrorResponse> response = handler.handleDisabled(
+        ResponseEntity<ApiErrorResponseDto> response = handler.handleDisabled(
                 new DisabledException("disabled"),
                 request
         );
@@ -177,7 +177,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void handleAccessDenied_status403() {
-        ResponseEntity<ApiErrorResponse> response = handler.handleAccessDenied(
+        ResponseEntity<ApiErrorResponseDto> response = handler.handleAccessDenied(
                 new AccessDeniedException("forbidden"),
                 request
         );
@@ -190,7 +190,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void handleAuthenticationFallback_status401() {
-        ResponseEntity<ApiErrorResponse> response = handler.handleAuthentication(
+        ResponseEntity<ApiErrorResponseDto> response = handler.handleAuthentication(
                 new AuthenticationServiceException("auth error"),
                 request
         );
@@ -204,7 +204,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void handleGeneric_status500_doesNotLeakInternalDetails() {
-        ResponseEntity<ApiErrorResponse> response = handler.handleGeneric(
+        ResponseEntity<ApiErrorResponseDto> response = handler.handleGeneric(
                 new RuntimeException("DB password leaked: secret-123"),
                 request
         );
@@ -220,7 +220,7 @@ class GlobalExceptionHandlerTest {
     void handleMissingRequestPart_status400_withFieldError() {
         MissingServletRequestPartException ex = new MissingServletRequestPartException("file");
 
-        ResponseEntity<ApiErrorResponse> response = handler.handleMissingRequestPart(ex, request);
+        ResponseEntity<ApiErrorResponseDto> response = handler.handleMissingRequestPart(ex, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
@@ -238,7 +238,7 @@ class GlobalExceptionHandlerTest {
 
         BindException ex = new BindException(bindingResult);
 
-        ResponseEntity<ApiErrorResponse> response = handler.handleBindException(ex, request);
+        ResponseEntity<ApiErrorResponseDto> response = handler.handleBindException(ex, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
@@ -250,12 +250,12 @@ class GlobalExceptionHandlerTest {
 
     private static MethodParameter dummyMethodParameter() throws NoSuchMethodException {
         Method method = GlobalExceptionHandlerTest.class
-                .getDeclaredMethod("dummyEndpoint", CreateUserRequest.class);
+                .getDeclaredMethod("dummyEndpoint", CreateUserRequestDto.class);
         return new MethodParameter(method, 0);
     }
 
     @SuppressWarnings("unused")
-    private static void dummyEndpoint(CreateUserRequest request) {
+    private static void dummyEndpoint(CreateUserRequestDto request) {
         // Intencionalmente vacío: solo se usa para construir MethodParameter en tests.
     }
 }

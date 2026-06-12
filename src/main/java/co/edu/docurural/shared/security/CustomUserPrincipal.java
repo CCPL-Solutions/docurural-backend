@@ -36,7 +36,7 @@ public class CustomUserPrincipal implements UserDetails {
     private final UserStatus status;
     private final String passwordHash;
 
-    public CustomUserPrincipal(Long id, String email, UserRole role, UserStatus status, String passwordHash) {
+    private CustomUserPrincipal(Long id, String email, UserRole role, UserStatus status, String passwordHash) {
         this.id = id;
         this.email = email;
         this.role = role;
@@ -45,21 +45,26 @@ public class CustomUserPrincipal implements UserDetails {
     }
 
     /**
-     * Construye un principal a partir de la entidad {@code User} recargada desde BD.
-     * Refleja el estado y rol vigentes en el momento de la petición.
+     * Para el flujo de login ({@code DaoAuthenticationProvider}): incluye el hash BCrypt
+     * para que el proveedor pueda comparar la contraseña enviada.
+     */
+    public static CustomUserPrincipal forAuthentication(User user) {
+        return new CustomUserPrincipal(
+                user.getId(), user.getEmail(), user.getRole(), user.getStatus(), user.getPasswordHash());
+    }
+
+    /**
+     * Para el filtro JWT: construye el principal desde la entidad recargada de BD.
+     * No necesita el hash porque la autenticación ya fue validada criptográficamente.
      */
     public static CustomUserPrincipal fromEntity(User user) {
         return new CustomUserPrincipal(user.getId(), user.getEmail(), user.getRole(), user.getStatus(), null);
     }
 
     /**
-     * Construye un principal sin hash de contraseña; usado por el filtro JWT cuando
-     * los claims ya fueron validados criptográficamente.
-     *
-     * @deprecated Usar {@link #fromEntity(User)} en el filtro para reflejar estado real
-     * del usuario. Este método permanece para uso en tests.
+     * Construye un principal mínimo desde claims JWT cuando la entidad completa no está disponible.
+     * Útil para tests o contextos donde solo se tiene id, email y rol.
      */
-    @Deprecated
     public static CustomUserPrincipal fromJwtClaims(Long id, String email, UserRole role) {
         return new CustomUserPrincipal(id, email, role, UserStatus.ACTIVE, null);
     }

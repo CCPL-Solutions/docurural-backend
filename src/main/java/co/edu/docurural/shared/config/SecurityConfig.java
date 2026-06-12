@@ -1,6 +1,6 @@
 package co.edu.docurural.shared.config;
 
-import co.edu.docurural.shared.dto.ApiErrorResponse;
+import co.edu.docurural.shared.dto.ApiErrorResponseDto;
 import co.edu.docurural.shared.security.CustomUserDetailsService;
 import co.edu.docurural.shared.security.JwtAuthenticationFilter;
 import co.edu.docurural.shared.security.JwtProperties;
@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -55,7 +56,7 @@ import java.io.IOException;
  *
  * <p>Los errores de autenticación y autorización que ocurren <em>antes</em> de entrar
  * al controller (filtro JWT, rechazos del {@code FilterSecurityInterceptor}) se
- * serializan aquí con el mismo {@link ApiErrorResponse} que usa el
+ * serializan aquí con el mismo {@link ApiErrorResponseDto} que usa el
  * {@code GlobalExceptionHandler} para los errores capturados dentro del controller.
  * Así el cliente siempre recibe la misma estructura.
  */
@@ -67,6 +68,9 @@ import java.io.IOException;
 @Slf4j
 public class SecurityConfig {
 
+    @Value("${docurural.security.bcrypt-strength:12}")
+    private int bcryptStrength;
+
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomUserDetailsService customUserDetailsService;
     private final ObjectMapper objectMapper;
@@ -74,7 +78,7 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(12);
+        return new BCryptPasswordEncoder(bcryptStrength);
     }
 
     @Bean
@@ -169,7 +173,7 @@ public class SecurityConfig {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
 
-        ApiErrorResponse body = ApiErrorResponse.of(
+        ApiErrorResponseDto body = ApiErrorResponseDto.of(
                 status.value(),
                 status.getReasonPhrase(),
                 message);

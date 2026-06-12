@@ -4,6 +4,7 @@ import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.user.entity.User;
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.document.enums.DocumentStatus;
+import co.edu.docurural.shared.enums.SensitivityLevel;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import jakarta.persistence.Column;
@@ -76,6 +77,9 @@ public class Document {
     @Column(name = "file_size_bytes", nullable = false)
     private Long fileSizeBytes;
 
+    @Column(name = "file_hash", length = 64)
+    private String fileHash;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "uploaded_by", nullable = false)
     private User uploadedBy;
@@ -86,6 +90,10 @@ public class Document {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private DocumentStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "sensitivity_level", nullable = false, length = 20)
+    private SensitivityLevel sensitivityLevel;
 
     /** Garantiza que solo los documentos ACTIVE pueden editarse o descargarse. */
     public void assertEditable(String errorMessage) {
@@ -106,6 +114,9 @@ public class Document {
         }
         if (status == null) {
             status = DocumentStatus.ACTIVE;
+        }
+        if (sensitivityLevel == null) {
+            sensitivityLevel = SensitivityLevel.INTERNAL;
         }
     }
 }

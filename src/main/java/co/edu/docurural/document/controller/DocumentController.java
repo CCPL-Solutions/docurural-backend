@@ -1,17 +1,16 @@
 package co.edu.docurural.document.controller;
 
-import co.edu.docurural.document.dto.BatchUploadDocumentRequest;
-import co.edu.docurural.document.dto.BatchUploadDocumentResponse;
-import co.edu.docurural.document.dto.DeleteDocumentResponse;
-import co.edu.docurural.document.dto.DocumentDetailResponse;
-import co.edu.docurural.document.dto.DocumentFileContent;
-import co.edu.docurural.document.dto.DocumentListResponse;
-import co.edu.docurural.document.dto.FilterOptionsResponse;
-import co.edu.docurural.document.dto.UpdateDocumentMetadataRequest;
-import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
-import co.edu.docurural.document.dto.UploadDocumentRequest;
-import co.edu.docurural.document.dto.UploadDocumentResponse;
-import co.edu.docurural.document.enums.DocumentFormat;
+import co.edu.docurural.document.dto.BatchUploadDocumentRequestDto;
+import co.edu.docurural.document.dto.BatchUploadDocumentResponseDto;
+import co.edu.docurural.document.dto.DeleteDocumentResponseDto;
+import co.edu.docurural.document.dto.DocumentDetailResponseDto;
+import co.edu.docurural.document.dto.DocumentFileContentDto;
+import co.edu.docurural.document.dto.DocumentListResponseDto;
+import co.edu.docurural.document.dto.FilterOptionsResponseDto;
+import co.edu.docurural.document.dto.UpdateDocumentMetadataRequestDto;
+import co.edu.docurural.document.dto.UpdateDocumentMetadataResponseDto;
+import co.edu.docurural.document.dto.UploadDocumentRequestDto;
+import co.edu.docurural.document.dto.UploadDocumentResponseDto;
 import co.edu.docurural.document.service.DocumentBatchService;
 import co.edu.docurural.document.service.DocumentCommandService;
 import co.edu.docurural.document.service.DocumentContentService;
@@ -19,7 +18,9 @@ import co.edu.docurural.document.service.DocumentQueryService;
 import co.edu.docurural.document.service.DocumentSearchService;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.audit.AuditContextResolver;
-import co.edu.docurural.shared.dto.ApiErrorResponse;
+import co.edu.docurural.shared.dto.ApiErrorResponseDto;
+import co.edu.docurural.shared.util.ContentDispositionResolver;
+import co.edu.docurural.shared.util.FileNameSanitizer;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -54,9 +55,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
-import java.util.EnumSet;
 
 /**
  * Controlador REST del módulo de Documentos (DOC-01..DOC-08 / HU-09..HU-14, HU-20..HU-22).
@@ -77,9 +76,7 @@ public class DocumentController {
     private final DocumentContentService documentContentService;
     private final DocumentBatchService documentBatchService;
     private final AuditContextResolver auditContextResolver;
-
-    private static final EnumSet<DocumentFormat> INLINE_FORMATS =
-            EnumSet.of(DocumentFormat.PDF, DocumentFormat.JPG, DocumentFormat.PNG);
+    private final ContentDispositionResolver contentDispositionResolver;
 
     /**
      * DOC-01 / SRC-01 — HU-15, HU-20, HU-21, HU-22: lista y búsqueda paginada de documentos activos.
@@ -96,21 +93,21 @@ public class DocumentController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Lista de documentos retornada exitosamente",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = DocumentListResponse.class))),
+                            schema = @Schema(implementation = DocumentListResponseDto.class))),
             @ApiResponse(responseCode = "400", description = "Parámetros inválidos: q < 2 caracteres, "
                     + "dateFrom posterior a dateTo, size > 50, o campo/dirección de ordenamiento no soportados",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "500", description = "Error interno del servidor",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class)))
+                            schema = @Schema(implementation = ApiErrorResponseDto.class)))
     })
     @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'READER')")
     @GetMapping
-    public ResponseEntity<DocumentListResponse> list(
+    public ResponseEntity<DocumentListResponseDto> list(
             @Parameter(name = "q", description = "Texto libre de búsqueda (2–100 caracteres). Busca en título, descripción y nombre del archivo.", example = "acta")
             @RequestParam(value = "q", required = false) String q,
             @Parameter(name = "categoryId", description = "ID de categoría para filtrar documentos", example = "3")
@@ -134,8 +131,7 @@ public class DocumentController {
             Authentication authentication,
             HttpServletRequest httpRequest) {
 
-        boolean isAdmin = authentication != null && authentication.getAuthorities().stream()
-                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        boolean isAdmin = isAdmin(authentication);
         AuditContext audit = auditContextResolver.resolve(httpRequest);
 
         log.debug("GET /documents q='{}' categoryId={} responsibleArea='{}' dateFrom={} dateTo={} "
@@ -160,19 +156,18 @@ public class DocumentController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Opciones de filtro retornadas exitosamente",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = FilterOptionsResponse.class))),
+                            schema = @Schema(implementation = FilterOptionsResponseDto.class))),
             @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "500", description = "Error interno del servidor",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class)))
+                            schema = @Schema(implementation = ApiErrorResponseDto.class)))
     })
     @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'READER')")
     @GetMapping("/filter-options")
-    public ResponseEntity<FilterOptionsResponse> filterOptions(Authentication authentication) {
-        boolean isAdmin = authentication != null && authentication.getAuthorities().stream()
-                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+    public ResponseEntity<FilterOptionsResponseDto> filterOptions(Authentication authentication) {
+        boolean isAdmin = isAdmin(authentication);
         log.debug("GET /documents/filter-options isAdmin={}", isAdmin);
         return ResponseEntity.ok(documentSearchService.getFilterOptions(isAdmin));
     }
@@ -186,22 +181,23 @@ public class DocumentController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Ficha del documento retornada exitosamente",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = DocumentDetailResponse.class))),
+                            schema = @Schema(implementation = DocumentDetailResponseDto.class))),
             @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "404", description = "Documento no existe o fue eliminado",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "500", description = "Error interno del servidor",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class)))
+                            schema = @Schema(implementation = ApiErrorResponseDto.class)))
     })
     @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'READER')")
     @GetMapping("/{id}")
-    public ResponseEntity<DocumentDetailResponse> getById(@PathVariable Long id) {
+    public ResponseEntity<DocumentDetailResponseDto> getById(@PathVariable Long id, HttpServletRequest httpRequest) {
         log.debug("GET /documents/{}", id);
-        return ResponseEntity.ok(documentQueryService.findDetailById(id));
+        AuditContext audit = auditContextResolver.resolve(httpRequest);
+        return ResponseEntity.ok(documentQueryService.findDetailById(id, audit));
     }
 
     /**
@@ -214,31 +210,31 @@ public class DocumentController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Metadatos actualizados exitosamente",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = UpdateDocumentMetadataResponse.class))),
+                            schema = @Schema(implementation = UpdateDocumentMetadataResponseDto.class))),
             @ApiResponse(responseCode = "400", description = "Campos inválidos",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "403", description = "Sin permisos para editar el documento solicitado",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "404", description = "Documento no existe, fue eliminado o categoría inválida",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "500", description = "Error interno del servidor",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class)))
+                            schema = @Schema(implementation = ApiErrorResponseDto.class)))
     })
     @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR')")
     @PutMapping("/{id}")
-    public ResponseEntity<UpdateDocumentMetadataResponse> updateMetadata(
+    public ResponseEntity<UpdateDocumentMetadataResponseDto> updateMetadata(
             @PathVariable Long id,
-            @Valid @RequestBody UpdateDocumentMetadataRequest request,
+            @Valid @RequestBody UpdateDocumentMetadataRequestDto request,
             HttpServletRequest httpRequest) {
         log.debug("PUT /documents/{}", id);
-        UpdateDocumentMetadataResponse response = documentCommandService.updateMetadata(
+        UpdateDocumentMetadataResponseDto response = documentCommandService.updateMetadata(
                 id, request, auditContextResolver.resolve(httpRequest));
         return ResponseEntity.ok(response);
     }
@@ -253,27 +249,27 @@ public class DocumentController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Documento eliminado lógicamente",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = DeleteDocumentResponse.class))),
+                            schema = @Schema(implementation = DeleteDocumentResponseDto.class))),
             @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "403", description = "Acceso denegado (no ADMIN)",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "404", description = "No existe un documento activo con el ID indicado",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "500", description = "Error interno del servidor",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class)))
+                            schema = @Schema(implementation = ApiErrorResponseDto.class)))
     })
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<DeleteDocumentResponse> deleteLogical(
+    public ResponseEntity<DeleteDocumentResponseDto> deleteLogical(
             @PathVariable Long id,
             HttpServletRequest httpRequest) {
         log.debug("DELETE /documents/{}", id);
-        DeleteDocumentResponse response = documentCommandService.deleteLogical(
+        DeleteDocumentResponseDto response = documentCommandService.deleteLogical(
                 id, auditContextResolver.resolve(httpRequest));
         return ResponseEntity.ok(response);
     }
@@ -305,62 +301,23 @@ public class DocumentController {
                     }),
             @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "404", description = "Documento no existe o archivo físico no disponible",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "500", description = "Error interno del servidor",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class)))
+                            schema = @Schema(implementation = ApiErrorResponseDto.class)))
     })
     @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'READER')")
     @GetMapping("/{id}/view")
     public ResponseEntity<Resource> view(@PathVariable Long id, HttpServletRequest httpRequest) {
         log.debug("GET /documents/{}/view", id);
         AuditContext audit = auditContextResolver.resolve(httpRequest);
-        DocumentFileContent content = documentContentService.openForView(id, audit);
-
-        MediaType mediaType = mediaTypeFor(content.format());
-        ContentDisposition disposition = INLINE_FORMATS.contains(content.format())
-                ? ContentDisposition.inline()
-                  .filename(content.originalFileName(), StandardCharsets.UTF_8).build()
-                : ContentDisposition.attachment()
-                  .filename(content.originalFileName(), StandardCharsets.UTF_8).build();
-
-        return ResponseEntity.ok()
-                .contentType(mediaType)
-                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
-                .contentLength(content.fileSizeBytes())
-                .header("X-File-Name", sanitizeForHeader(content.originalFileName()))
-                .header("X-File-Size", String.valueOf(content.fileSizeBytes()))
-                .body(content.resource());
-    }
-
-    private static MediaType mediaTypeFor(DocumentFormat format) {
-        return switch (format) {
-            case PDF -> MediaType.APPLICATION_PDF;
-            case JPG -> MediaType.IMAGE_JPEG;
-            case PNG -> MediaType.IMAGE_PNG;
-            case DOCX -> MediaType.parseMediaType(
-                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-            case XLSX -> MediaType.parseMediaType(
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        };
-    }
-
-    private static String sanitizeForHeader(String filename) {
-        if (filename == null || filename.isBlank()) {
-            return "file";
-        }
-        String sanitized = filename
-                .replaceAll("\\p{Cntrl}", "")
-                .replace("/", "")
-                .replace("\\", "")
-                .trim();
-        if (sanitized.isEmpty()) {
-            return "file";
-        }
-        return sanitized.length() <= 255 ? sanitized : sanitized.substring(0, 255);
+        DocumentFileContentDto content = documentContentService.openForView(id, audit);
+        ContentDisposition disposition = contentDispositionResolver.forView(
+                content.format(), content.originalFileName());
+        return buildFileResponse(content, disposition);
     }
 
     /**
@@ -391,31 +348,38 @@ public class DocumentController {
                     }),
             @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "404", description = "Documento no existe o archivo físico no disponible",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "500", description = "Error interno del servidor",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class)))
+                            schema = @Schema(implementation = ApiErrorResponseDto.class)))
     })
     @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'READER')")
     @GetMapping("/{id}/download")
     public ResponseEntity<Resource> download(@PathVariable Long id, HttpServletRequest httpRequest) {
         log.debug("GET /documents/{}/download", id);
         AuditContext audit = auditContextResolver.resolve(httpRequest);
-        DocumentFileContent content = documentContentService.openForDownload(id, audit);
+        DocumentFileContentDto content = documentContentService.openForDownload(id, audit);
+        ContentDisposition disposition = contentDispositionResolver.forDownload(content.originalFileName());
+        return buildFileResponse(content, disposition);
+    }
 
-        ContentDisposition disposition = ContentDisposition.attachment()
-                .filename(content.originalFileName(), StandardCharsets.UTF_8).build();
-
+    private ResponseEntity<Resource> buildFileResponse(DocumentFileContentDto content,
+                                                        ContentDisposition disposition) {
         return ResponseEntity.ok()
-                .contentType(mediaTypeFor(content.format()))
+                .contentType(content.format().toMediaType())
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .contentLength(content.fileSizeBytes())
-                .header("X-File-Name", sanitizeForHeader(content.originalFileName()))
+                .header("X-File-Name", FileNameSanitizer.forHttpHeader(content.originalFileName()))
                 .header("X-File-Size", String.valueOf(content.fileSizeBytes()))
                 .body(content.resource());
+    }
+
+    private static boolean isAdmin(Authentication authentication) {
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
     }
 
     /**
@@ -427,37 +391,37 @@ public class DocumentController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Documento cargado exitosamente",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = UploadDocumentResponse.class))),
+                            schema = @Schema(implementation = UploadDocumentResponseDto.class))),
             @ApiResponse(responseCode = "400", description = "Campos obligatorios faltantes o inválidos",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "403", description = "Acceso denegado (rol READER)",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "404", description = "Categoría no existe o está inactiva",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "413", description = "El archivo supera el tamaño máximo de 10 MB",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "415", description = "Tipo de archivo no permitido",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "500", description = "Error interno del servidor",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class)))
+                            schema = @Schema(implementation = ApiErrorResponseDto.class)))
     })
     @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR')")
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<UploadDocumentResponse> upload(
-            @Valid @ModelAttribute UploadDocumentRequest request,
+    public ResponseEntity<UploadDocumentResponseDto> upload(
+            @Valid @ModelAttribute UploadDocumentRequestDto request,
             @RequestPart("file") MultipartFile file,
             HttpServletRequest httpRequest) {
         log.debug("POST /documents title='{}' categoryId={}", request.title(), request.categoryId());
-        UploadDocumentResponse response = documentCommandService.upload(
+        UploadDocumentResponseDto response = documentCommandService.upload(
                 request, file, auditContextResolver.resolve(httpRequest));
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -479,35 +443,35 @@ public class DocumentController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Lote procesado. Revisar results[] para el estado individual de cada archivo.",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = BatchUploadDocumentResponse.class))),
+                            schema = @Schema(implementation = BatchUploadDocumentResponseDto.class))),
             @ApiResponse(responseCode = "400", description = "Más de 5 archivos, lote vacío, títulos inválidos o campos comunes faltantes",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "401", description = "Token ausente o expirado",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "403", description = "Acceso denegado (rol READER)",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "404", description = "La categoría indicada no existe o está inactiva",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "413", description = "El tamaño total del lote supera el límite del servidor",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class))),
+                            schema = @Schema(implementation = ApiErrorResponseDto.class))),
             @ApiResponse(responseCode = "500", description = "Error interno del servidor",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ApiErrorResponse.class)))
+                            schema = @Schema(implementation = ApiErrorResponseDto.class)))
     })
     @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR')")
     @PostMapping(value = "/batch", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<BatchUploadDocumentResponse> uploadBatch(
-            @Valid @ModelAttribute BatchUploadDocumentRequest request,
+    public ResponseEntity<BatchUploadDocumentResponseDto> uploadBatch(
+            @Valid @ModelAttribute BatchUploadDocumentRequestDto request,
             @RequestPart("files") MultipartFile[] files,
             HttpServletRequest httpRequest) {
         log.debug("POST /documents/batch totalFiles={} categoryId={}",
                 files != null ? files.length : 0, request.categoryId());
-        BatchUploadDocumentResponse response = documentBatchService.uploadBatch(
+        BatchUploadDocumentResponseDto response = documentBatchService.uploadBatch(
                 request, files, auditContextResolver.resolve(httpRequest));
         return ResponseEntity.ok(response);
     }

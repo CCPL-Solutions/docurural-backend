@@ -40,6 +40,7 @@ server:
 
 docurural:
   security:
+    bcrypt-strength: ${DOCURURAL_BCRYPT_STRENGTH:12}
     jwt:
       secret: ${JWT_SECRET}
       expiration-ms: ${JWT_EXPIRATION_MS:1800000}

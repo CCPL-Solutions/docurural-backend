@@ -1,13 +1,14 @@
 package co.edu.docurural.document.mapper;
 
-import co.edu.docurural.document.dto.DocumentDetailResponse;
-import co.edu.docurural.document.dto.DocumentListResponse;
-import co.edu.docurural.document.dto.UpdateDocumentMetadataResponse;
-import co.edu.docurural.document.dto.UploadDocumentResponse;
+import co.edu.docurural.document.dto.DocumentDetailResponseDto;
+import co.edu.docurural.document.dto.DocumentListResponseDto;
+import co.edu.docurural.document.dto.UpdateDocumentMetadataResponseDto;
+import co.edu.docurural.document.dto.UploadDocumentResponseDto;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.support.TestFixtures;
 import org.junit.jupiter.api.Test;
+import org.mapstruct.factory.Mappers;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -20,13 +21,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class DocumentMapperTest {
 
+    private final DocumentMapper mapper = Mappers.getMapper(DocumentMapper.class);
+
     @Test
     void toUploadResponse_mapsAllFieldsCorrectly() {
         var category = TestFixtures.categoryActive(1L, "Actas");
         var user = TestFixtures.userAdmin(10L);
         Document doc = TestFixtures.documentActive(48L, category, user);
 
-        UploadDocumentResponse response = DocumentMapper.toUploadResponse(doc, "Documento cargado exitosamente");
+        UploadDocumentResponseDto response = mapper.toUploadResponse(doc, "Documento cargado exitosamente");
 
         assertThat(response.id()).isEqualTo(48L);
         assertThat(response.title()).isEqualTo("Acta Consejo Directivo Marzo 2026");
@@ -46,14 +49,14 @@ class DocumentMapperTest {
         Document doc = TestFixtures.documentActive(1L, category, user);
         doc.setFileFormat(null);
 
-        UploadDocumentResponse response = DocumentMapper.toUploadResponse(doc, "ok");
+        UploadDocumentResponseDto response = mapper.toUploadResponse(doc, "ok");
 
         assertThat(response.fileFormat()).isNull();
     }
 
     @Test
     void toUploadResponse_throwsOnNullDocument() {
-        assertThatThrownBy(() -> DocumentMapper.toUploadResponse(null, "msg"))
+        assertThatThrownBy(() -> mapper.toUploadResponse(null, "msg"))
                 .isInstanceOf(NullPointerException.class);
     }
 
@@ -66,8 +69,9 @@ class DocumentMapperTest {
         var category = TestFixtures.categoryActive(1L, "Actas", "Actas de reuniones");
         var user = TestFixtures.userAdmin(10L);
         Document doc = TestFixtures.documentActive(48L, category, user);
+        doc.setFileHash("3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7");
 
-        DocumentDetailResponse response = DocumentMapper.toDetailResponse(doc);
+        DocumentDetailResponseDto response = mapper.toDetailResponse(doc);
 
         assertThat(response.id()).isEqualTo(48L);
         assertThat(response.title()).isEqualTo(doc.getTitle());
@@ -82,6 +86,7 @@ class DocumentMapperTest {
         assertThat(response.uploadedBy().id()).isEqualTo(10L);
         assertThat(response.uploadedBy().fullName()).isEqualTo(user.getFullName());
         assertThat(response.createdAt()).isEqualTo(TestFixtures.FIXED_CREATED_AT);
+        assertThat(response.fileHash()).isEqualTo("3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7");
     }
 
     @Test
@@ -91,14 +96,14 @@ class DocumentMapperTest {
         Document doc = TestFixtures.documentActive(48L, category, user);
         doc.setDescription(null);
 
-        DocumentDetailResponse response = DocumentMapper.toDetailResponse(doc);
+        DocumentDetailResponseDto response = mapper.toDetailResponse(doc);
 
         assertThat(response.description()).isNull();
     }
 
     @Test
     void toDetailResponse_throwsOnNullDocument() {
-        assertThatThrownBy(() -> DocumentMapper.toDetailResponse(null))
+        assertThatThrownBy(() -> mapper.toDetailResponse(null))
                 .isInstanceOf(NullPointerException.class);
     }
 
@@ -109,8 +114,8 @@ class DocumentMapperTest {
         Document doc = TestFixtures.documentActive(47L, category, user);
         doc.setTitle("Acta Consejo Directivo Marzo 2026 - Revisado");
 
-        UpdateDocumentMetadataResponse response =
-                DocumentMapper.toUpdateMetadataResponse(doc, "Documento actualizado exitosamente");
+        UpdateDocumentMetadataResponseDto response =
+                mapper.toUpdateMetadataResponse(doc, "Documento actualizado exitosamente");
 
         assertThat(response.id()).isEqualTo(47L);
         assertThat(response.title()).isEqualTo("Acta Consejo Directivo Marzo 2026 - Revisado");
@@ -122,7 +127,7 @@ class DocumentMapperTest {
 
     @Test
     void toUpdateMetadataResponse_throwsOnNullDocument() {
-        assertThatThrownBy(() -> DocumentMapper.toUpdateMetadataResponse(null, "ok"))
+        assertThatThrownBy(() -> mapper.toUpdateMetadataResponse(null, "ok"))
                 .isInstanceOf(NullPointerException.class);
     }
 
@@ -139,7 +144,7 @@ class DocumentMapperTest {
         PageRequest pageRequest = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Document> page = new PageImpl<>(List.of(doc), pageRequest, 1L);
 
-        DocumentListResponse response = DocumentMapper.toListResponse(page, 1, 20);
+        DocumentListResponseDto response = mapper.toListResponse(page, 1, 20);
 
         assertThat(response.totalDocuments()).isEqualTo(1);
         assertThat(response.totalPages()).isEqualTo(1);
@@ -163,7 +168,7 @@ class DocumentMapperTest {
     void toListResponse_returnsEmptyListAndZeroTotals_whenPageIsEmpty() {
         Page<Document> page = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0L);
 
-        DocumentListResponse response = DocumentMapper.toListResponse(page, 1, 20);
+        DocumentListResponseDto response = mapper.toListResponse(page, 1, 20);
 
         assertThat(response.totalDocuments()).isEqualTo(0);
         assertThat(response.totalPages()).isEqualTo(0);
@@ -174,7 +179,7 @@ class DocumentMapperTest {
 
     @Test
     void toListResponse_throwsOnNullPage() {
-        assertThatThrownBy(() -> DocumentMapper.toListResponse(null, 1, 20))
+        assertThatThrownBy(() -> mapper.toListResponse(null, 1, 20))
                 .isInstanceOf(NullPointerException.class);
     }
 }
