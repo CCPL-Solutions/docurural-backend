@@ -33,7 +33,7 @@ jobs:
         run: mvn verify --batch-mode --no-transfer-progress
 
       - name: Publicar reporte de pruebas
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: reporte-pruebas
