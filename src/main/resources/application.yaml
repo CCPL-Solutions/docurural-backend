@@ -38,6 +38,15 @@ server:
   servlet:
     context-path: /api
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
 docurural:
   security:
     bcrypt-strength: ${DOCURURAL_BCRYPT_STRENGTH:12}
