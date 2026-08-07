@@ -41,7 +41,7 @@ class FileStorageServiceTest {
         lenient().when(messageResolver.get(anyString())).thenAnswer(inv -> inv.getArgument(0));
         StorageProperties props = new StorageProperties();
         props.setBasePath(tempDir.toString());
-        fileStorageService = new FileStorageService(props, messageResolver);
+        fileStorageService = new LocalFileStorageService(props, messageResolver);
     }
 
     @Test

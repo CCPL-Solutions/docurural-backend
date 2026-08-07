@@ -12,8 +12,8 @@
 | Controlador REST      | `{Dominio}Controller`          | `DocumentController`           |
 | Repositorio           | `{Dominio}Repository`          | `DocumentRepository`           |
 | Mapper                | `{Dominio}Mapper`              | `DocumentMapper`               |
-| DTO de entrada        | `{Accion}{Dominio}RequestDto`  | `UploadDocumentRequest`        |
-| DTO de salida         | `{Accion}{Dominio}ResponseDto` | `UploadDocumentResponse`       |
+| DTO de entrada        | `{Accion}{Dominio}RequestDto`  | `UploadDocumentRequestDtoDto`  |
+| DTO de salida         | `{Accion}{Dominio}ResponseDto` | `UploadDocumentResponseDto`    |
 | DTOs en general       | `{Concepto}Dto`                | `DocumentSummaryDto`           |
 | Enum                  | `{Dominio}{Concepto}`          | `DocumentStatus`, `UserRole`   |
 | Excepcion de dominio  | `{Concepto}Exception`          | `BusinessRuleException`        |
@@ -72,7 +72,7 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
 Usar `record` de Java para todos los DTOs de request/response. Son inmutables por diseño.
 
 ```java
-public record UploadDocumentRequest(
+public record UploadDocumentRequestDto(
         @NotBlank String title,
         @NotNull Long categoryId
 ) {
@@ -95,7 +95,7 @@ Estándar por nivel:
 @Slf4j
 @Service
 public class DocumentCommandServiceImpl {
-    public UploadDocumentResponse upload(...) {
+    public UploadDocumentResponseDto upload(...) {
         log.info("Uploading document title='{}' by userId={}", request.title(), audit.actorUserId());
         // ...
         log.debug("File stored at path={}", filePath);
@@ -160,7 +160,7 @@ Todo método de servicio que mute estado recibe `AuditContext` (actorUserId + cl
 generalmente el último).
 
 ```java
-UploadDocumentResponse upload(UploadDocumentRequest request, MultipartFile file, AuditContext audit);
+UploadDocumentResponseDto upload(UploadDocumentRequestDtoDto request, MultipartFile file, AuditContext audit);
 ```
 
 ## Errores de negocio

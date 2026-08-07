@@ -1,6 +1,6 @@
 spring:
   config:
-    import: optional:aws-parameterstore:/docurural/prod/
+    import: optional:aws-parameterstore:/docurural/qa/
   jpa:
     show-sql: false
 
@@ -17,9 +17,3 @@ logging:
   level:
     root: INFO
     co.edu.docurural: INFO
-
-springdoc:
-  api-docs:
-    enabled: false
-  swagger-ui:
-    enabled: false
