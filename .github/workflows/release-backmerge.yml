@@ -24,14 +24,23 @@ jobs:
        startsWith(github.event.pull_request.head.ref, 'hotfix/'))
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout del código
+      - name: Checkout del código (historial completo)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Crear PR hacia develop si no existe uno abierto
+      - name: Crear PR hacia develop si hay commits pendientes y no existe uno abierto
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SOURCE_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
+          git fetch origin develop "$SOURCE_BRANCH" --quiet
+          PENDING=$(git rev-list --count "origin/develop..origin/$SOURCE_BRANCH")
+          if [ "$PENDING" = "0" ]; then
+            echo "No hay commits en $SOURCE_BRANCH que no estén ya en develop — no hace falta back-merge."
+            exit 0
+          fi
+
           EXISTING=$(gh pr list --base develop --head "$SOURCE_BRANCH" --state open --json number --jq 'length')
           if [ "$EXISTING" != "0" ]; then
             echo "Ya existe un PR abierto de $SOURCE_BRANCH hacia develop — no se crea uno nuevo."
