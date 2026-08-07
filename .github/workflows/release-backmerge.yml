@@ -1,0 +1,45 @@
+name: Release Back-merge — release/hotfix hacia develop
+
+# Cuando se cierra (mergea) un PR de release/* o hotfix/* hacia main, abre
+# automáticamente un PR de esa misma rama hacia develop, para no perder los
+# fixes acumulados durante la certificación (ver flujo CI/CD, paso de cierre
+# de release).
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  back-merge:
+    name: Abrir PR de back-merge hacia develop
+    if: >
+      github.event.pull_request.merged == true &&
+      (startsWith(github.event.pull_request.head.ref, 'release/') ||
+       startsWith(github.event.pull_request.head.ref, 'hotfix/'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Crear PR hacia develop si no existe uno abierto
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          EXISTING=$(gh pr list --base develop --head "$SOURCE_BRANCH" --state open --json number --jq 'length')
+          if [ "$EXISTING" != "0" ]; then
+            echo "Ya existe un PR abierto de $SOURCE_BRANCH hacia develop — no se crea uno nuevo."
+            exit 0
+          fi
+
+          gh pr create \
+            --base develop \
+            --head "$SOURCE_BRANCH" \
+            --title "chore: back-merge $SOURCE_BRANCH → develop" \
+            --body "Back-merge automático tras certificar y mergear \`$SOURCE_BRANCH\` a \`main\` (PR #${{ github.event.pull_request.number }}). Trae a \`develop\` los fixes acumulados durante la certificación."

@@ -1,80 +1,50 @@
 name: CD — Despliegue a QA
 
+# Se dispara con cada push a una rama de corte de release o de hotfix. Cubre tanto
+# el primer despliegue de la certificación (rc.1) como cada fix que QA reporta
+# durante la certificación (rc.2, rc.3, ...) — ver .claude/plans (flujo CI/CD).
+
 on:
   push:
     branches:
-      - develop
+      - 'release/**'
+      - 'hotfix/**'
 
 permissions:
   contents: read
   packages: write
 
 jobs:
-  deploy-qa:
-    name: Construir y desplegar en entorno QA
-    runs-on: [self-hosted, qa, docurural-backend]  # Runner self-hosted del EC2
-
+  compute-version:
+    name: Calcular versión de release candidate
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.compute.outputs.version }}
     steps:
-      - name: Checkout del código
-        uses: actions/checkout@v4
-
-      - name: Configurar Java 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: maven
-          server-id: github
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_PASSWORD
-
-      - name: Construir el JAR
-        run: mvn package --batch-mode --no-transfer-progress -DskipTests
-
-      - name: Publicar JAR en GitHub Packages
-        run: mvn deploy --batch-mode --no-transfer-progress -DskipTests
-        env:
-          MAVEN_USERNAME: ${{ github.actor }}
-          MAVEN_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Detener el servicio antes de reemplazar el JAR
-        run: sudo systemctl stop docurural
-        # El servicio puede no estar activo en el primer despliegue — ignorar error
-        continue-on-error: true
-
-      - name: Reemplazar el JAR en el servidor
+      - name: Calcular version efectiva a partir del nombre de la rama
+        id: compute
         run: |
-          cp target/docurural-backend-*.jar /opt/docurural/backend/docurural-api.jar
+          BRANCH="${{ github.ref_name }}"
+          BASE="${BRANCH#release/}"
+          BASE="${BASE#hotfix/}"
 
-      - name: Arrancar el servicio
-        run: |
-          sudo systemctl enable docurural
-          sudo systemctl start docurural
-
-      - name: Verificar que el servicio quedó activo
-        run: |
-          sleep 15
-          sudo systemctl status docurural --no-pager
-          sudo systemctl is-active docurural --quiet
-
-      - name: Health check del backend
-        run: |
-          sleep 5
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/auth/health || echo "000")
-          echo "HTTP status: $HTTP_STATUS"
-          if [ "$HTTP_STATUS" != "200" ]; then
-            echo "ADVERTENCIA: Health check retornó $HTTP_STATUS — revisar logs del servicio"
-            tail -50 /opt/docurural/logs/app.log
+          if ! [[ "$BASE" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "La rama '$BRANCH' no sigue el patrón release|hotfix/x.y.z — no se puede calcular la versión."
+            exit 1
           fi
-        continue-on-error: true   # No bloquear el deploy si el endpoint no existe aún
 
-      - name: Resumen del despliegue
-        if: always()
-        run: |
-          echo "====================================================="
-          echo "Despliegue QA — $(date)"
-          echo "Commit: ${{ github.sha }}"
-          echo "Rama:   ${{ github.ref_name }}"
-          echo "Actor:  ${{ github.actor }}"
-          echo "====================================================="
-          sudo systemctl status docurural --no-pager || true
+          VERSION="${BASE}-rc.${{ github.run_number }}"
+          echo "Versión calculada: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Desplegar en QA
+    needs: compute-version
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      environment: qa
+      runner_label: qa
+      version: ${{ needs.compute-version.outputs.version }}
+      spring_profile: qa
+      publish_package: true
+    secrets: inherit

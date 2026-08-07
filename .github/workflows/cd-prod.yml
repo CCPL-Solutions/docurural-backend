@@ -1,0 +1,58 @@
+name: CD — Despliegue a Producción
+
+# Se dispara al crear un tag semántico (ej. v1.4.0), típicamente inmediatamente
+# después de mergear la release certificada a main. El GitHub Environment
+# "production" tiene required reviewers configurados — el job de despliegue
+# queda en espera de aprobación manual antes de tocar el servidor.
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  verify-tag:
+    name: Verificar que el tag proviene de main
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.compute.outputs.version }}
+    steps:
+      - name: Checkout del código (historial completo)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Confirmar que el commit del tag está en main
+        run: |
+          git fetch origin main --quiet
+          if ! git merge-base --is-ancestor "${{ github.sha }}" origin/main; then
+            echo "El tag ${{ github.ref_name }} no apunta a un commit de main — abortando."
+            exit 1
+          fi
+
+      - name: Calcular versión a partir del tag
+        id: compute
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "El tag '${{ github.ref_name }}' no sigue el patrón vX.Y.Z."
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Desplegar en Producción
+    needs: verify-tag
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      environment: production
+      runner_label: prod
+      version: ${{ needs.verify-tag.outputs.version }}
+      spring_profile: prod
+      publish_package: true
+      create_release: true
+    secrets: inherit

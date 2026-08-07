@@ -2,13 +2,16 @@ name: CI — Integración Continua
 
 on:
   push:
-    branches-ignore:
-      - main
-      - develop
+    branches:
+      - 'feature/**'
+      - 'bugfix/**'
+      - 'hotfix/**'
   pull_request:
     branches:
       - develop
       - main
+      - 'release/**'
+      - 'hotfix/**'
 
 jobs:
   build-and-test:

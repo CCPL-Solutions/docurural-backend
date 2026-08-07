@@ -1,0 +1,43 @@
+name: CD — Despliegue a Desarrollo
+
+on:
+  push:
+    branches:
+      - develop
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  read-version:
+    name: Leer versión del pom
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.pom-version.outputs.version }}
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+      - name: Leer version del pom
+        id: pom-version
+        run: |
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout --batch-mode --no-transfer-progress)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Desplegar en Desarrollo
+    needs: read-version
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      environment: development
+      runner_label: dev
+      version: ${{ needs.read-version.outputs.version }}
+      spring_profile: dev
+      publish_package: false
+    secrets: inherit
