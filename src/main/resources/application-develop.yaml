@@ -1,4 +1,6 @@
 spring:
+  config:
+    import: optional:aws-parameterstore:/docurural/develop/
   jpa:
     show-sql: true
     properties:
