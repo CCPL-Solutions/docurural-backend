@@ -83,11 +83,11 @@ cp .env.example .env
 
 Los perfiles se configuran en `application-<perfil>.yaml` y se activan con `SPRING_PROFILES_ACTIVE`.
 
-| Perfil  | Descripción                                                                                          |
-|---------|------------------------------------------------------------------------------------------------------|
-| `dev`   | Logs SQL + nivel `DEBUG`. Sin Parameter Store; secretos vienen del `.env`.                          |
-| `qa`    | Entorno de certificación. Importa secretos de `/docurural/qa/` en Parameter Store.                  |
-| `prod`  | Producción. Importa secretos de `/docurural/prod/` en Parameter Store. Swagger UI deshabilitado.    |
+| Perfil | Descripción                                                                                      |
+|--------|--------------------------------------------------------------------------------------------------|
+| `dev`  | Logs SQL + nivel `DEBUG`. Sin Parameter Store; secretos vienen del `.env`.                       |
+| `qa`   | Entorno de certificación. Importa secretos de `/docurural/qa/` en Parameter Store.               |
+| `prod` | Producción. Importa secretos de `/docurural/prod/` en Parameter Store. Swagger UI deshabilitado. |
 
 La resolución de secretos sigue un orden de prioridad: **Parameter Store → variable de entorno → valor por defecto**.
 En `dev`, donde no hay Parameter Store configurado, basta con definir las variables en el `.env`.
@@ -249,7 +249,7 @@ Todos los endpoints de categorías requieren rol **`ADMIN`**.
 
 | Método   | Ruta                        | Acceso                      | HU             | Descripción                                                                                                                                        |
 |----------|-----------------------------|-----------------------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
-| `GET`    | `/documents`                | `ADMIN`, `EDITOR`, `READER` | HU-15/20/21/22 | Lista paginada con búsqueda y filtrado. Ver sección [Búsqueda y filtrado](#búsqueda-y-filtrado-de-documentos).                                      |
+| `GET`    | `/documents`                | `ADMIN`, `EDITOR`, `READER` | HU-15/20/21/22 | Lista paginada con búsqueda y filtrado. Ver sección [Búsqueda y filtrado](#búsqueda-y-filtrado-de-documentos).                                     |
 | `GET`    | `/documents/filter-options` | `ADMIN`, `EDITOR`, `READER` | HU-21          | Opciones para los selectores del panel de filtros: categorías activas y (solo ADMIN) usuarios activos.                                             |
 | `GET`    | `/documents/{id}`           | `ADMIN`, `EDITOR`, `READER` | HU-11/HU-30    | Retorna la ficha completa de metadatos de un documento activo, incluyendo `fileHash` SHA-256 cuando esté disponible (DOC-02).                      |
 | `PUT`    | `/documents/{id}`           | `ADMIN`, `EDITOR`           | HU-13          | Edita metadatos (`title`, `description`, `categoryId`, `responsibleArea`, `documentDate`). `EDITOR` solo puede editar documentos propios (DOC-05). |
@@ -261,8 +261,8 @@ Todos los endpoints de categorías requieren rol **`ADMIN`**.
 
 ### Dashboard
 
-| Método | Ruta               | Acceso                      | HU             | Descripción                                                                                                   |
-|--------|--------------------|-----------------------------|----------------|---------------------------------------------------------------------------------------------------------------|
+| Método | Ruta               | Acceso                      | HU             | Descripción                                                                                                       |
+|--------|--------------------|-----------------------------|----------------|-------------------------------------------------------------------------------------------------------------------|
 | `GET`  | `/dashboard/stats` | `ADMIN`, `EDITOR`, `READER` | HU-24/25/26/27 | Retorna en una sola llamada totales del repositorio, distribución por categoría y últimos 10 documentos (DSH-01). |
 
 ### Almacenamiento de archivos
@@ -270,10 +270,10 @@ Todos los endpoints de categorías requieren rol **`ADMIN`**.
 Todos los entornos usan S3 por defecto (`DOCURURAL_STORAGE_PROVIDER=s3`). El proveedor `local` está disponible para
 escenarios sin conectividad AWS.
 
-| Proveedor | Ruta del archivo                                                   |
-|-----------|--------------------------------------------------------------------|
-| `s3`      | `{key-prefix}/{año}/{mes}/{uuid}.{ext}` dentro del bucket          |
-| `local`   | `{base-path}/{año}/{mes}/{uuid}.{ext}` en el sistema de archivos   |
+| Proveedor | Ruta del archivo                                                 |
+|-----------|------------------------------------------------------------------|
+| `s3`      | `{key-prefix}/{año}/{mes}/{uuid}.{ext}` dentro del bucket        |
+| `local`   | `{base-path}/{año}/{mes}/{uuid}.{ext}` en el sistema de archivos |
 
 En ambos casos, `documents.file_path` persiste solo la ruta relativa `{año}/{mes}/{uuid}.{ext}` para desacoplar el
 registro de la ubicación física. El tipo MIME se valida por contenido real (magic bytes) mediante Apache Tika.
@@ -285,19 +285,19 @@ y el campo queda en `NULL`.
 
 Los perfiles `qa` y `prod` importan secretos automáticamente desde Parameter Store al arrancar:
 
-| Perfil | Namespace                   |
-|--------|-----------------------------|
-| `qa`   | `/docurural/qa/`            |
-| `prod` | `/docurural/prod/`          |
+| Perfil | Namespace          |
+|--------|--------------------|
+| `qa`   | `/docurural/qa/`   |
+| `prod` | `/docurural/prod/` |
 
 Las claves SSM esperadas en cada namespace son:
 
-| Clave SSM        | Propiedad Spring                      |
-|------------------|---------------------------------------|
-| `db-password`    | `spring.datasource.password`          |
-| `jwt-secret`     | `docurural.security.jwt.secret`       |
-| `s3-bucket-docs` | `docurural.storage.s3.bucket`         |
-| `aws-region`     | `docurural.storage.s3.region`         |
+| Clave SSM        | Propiedad Spring                |
+|------------------|---------------------------------|
+| `db-password`    | `spring.datasource.password`    |
+| `jwt-secret`     | `docurural.security.jwt.secret` |
+| `s3-bucket-docs` | `docurural.storage.s3.bucket`   |
+| `aws-region`     | `docurural.storage.s3.region`   |
 
 En `dev` no se importa Parameter Store; los mismos secretos se resuelven desde las variables de entorno del `.env`.
 
@@ -361,30 +361,24 @@ Flyway gestiona el versionado del esquema. Las migraciones se encuentran en:
 
 ```
 src/main/resources/db/migration/
-├── V1__init_schema.sql                            # Crea las 4 tablas base del sistema
-├── V2__seed_categories.sql                        # Carga las 8 categorías documentales predefinidas
-├── V3__add_token_version.sql                      # Agrega token_version a users (revocación de JWT)
-├── V4__normalize_email_lowercase.sql              # Normalización de emails e índice funcional
-├── V5__add_document_date_index.sql                # Índice en documents.document_date (Sprint 3)
-├── V6__add_category_default_sensitivity_level.sql # Sensibilidad por defecto en categorías (HU-28B)
-├── V7__add_document_sensitivity_level.sql         # Sensibilidad en documentos (HU-28/HU-29)
-└── V8__add_document_file_hash.sql                 # Hash SHA-256 por documento (HU-30)
+├── V1__init_schema.sql       # Esquema consolidado: 4 tablas base, constraints e índices
+└── V2__seed_categories.sql   # Carga las 8 categorías documentales predefinidas
 ```
 
 El modo DDL de Hibernate es `validate`: **nunca crea ni modifica tablas automáticamente**.
 
 ### Categorías predefinidas
 
-| Categoría       | Descripción                                                             |
-|-----------------|-------------------------------------------------------------------------|
-| Actas           | Actas de reuniones, consejos directivos, comités                        |
-| Resoluciones    | Resoluciones rectorales y administrativas                               |
-| Matrículas      | Documentos de inscripción y registro de estudiantes                     |
-| Certificados    | Constancias de estudio, certificados de notas, diplomas                 |
-| Correspondencia | Comunicados oficiales enviados y recibidos                              |
-| Informes        | Informes pedagógicos, académicos, de gestión                            |
-| Normatividad    | Manuales de convivencia, PEI, planes de área, protocolos de laboratorio |
-| Otro            | Documentos que no corresponden a ninguna categoría anterior             |
+| Categoría       | Descripción                                                             | Sensibilidad por defecto |
+|-----------------|-------------------------------------------------------------------------|--------------------------|
+| Actas           | Actas de reuniones, consejos directivos, comités                        | INTERNAL                 |
+| Resoluciones    | Resoluciones rectorales y administrativas                               | INTERNAL                 |
+| Matrículas      | Documentos de inscripción y registro de estudiantes                     | RESTRICTED               |
+| Certificados    | Constancias de estudio, certificados de notas, diplomas                 | RESTRICTED               |
+| Correspondencia | Comunicados oficiales enviados y recibidos                              | INTERNAL                 |
+| Informes        | Informes pedagógicos, académicos, de gestión                            | INTERNAL                 |
+| Normatividad    | Manuales de convivencia, PEI, planes de área, protocolos de laboratorio | INTERNAL                 |
+| Otro            | Documentos que no corresponden a ninguna categoría anterior             | INTERNAL                 |
 
 Para el diagrama entidad-relación y la descripción detallada de tablas, consulta
 [`docs/modelo-datos.md`](docs/modelo-datos.md).

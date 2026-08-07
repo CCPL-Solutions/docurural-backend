@@ -159,14 +159,15 @@ Metadatos de los documentos cargados al sistema.
 `idx_documents_created_at`, `idx_documents_status`, `idx_documents_document_date`,
 `idx_documents_sensitivity_level`
 
-> **V5:** se añadió `idx_documents_document_date` para acelerar los filtros por rango de fecha (`dateFrom` / `dateTo`)
-> del endpoint SRC-01. La búsqueda por texto libre se implementa con `ILIKE` (sin `pg_trgm`); si en el futuro el
-> volumen supera los 10 000 registros se recomienda un índice GIN con `pg_trgm` sobre `title` y `description`.
+> `idx_documents_document_date` acelera los filtros por rango de fecha (`dateFrom` / `dateTo`) del endpoint SRC-01.
+> La búsqueda por texto libre se implementa con `ILIKE` (sin `pg_trgm`); si en el futuro el volumen supera los
+> 10 000 registros se recomienda un índice GIN con `pg_trgm` sobre `title` y `description`.
 
-> **V7:** `sensitivity_level` se inicializa heredando `default_sensitivity_level` de la categoría para los documentos
-> preexistentes activos. El nivel de acceso para descarga se resuelve según la jerarquía `INTERNAL < RESTRICTED < CONFIDENTIAL`.
+> `sensitivity_level` se inicializa en `INTERNAL` al crear la tabla; la aplicación lo asigna heredando
+> `default_sensitivity_level` de la categoría al momento de crear cada documento. El nivel de acceso para descarga
+> se resuelve según la jerarquía `INTERNAL < RESTRICTED < CONFIDENTIAL`.
 
-> **V8:** se añadió `file_hash` (`VARCHAR(64)`, nullable) para almacenar la huella SHA-256 del binario cargado.
+> `file_hash` (`VARCHAR(64)`, nullable) almacena la huella SHA-256 del binario cargado.
 
 ---
 
@@ -212,25 +213,25 @@ Registro de auditoría de todas las acciones realizadas por los usuarios.
 
 ## Índices
 
-| Índice                              | Tabla          | Columna(s)                    | Migración | Propósito                                                         |
-|-------------------------------------|----------------|-------------------------------|-----------|-------------------------------------------------------------------|
-| `idx_users_role`                    | `users`        | `role`                        | V1        | Filtrar usuarios por rol.                                         |
-| `idx_users_status`                  | `users`        | `status`                      | V1        | Filtrar usuarios activos/inactivos.                               |
-| `idx_users_email_lower`             | `users`        | `LOWER(email)` (funcional)    | V4        | Login insensible a mayúsculas; garantiza unicidad de email.       |
-| `idx_categories_name`               | `categories`   | `name`                        | V1        | Búsqueda y ordenamiento por nombre.                               |
-| `idx_categories_status`             | `categories`   | `status`                      | V1        | Filtrar categorías activas/inactivas.                             |
-| `idx_categories_default_sensitivity`| `categories`   | `default_sensitivity_level`   | V6        | Filtrar categorías por nivel de sensibilidad por defecto.         |
-| `idx_documents_category_id`         | `documents`    | `category_id`                 | V1        | Filtrar documentos por categoría (SRC-01).                        |
-| `idx_documents_responsible_area`    | `documents`    | `responsible_area`            | V1        | Filtrar por área responsable.                                     |
-| `idx_documents_uploaded_by`         | `documents`    | `uploaded_by`                 | V1        | Documentos cargados por un usuario (SRC-01).                      |
-| `idx_documents_created_at`          | `documents`    | `created_at`                  | V1        | Ordenamiento cronológico (default sort de SRC-01).                |
-| `idx_documents_status`              | `documents`    | `status`                      | V1        | Filtrar documentos activos/eliminados.                            |
-| `idx_documents_document_date`       | `documents`    | `document_date`               | V5        | Filtros por rango de fecha en SRC-01 (HU-21).                     |
-| `idx_documents_sensitivity_level`   | `documents`    | `sensitivity_level`           | V7        | Filtrar documentos por nivel de sensibilidad (HU-28).             |
-| `idx_activity_log_user_id`          | `activity_log` | `user_id`                     | V1        | Historial de acciones de un usuario.                              |
-| `idx_activity_log_document_id`      | `activity_log` | `document_id`                 | V1        | Historial de acciones sobre un documento.                         |
-| `idx_activity_log_action_timestamp` | `activity_log` | `action_timestamp`            | V1        | Consultas cronológicas del log.                                   |
-| `idx_activity_log_action`           | `activity_log` | `action`                      | V1        | Filtrar por tipo de acción.                                       |
+| Índice                               | Tabla           | Columna(s)                   | Propósito                                                    |
+|---------------------------------------|-----------------|-------------------------------|----------------------------------------------------------------|
+| `idx_users_role`                     | `users`         | `role`                        | Filtrar usuarios por rol.                                      |
+| `idx_users_status`                   | `users`         | `status`                      | Filtrar usuarios activos/inactivos.                            |
+| `idx_users_email_lower`              | `users`         | `LOWER(email)` (funcional)    | Login insensible a mayúsculas; garantiza unicidad de email.    |
+| `idx_categories_name`                | `categories`    | `name`                        | Búsqueda y ordenamiento por nombre.                            |
+| `idx_categories_status`              | `categories`    | `status`                      | Filtrar categorías activas/inactivas.                          |
+| `idx_categories_default_sensitivity` | `categories`    | `default_sensitivity_level`   | Filtrar categorías por nivel de sensibilidad por defecto.      |
+| `idx_documents_category_id`          | `documents`     | `category_id`                 | Filtrar documentos por categoría (SRC-01).                     |
+| `idx_documents_responsible_area`     | `documents`     | `responsible_area`            | Filtrar por área responsable.                                  |
+| `idx_documents_uploaded_by`          | `documents`     | `uploaded_by`                 | Documentos cargados por un usuario (SRC-01).                   |
+| `idx_documents_created_at`           | `documents`     | `created_at`                  | Ordenamiento cronológico (default sort de SRC-01).             |
+| `idx_documents_status`               | `documents`     | `status`                      | Filtrar documentos activos/eliminados.                         |
+| `idx_documents_document_date`        | `documents`     | `document_date`               | Filtros por rango de fecha en SRC-01 (HU-21).                  |
+| `idx_documents_sensitivity_level`    | `documents`     | `sensitivity_level`           | Filtrar documentos por nivel de sensibilidad (HU-28).          |
+| `idx_activity_log_user_id`           | `activity_log`  | `user_id`                     | Historial de acciones de un usuario.                           |
+| `idx_activity_log_document_id`       | `activity_log`  | `document_id`                 | Historial de acciones sobre un documento.                      |
+| `idx_activity_log_action_timestamp`  | `activity_log`  | `action_timestamp`            | Consultas cronológicas del log.                                |
+| `idx_activity_log_action`            | `activity_log`  | `action`                      | Filtrar por tipo de acción.                                    |
 
 ---
 
@@ -316,7 +317,7 @@ Jerarquía ordenada de menor a mayor restricción: `INTERNAL < RESTRICTED < CONF
   base de datos (`CamelCaseToUnderscoresNamingStrategy`).
 - **IDs auto-incrementales:** Toda tabla usa `BIGSERIAL` (equivalente a `BIGINT GENERATED ALWAYS AS IDENTITY`) para
   garantizar identificadores únicos y eficientes.
-- **Emails en minúsculas:** A partir de V4, todos los emails se normalizan a minúsculas antes de persistirse; el índice
+- **Emails en minúsculas:** todos los emails se normalizan a minúsculas antes de persistirse; el índice
   funcional `idx_users_email_lower` garantiza unicidad insensible a mayúsculas.
 - **Sensibilidad heredada:** Al crear un documento, `sensitivity_level` se inicializa con el valor
   `default_sensitivity_level` de su categoría. El valor puede ajustarse manualmente por un `ADMIN` con posterioridad.
