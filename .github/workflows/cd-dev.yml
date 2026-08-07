@@ -17,7 +17,7 @@ jobs:
       version: ${{ steps.pom-version.outputs.version }}
     steps:
       - name: Checkout del código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Configurar Java 17
         uses: actions/setup-java@v4
         with:

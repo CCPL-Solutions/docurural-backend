@@ -22,7 +22,7 @@ jobs:
       version: ${{ steps.compute.outputs.version }}
     steps:
       - name: Checkout del código (historial completo)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
