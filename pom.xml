@@ -22,7 +22,7 @@
 	</scm>
 	<properties>
 		<java.version>17</java.version>
-		<spring-cloud-aws.version>3.3.1</spring-cloud-aws.version>
+		<spring-cloud-aws.version>4.1.0</spring-cloud-aws.version>
 		<!-- Sobrescritas por el pipeline de CI/CD con -Dgit.commit=... -Dgit.branch=...
 		     Valores por defecto para builds locales (mvn spring-boot:run, mvnw test). -->
 		<git.commit>local</git.commit>
