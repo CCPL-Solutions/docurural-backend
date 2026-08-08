@@ -412,3 +412,5 @@ target/site/jacoco/index.html
 |------------------------------------------------|----------------------------------------------------------------------|
 | [`docs/arquitectura.md`](docs/arquitectura.md) | Arquitectura del sistema, flujo de seguridad y decisiones de diseño. |
 | [`docs/modelo-datos.md`](docs/modelo-datos.md) | Modelo entidad-relación y descripción detallada de tablas.           |
+| [`docs/ci-cd.md`](docs/ci-cd.md)               | Estrategia de ramas, pipelines de CI/CD y versionado.                |
+| [`CHANGELOG.md`](CHANGELOG.md)                 | Historial de versiones desplegadas a producción y su contenido.     |
