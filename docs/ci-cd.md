@@ -67,6 +67,8 @@ git push -u origin release/1.0.0
 
 El push dispara `cd-qa.yml`, que calcula la versión `1.0.0-rc.1` (`x.y.z` tomado del nombre de la rama, `rc.N` = `github.run_number`) y despliega a QA. A partir de este punto, `release/1.0.0` solo recibe fixes vía `bugfix/*` — no se agregan features nuevas.
 
+En el mismo commit de corte, actualizar [`CHANGELOG.md`](../CHANGELOG.md): renombrar `## [Sin publicar]` a `## [1.0.0] - AAAA-MM-DD (programada)` con la fecha objetivo de paso a producción, redactar la descripción general de la versión, y abrir una nueva sección `## [Sin publicar]` vacía encima para lo que se integre después del corte.
+
 ### 2.3 Certificación en QA
 
 QA confirma qué build está probando con `GET /api/version` (ver detalle del endpoint en la sección 3):
@@ -100,6 +102,7 @@ curl https://<host-qa>/api/version
 4. El job de despliegue queda **en espera de aprobación manual** — el Environment `production` tiene *required reviewers* configurados.
 5. Tras aprobar: build, deploy, health check (`GET /api/actuator/health` y `GET /api/version`) y publicación de la GitHub Release con el JAR adjunto (`create_release: true`).
 6. Al cerrarse (mergearse) el PR `release/1.0.0` → `main`, `release-backmerge.yml` abre automáticamente un PR `release/1.0.0` → `develop` para no perder los fixes acumulados durante la certificación (si ya existe uno abierto, no crea un duplicado). Alguien del equipo debe revisarlo y mergearlo manualmente.
+7. Junto con el tag, retirar la marca `(programada)` de la entrada correspondiente en [`CHANGELOG.md`](../CHANGELOG.md) y ajustar la fecha si el despliegue real ocurrió en un día distinto al planeado.
 
 ### 2.6 Flujo de hotfix
 
