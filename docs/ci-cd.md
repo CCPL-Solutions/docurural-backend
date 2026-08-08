@@ -73,10 +73,6 @@ El push dispara `cd-qa.yml`, que calcula la versión `1.0.0-rc.1` (`x.y.z` tomad
 `github.run_number`) y despliega a QA. A partir de este punto, `release/1.0.0` solo recibe fixes vía `bugfix/*` — no se
 agregan features nuevas.
 
-En el mismo commit de corte, actualizar [`CHANGELOG.md`](../CHANGELOG.md): renombrar `## [Sin publicar]` a
-`## [1.0.0] - AAAA-MM-DD (programada)` con la fecha objetivo de paso a producción, redactar la descripción general de la
-versión, y abrir una nueva sección `## [Sin publicar]` vacía encima para lo que se integre después del corte.
-
 ### 2.3 Certificación en QA
 
 QA confirma qué build está probando con `GET /api/version` (ver detalle del endpoint en la sección 3):
