@@ -47,4 +47,8 @@ jobs:
       version: ${{ needs.compute-version.outputs.version }}
       spring_profile: qa
       publish_package: true
+      project_status_on_start: "Deploying to Certification"
+      project_status_from_on_start: "Ready for installation in certification"
+      project_status_on_success: "Deployed to Certification"
+      project_status_from_on_success: "Deploying to Certification"
     secrets: inherit
