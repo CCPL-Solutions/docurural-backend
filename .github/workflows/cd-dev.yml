@@ -40,4 +40,6 @@ jobs:
       version: ${{ needs.read-version.outputs.version }}
       spring_profile: dev
       publish_package: false
+      project_status_on_success: "Ready for installation in certification"
+      project_status_from_on_success: "Development Completed"
     secrets: inherit
