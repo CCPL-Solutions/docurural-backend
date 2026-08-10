@@ -187,6 +187,9 @@ reportada coincida con la esperada) antes de darse por exitoso. Si falla, revier
 - Secret de repo `PROJECTS_TOKEN`: PAT (classic) con scopes `repo` y `project`, usado por
   `.github/scripts/update_project_status.py` para mover el issue padre en el tablero — ver
   [sección 6](#6-sincronización-con-el-tablero-de-github-projects).
+- Webhook de organización (`projects_v2_item`) apuntando al AWS Lambda de `github-webhook-relay`, y
+  ese Lambda desplegado con `GITHUB_WEBHOOK_SECRET`, `GITHUB_DISPATCH_TOKEN` y `TARGET_REPO` configurados —
+  necesarios para la cascada a sub-issues cuando el padre se mueve a mano, ver [6.1](#61-cascada-del-padre-a-sus-sub-issues).
 - **Settings → Actions → General → Workflow permissions → "Allow GitHub Actions to create and approve pull requests"**:
   debe estar habilitado. Sin esto, `release-backmerge.yml` falla con
   `GraphQL: GitHub Actions is not permitted to create or approve pull requests`, aunque el workflow ya declare
@@ -240,3 +243,37 @@ Cualquier otro fallo (token vencido, issue fuera del proyecto, error de red, nom
 el campo `Status`) queda registrado como `::warning::` en el log del job, pero nunca falla el despliegue — mismo
 criterio que ya rige `ActivityLogService` en el backend: un fallo de auditoría/trazabilidad no revierte la
 operación de negocio.
+
+### 6.1 Cascada del padre a sus sub-issues
+
+Los hijos (sub-issues nativas de GitHub) del issue padre siguen automáticamente su estado, sin importar si
+el padre lo mueve el pipeline o una persona a mano:
+
+- **Caso automático**: cada vez que `update_project_status.py` mueve al padre (tabla de arriba), al final
+  también propaga ese mismo estado a todos sus sub-issues que estén en el mismo Project. Sin infraestructura
+  adicional — ocurre en la misma ejecución del workflow.
+- **Caso manual**: GitHub Actions no tiene un disparador nativo para cambios de campo en Projects v2 (son a
+  nivel de organización, no de repo). El flujo es:
+
+  ```
+  Alguien arrastra la tarjeta del padre
+    → webhook de organización  projects_v2_item / edited
+    → AWS Lambda (infra/github-webhook-relay) — verifica firma HMAC, filtra ruido
+    → repository_dispatch en este repo
+    → .github/workflows/project-cascade.yml
+    → update_project_status.py MODE=cascade
+    → los sub-issues quedan en el mismo estado que el padre
+  ```
+
+  El Lambda es un relay "tonto": no sabe qué issue es el padre de ninguna release, solo reenvía el
+  `content_node_id` del issue editado. La guarda real está en `update_project_status.py`: si el `content_node_id`
+  recibido no coincide con el issue de `releaseIssueUrl`, no hace nada — así, mover cualquier otra tarjeta del
+  tablero no dispara una cascada indebida.
+
+  Detalles de despliegue del Lambda en `infra/github-webhook-relay/README.md`.
+
+  > Los workflows de `repository_dispatch` solo corren desde la rama por defecto — `project-cascade.yml` no
+  > reacciona a nada hasta que esté mergeado en `main`.
+
+En ambos casos, un hijo que no esté en el mismo Project que el padre se reporta como `::warning::` y se omite,
+sin interrumpir a los demás.
