@@ -38,5 +38,14 @@ acción sobre el sistema queda registrada para trazabilidad.
   para desarrollo.
 - Añadidos **pipelines de CI/CD** para los ambientes de desarrollo, QA y producción, y endpoints
   de salud y versión (`/api/actuator/health`, `/api/version`) para verificar cada despliegue.
+- Añadida **sincronización automática con el tablero de GitHub Projects**: el issue padre de la
+  release, declarado en `release-configuration.json`, avanza de estado solo en los puntos
+  deterministas del pipeline (fin de despliegue a Desarrollo, inicio/fin de despliegue a QA,
+  inicio/fin de despliegue a Producción y verificación aprobada), sin afectar las demás
+  transiciones que siguen siendo manuales.
+- Añadida **cascada de estado del issue padre a sus sub-issues**: cuando el padre avanza de estado
+  —ya sea por el pipeline o porque alguien mueve la tarjeta a mano en el tablero— sus sub-issues
+  (las HU técnicas de la release) se alinean automáticamente, vía un relay en AWS Lambda
+  (`github-webhook-relay/`) para el caso manual.
 
 [Unreleased]: https://github.com/CCPL-Solutions/docurural-backend/compare/main...develop

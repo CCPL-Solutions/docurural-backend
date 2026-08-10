@@ -108,7 +108,12 @@ curl https://<host-qa>/api/version
    reviewers* configurados.
 5. Tras aprobar: build, deploy, health check (`GET /api/actuator/health` y `GET /api/version`) y publicación de la
    GitHub Release con el JAR adjunto (`create_release: true`).
-6. Al cerrarse (mergearse) el PR `release/1.0.0` → `main`, `release-backmerge.yml` abre automáticamente un PR
+6. El pipeline queda pausado de nuevo en el job `verify-production` — Environment `production-verification`, también
+   con *required reviewers* — para que alguien pruebe manualmente lo desplegado:
+    - Si **aprueba**: el issue padre pasa a `Deployed to Production`.
+    - Si **rechaza** (o la aprobación vence sin respuesta): corre `rollback-production`, que revierte el servicio al
+      JAR anterior (`JAR_BACKUP_PATH`). El issue padre se queda en `Verifying in Production`.
+7. Al cerrarse (mergearse) el PR `release/1.0.0` → `main`, `release-backmerge.yml` abre automáticamente un PR
    `release/1.0.0` → `develop` para no perder los fixes acumulados durante la certificación (si ya existe uno abierto,
    no crea un duplicado). Alguien del equipo debe revisarlo y mergearlo manualmente.
 
@@ -159,14 +164,14 @@ release qué combinación de versiones fue certificada junta.
 
 ## 4. Pipelines (`.github/workflows/`)
 
-| Workflow                | Disparador                                                                                      | Qué hace                                                                                                                                                                                  |
-|-------------------------|-------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `ci.yml`                | Push a `feature/*`, `bugfix/*`, `hotfix/*`; PR hacia `develop`, `main`, `release/*`, `hotfix/*` | `mvn verify` (tests + gate JaCoCo 80%/65%)                                                                                                                                                |
-| `cd-dev.yml`            | Push a `develop`                                                                                | Despliega a Desarrollo con la versión `SNAPSHOT` del pom                                                                                                                                  |
-| `cd-qa.yml`             | Push a `release/**` o `hotfix/**`                                                               | Calcula `x.y.z-rc.N` desde el nombre de rama y despliega a QA                                                                                                                             |
-| `cd-prod.yml`           | Push de un tag `v*.*.*`                                                                         | Verifica que el tag esté en `main`, despliega a Producción (requiere aprobación del Environment `production`), publica GitHub Release — ver [2.5](#25-cierre-de-release-certificación-ok) |
-| `release-backmerge.yml` | Se cierra (merge) un PR de `release/*`/`hotfix/*` hacia `main`                                  | Abre PR automático de esa rama hacia `develop` — ver [2.5](#25-cierre-de-release-certificación-ok)                                                                                        |
-| `_deploy.yml`           | Reutilizable (`workflow_call`)                                                                  | Lógica común de build + deploy + health check + rollback que usan los tres `cd-*.yml`                                                                                                     |
+| Workflow                | Disparador                                                                                      | Qué hace                                                                                                                                                                                                                                                                 |
+|-------------------------|-------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `ci.yml`                | Push a `feature/*`, `bugfix/*`, `hotfix/*`; PR hacia `develop`, `main`, `release/*`, `hotfix/*` | `mvn verify` (tests + gate JaCoCo 80%/65%)                                                                                                                                                                                                                               |
+| `cd-dev.yml`            | Push a `develop`                                                                                | Despliega a Desarrollo con la versión `SNAPSHOT` del pom                                                                                                                                                                                                                 |
+| `cd-qa.yml`             | Push a `release/**` o `hotfix/**`                                                               | Calcula `x.y.z-rc.N` desde el nombre de rama y despliega a QA                                                                                                                                                                                                            |
+| `cd-prod.yml`           | Push de un tag `v*.*.*`                                                                         | Verifica que el tag esté en `main`, despliega a Producción (requiere aprobación del Environment `production`), publica GitHub Release, y pausa en el Environment `production-verification` para confirmar o revertir — ver [2.5](#25-cierre-de-release-certificación-ok) |
+| `release-backmerge.yml` | Se cierra (merge) un PR de `release/*`/`hotfix/*` hacia `main`                                  | Abre PR automático de esa rama hacia `develop` — ver [2.5](#25-cierre-de-release-certificación-ok)                                                                                                                                                                       |
+| `_deploy.yml`           | Reutilizable (`workflow_call`)                                                                  | Lógica común de build + deploy + health check + rollback que usan los tres `cd-*.yml`                                                                                                                                                                                    |
 
 Cada despliegue verifica `GET /api/actuator/health` (reintentos con backoff) y `GET /api/version` (que la versión
 reportada coincida con la esperada) antes de darse por exitoso. Si falla, revierte automáticamente al JAR anterior (
@@ -177,8 +182,98 @@ reportada coincida con la esperada) antes de darse por exitoso. Si falla, revier
 - `main`, `develop`, `release/*`: sin push directo, solo PR, ≥1 aprobación, status check `build-and-test` en verde.
 - `main`: adicionalmente restringir quién puede pushear directamente y prohibir force-push.
 - Environment `production`: required reviewers, y restringido a que solo tags `v*` puedan desplegar.
+- Environment `production-verification`: required reviewers (puede ser el mismo grupo que `production`) — sin esto el
+  job de verificación se auto-aprueba y el gate no sirve de nada.
+- Secret de repo `PROJECTS_TOKEN`: PAT (classic) con scopes `repo` y `project`, usado por
+  `.github/scripts/update_project_status.py` para mover el issue padre en el tablero — ver
+  [sección 6](#6-sincronización-con-el-tablero-de-github-projects).
+- Webhook de organización (`projects_v2_item`) apuntando al AWS Lambda de `github-webhook-relay`, y
+  ese Lambda desplegado con `GITHUB_WEBHOOK_SECRET`, `GITHUB_DISPATCH_TOKEN` y `TARGET_REPO` configurados —
+  necesarios para la cascada a sub-issues cuando el padre se mueve a mano, ver [6.1](#61-cascada-del-padre-a-sus-sub-issues).
 - **Settings → Actions → General → Workflow permissions → "Allow GitHub Actions to create and approve pull requests"**:
   debe estar habilitado. Sin esto, `release-backmerge.yml` falla con
   `GraphQL: GitHub Actions is not permitted to create or approve pull requests`, aunque el workflow ya declare
   `permissions: pull-requests: write`. Si el repo pertenece a una organización, puede que también haya que habilitarlo a
   nivel de organización.
+
+## 6. Sincronización con el tablero de GitHub Projects
+
+`release-configuration.json` (raíz del repo) declara la release en curso:
+
+```json
+{
+  "version": "1.0.0",
+  "project": {
+    "owner": "CCPL-Solutions",
+    "number": 1
+  },
+  "releaseIssueUrl": "https://github.com/CCPL-Solutions/docurural-backend/issues/1"
+}
+```
+
+`releaseIssueUrl` apunta al issue padre de la release en el tablero (los hijos son las HU técnicas que
+entran con esa versión, y pueden vivir en cualquier repo de la organización). Se edita a mano al cortar cada
+release (ver [2.2](#22-corte-de-release)).
+
+En los puntos deterministas del pipeline, `.github/scripts/update_project_status.py` mueve el campo `Status`
+del issue padre:
+
+| # | Momento del pipeline                         | Desde                                     | Hasta                                     |
+|---|----------------------------------------------|-------------------------------------------|-------------------------------------------|
+| 1 | Termina el despliegue a Desarrollo           | `Development Completed`                   | `Ready for installation in certification` |
+| 2 | Arranca el despliegue a QA                   | `Ready for installation in certification` | `Deploying to Certification`              |
+| 3 | Termina el despliegue a QA                   | `Deploying to Certification`              | `Deployed to Certification`               |
+| 4 | Arranca el despliegue a Prod (gate aprobado) | `Ready for Production Deployment`         | `Deploying to Production`                 |
+| 5 | Termina el despliegue a Prod                 | `Deploying to Production`                 | `Verifying in Production`                 |
+| 6 | Se aprueba la verificación manual en Prod    | `Verifying in Production`                 | `Deployed to Production`                  |
+
+El resto de transiciones del tablero (refinamiento, certificación QA, validación previa a producción) son
+manuales por diseño — las hace la persona correspondiente en el momento correspondiente.
+
+Antes de escribir un estado nuevo, el script valida dos guardas y si alguna falla hace un no-op (nunca un
+error que tumbe el despliegue):
+
+1. La `version` de `release-configuration.json` coincide con la versión que se está desplegando (normalizando
+   sufijos: `1.0.0-SNAPSHOT` y `1.0.0-rc.3` se comparan como `1.0.0`).
+2. El estado actual del issue en el tablero coincide con el "Desde" esperado — esto hace la automatización
+   **idempotente**: un redespliegue a QA (`rc.2`, `rc.3`, ...) cuando QA ya movió la tarjeta a `In Certification`
+   no la arrastra hacia atrás.
+
+Cualquier otro fallo (token vencido, issue fuera del proyecto, error de red, nombre de estado que no existe en
+el campo `Status`) queda registrado como `::warning::` en el log del job, pero nunca falla el despliegue — mismo
+criterio que ya rige `ActivityLogService` en el backend: un fallo de auditoría/trazabilidad no revierte la
+operación de negocio.
+
+### 6.1 Cascada del padre a sus sub-issues
+
+Los hijos (sub-issues nativas de GitHub) del issue padre siguen automáticamente su estado, sin importar si
+el padre lo mueve el pipeline o una persona a mano:
+
+- **Caso automático**: cada vez que `update_project_status.py` mueve al padre (tabla de arriba), al final
+  también propaga ese mismo estado a todos sus sub-issues que estén en el mismo Project. Sin infraestructura
+  adicional — ocurre en la misma ejecución del workflow.
+- **Caso manual**: GitHub Actions no tiene un disparador nativo para cambios de campo en Projects v2 (son a
+  nivel de organización, no de repo). El flujo es:
+
+  ```
+  Alguien arrastra la tarjeta del padre
+    → webhook de organización  projects_v2_item / edited
+    → AWS Lambda (infra/github-webhook-relay) — verifica firma HMAC, filtra ruido
+    → repository_dispatch en este repo
+    → .github/workflows/project-cascade.yml
+    → update_project_status.py MODE=cascade
+    → los sub-issues quedan en el mismo estado que el padre
+  ```
+
+  El Lambda es un relay "tonto": no sabe qué issue es el padre de ninguna release, solo reenvía el
+  `content_node_id` del issue editado. La guarda real está en `update_project_status.py`: si el `content_node_id`
+  recibido no coincide con el issue de `releaseIssueUrl`, no hace nada — así, mover cualquier otra tarjeta del
+  tablero no dispara una cascada indebida.
+
+  Detalles de despliegue del Lambda en `infra/github-webhook-relay/README.md`.
+
+  > Los workflows de `repository_dispatch` solo corren desde la rama por defecto — `project-cascade.yml` no
+  > reacciona a nada hasta que esté mergeado en `main`.
+
+En ambos casos, un hijo que no esté en el mismo Project que el padre se reporta como `::warning::` y se omite,
+sin interrumpir a los demás.

@@ -34,6 +34,26 @@ on:
         required: false
         type: boolean
         default: false
+      project_status_on_start:
+        description: "Estado destino del issue padre al arrancar el despliegue (vacío = no hacer nada)"
+        required: false
+        type: string
+        default: ''
+      project_status_from_on_start:
+        description: "Estado origen esperado del issue padre al arrancar el despliegue"
+        required: false
+        type: string
+        default: ''
+      project_status_on_success:
+        description: "Estado destino del issue padre cuando el despliegue termina exitosamente (vacío = no hacer nada)"
+        required: false
+        type: string
+        default: ''
+      project_status_from_on_success:
+        description: "Estado origen esperado del issue padre cuando el despliegue termina exitosamente"
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: write
@@ -55,6 +75,16 @@ jobs:
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4
+
+      - name: Marcar inicio de despliegue en el tablero
+        if: ${{ inputs.project_status_on_start != '' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.PROJECTS_TOKEN }}
+          TO_STATUS: ${{ inputs.project_status_on_start }}
+          FROM_STATUS: ${{ inputs.project_status_from_on_start }}
+          DEPLOY_VERSION: ${{ inputs.version }}
+        run: python3 .github/scripts/update_project_status.py
 
       - name: Configurar Java 17
         uses: actions/setup-java@v4
@@ -136,6 +166,16 @@ jobs:
             echo "La versión desplegada no coincide con la esperada."
             exit 1
           fi
+
+      - name: Marcar fin de despliegue en el tablero
+        if: ${{ success() && inputs.project_status_on_success != '' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.PROJECTS_TOKEN }}
+          TO_STATUS: ${{ inputs.project_status_on_success }}
+          FROM_STATUS: ${{ inputs.project_status_from_on_success }}
+          DEPLOY_VERSION: ${{ inputs.version }}
+        run: python3 .github/scripts/update_project_status.py
 
       - name: Crear GitHub Release
         if: ${{ success() && inputs.create_release }}

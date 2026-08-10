@@ -4,6 +4,11 @@ name: CD — Despliegue a Producción
 # después de mergear la release certificada a main. El GitHub Environment
 # "production" tiene required reviewers configurados — el job de despliegue
 # queda en espera de aprobación manual antes de tocar el servidor.
+#
+# Tras el despliegue, el Environment "production-verification" pausa el
+# pipeline para que alguien confirme manualmente que todo funciona: si
+# aprueba, el issue padre pasa a "Deployed to Production"; si rechaza (o la
+# aprobación vence), se revierte automáticamente al JAR anterior.
 
 on:
   push:
@@ -55,4 +60,63 @@ jobs:
       spring_profile: prod
       publish_package: true
       create_release: true
+      project_status_on_start: "Deploying to Production"
+      project_status_from_on_start: "Ready for Production Deployment"
+      project_status_on_success: "Verifying in Production"
+      project_status_from_on_success: "Deploying to Production"
     secrets: inherit
+
+  verify-production:
+    name: Verificar despliegue en Producción
+    needs: [verify-tag, deploy]
+    if: needs.deploy.result == 'success'
+    runs-on: ubuntu-latest
+    environment: production-verification
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Marcar verificación aprobada en el tablero
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.PROJECTS_TOKEN }}
+          TO_STATUS: "Deployed to Production"
+          FROM_STATUS: "Verifying in Production"
+          DEPLOY_VERSION: ${{ needs.verify-tag.outputs.version }}
+        run: python3 .github/scripts/update_project_status.py
+
+  rollback-production:
+    name: Rollback en Producción (verificación rechazada)
+    needs: [deploy, verify-production]
+    if: >
+      always() &&
+      needs.deploy.result == 'success' &&
+      (needs.verify-production.result == 'failure' || needs.verify-production.result == 'cancelled')
+    runs-on: [self-hosted, "prod", docurural-backend]
+
+    env:
+      SERVICE_NAME: docurural
+      JAR_PATH: /opt/docurural/backend/docurural-api.jar
+      JAR_BACKUP_PATH: /opt/docurural/backend/docurural-api.jar.bak
+      LOG_PATH: /opt/docurural/logs/app.log
+
+    steps:
+      - name: Revertir al JAR anterior
+        # La verificación en el Environment "production-verification" fue rechazada
+        # o venció sin respuesta — se revierte al respaldo que _deploy.yml dejó en
+        # JAR_BACKUP_PATH antes de reemplazar el JAR. El issue padre se queda en
+        # "Verifying in Production" para que quede visible que la release no llegó
+        # a producción.
+        run: |
+          echo "Verificación en producción rechazada o vencida — revirtiendo al JAR anterior..."
+          sudo systemctl stop "$SERVICE_NAME" || true
+          if [ -f "$JAR_BACKUP_PATH" ]; then
+            cp "$JAR_BACKUP_PATH" "$JAR_PATH"
+            sudo systemctl start "$SERVICE_NAME"
+            echo "Rollback completado — servicio reiniciado con el JAR anterior."
+          else
+            echo "No existe backup previo — no es posible hacer rollback automático."
+            exit 1
+          fi
+          echo "----- Últimas 100 líneas de $LOG_PATH -----"
+          tail -100 "$LOG_PATH" || true
