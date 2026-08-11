@@ -1,9 +1,0 @@
-# Revisores por defecto para cualquier Pull Request.
-# Ajustar esta lista a medida que crezca el equipo — hoy refleja los
-# contribuyentes activos del repo.
-*   @pedro-chavezcastro @Danielaaragon08
-
-# Los workflows de CI/CD y la configuración de seguridad requieren revisión
-# explícita por el impacto que tienen en todos los ambientes.
-/.github/workflows/   @pedro-chavezcastro
-/src/main/java/co/edu/docurural/shared/config/SecurityConfig.java   @pedro-chavezcastro
