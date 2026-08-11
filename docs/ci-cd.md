@@ -167,15 +167,53 @@ release qué combinación de versiones fue certificada junta.
 | Workflow                | Disparador                                                                                      | Qué hace                                                                                                                                                                                                                                                                 |
 |-------------------------|-------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `ci.yml`                | Push a `feature/*`, `bugfix/*`, `hotfix/*`; PR hacia `develop`, `main`, `release/*`, `hotfix/*` | `mvn verify` (tests + gate JaCoCo 80%/65%)                                                                                                                                                                                                                               |
-| `cd-dev.yml`            | Push a `develop`                                                                                | Despliega a Desarrollo con la versión `SNAPSHOT` del pom                                                                                                                                                                                                                 |
-| `cd-qa.yml`             | Push a `release/**` o `hotfix/**`                                                               | Calcula `x.y.z-rc.N` desde el nombre de rama y despliega a QA                                                                                                                                                                                                            |
-| `cd-prod.yml`           | Push de un tag `v*.*.*`                                                                         | Verifica que el tag esté en `main`, despliega a Producción (requiere aprobación del Environment `production`), publica GitHub Release, y pausa en el Environment `production-verification` para confirmar o revertir — ver [2.5](#25-cierre-de-release-certificación-ok) |
+| `cd-dev.yml`            | Push a `develop`, o manual (`workflow_dispatch`)                                                | Despliega a Desarrollo con la versión `SNAPSHOT` del pom (o el input `version` en manual)                                                                                                                                                                                |
+| `cd-qa.yml`             | Push a `release/**` o `hotfix/**`, o manual (`workflow_dispatch`)                                | Calcula `x.y.z-rc.N` desde el nombre de rama y despliega a QA (o usa el input `version` en manual)                                                                                                                                                                       |
+| `cd-prod.yml`           | Push de un tag `v*.*.*`, o manual (`workflow_dispatch`) sobre un tag existente                    | Verifica que el tag esté en `main`, despliega a Producción (requiere aprobación del Environment `production`), publica GitHub Release, y pausa en el Environment `production-verification` para confirmar o revertir — ver [2.5](#25-cierre-de-release-certificación-ok) |
 | `release-backmerge.yml` | Se cierra (merge) un PR de `release/*`/`hotfix/*` hacia `main`                                  | Abre PR automático de esa rama hacia `develop` — ver [2.5](#25-cierre-de-release-certificación-ok)                                                                                                                                                                       |
-| `_deploy.yml`           | Reutilizable (`workflow_call`)                                                                  | Lógica común de build + deploy + health check + rollback que usan los tres `cd-*.yml`                                                                                                                                                                                    |
+| `_deploy.yml`           | Reutilizable (`workflow_call`)                                                                  | Lógica común de build + deploy + health check + rollback que usan los tres `cd-*.yml`. Concurrency por ambiente: los despliegues al mismo ambiente se encolan, nunca se solapan.                                                                                        |
 
 Cada despliegue verifica `GET /api/actuator/health` (reintentos con backoff) y `GET /api/version` (que la versión
 reportada coincida con la esperada) antes de darse por exitoso. Si falla, revierte automáticamente al JAR anterior (
 `_deploy.yml`, paso "Rollback automático").
+
+### 4.1 Despliegue manual (`workflow_dispatch`)
+
+Cada `cd-*.yml` también se puede disparar a mano desde la pestaña **Actions** (botón "Run workflow") o con
+`gh workflow run`. Sirve para reponer el componente en un ambiente cuya infraestructura fue recreada con
+Terraform/AWS — sin inventar un commit, sin quemar un `rc.N` de QA y sin mover el tag de producción.
+
+```bash
+gh workflow run "CD — Despliegue a Desarrollo" --ref develop
+gh workflow run "CD — Despliegue a QA" --ref release/1.0.0 -f version=1.0.0-rc.3
+gh workflow run "CD — Despliegue a Producción" --ref v1.0.0
+```
+
+Diferencias frente al disparo automático:
+
+- **El tablero de GitHub Projects nunca se toca.** Un despliegue manual repone el componente, no representa
+  avance de la release — los pasos de `update_project_status.py` quedan `skipped`.
+- **`publish_package` y `create_release` van en `false` por defecto** (inputs opcionales para forzarlos). Publicar
+  o crear una release que ya existe responde `409 Conflict` y rompe el job — casi seguro al redesplegar una
+  versión que ya pasó por el pipeline automático.
+- **Dev**: input `version` opcional; vacío = la del `pom.xml` del ref elegido. Sin guarda de rama — se puede elegir
+  cualquier ref, útil para probar una `feature/*` sin mergear a `develop`.
+- **QA**: input `version` opcional; vacío = `x.y.z-rc.<run_number>` como siempre. Si se indica, debe seguir el
+  patrón `x.y.z` o `x.y.z-rc.N` **y coincidir con el `x.y.z` de la rama** (`release/1.0.0` no acepta
+  `version=1.1.0-rc.1`).
+- **Producción**: sin input de versión — el tag elegido en "Use workflow from" ya la fija. Se mantiene la
+  aprobación del Environment `production`, pero se omite `verify-production` (la verificación manual
+  post-despliegue) para no dejar la reposición pausada esperando una segunda aprobación; por eso
+  `rollback-production` tampoco se dispara en este modo (solo reacciona a que `verify-production` sea rechazada o
+  venza, y aquí queda `skipped`). El rollback automático por health check de `_deploy.yml` sigue activo igual que
+  en el flujo automático.
+
+**Requisito:** GitHub solo ofrece "Run workflow" para un workflow cuya definición con `workflow_dispatch` ya está
+en la rama por defecto del repo (`main`). Hasta que estos cambios no lleguen a `main` por el flujo normal, el botón
+no aparece.
+
+**Nota para el primer despliegue sobre infra recién creada:** no hay JAR previo, así que `_deploy.yml` no deja
+respaldo (`JAR_BACKUP_PATH`) — si el health check falla, no hay rollback automático posible.
 
 ## 5. Protecciones de rama recomendadas (configurar en GitHub)
 
@@ -205,9 +243,9 @@ reportada coincida con la esperada) antes de darse por exitoso. Si falla, revier
   "version": "1.0.0",
   "project": {
     "owner": "CCPL-Solutions",
-    "number": 1
+    "number": 12
   },
-  "releaseIssueUrl": "https://github.com/CCPL-Solutions/docurural-backend/issues/1"
+  "releaseIssueUrl": "https://github.com/CCPL-Solutions/docurural-backend/issues/41"
 }
 ```
 
@@ -277,7 +315,8 @@ el padre lo mueve el pipeline o una persona a mano:
   Por eso `update_project_status.py` en `docurural-backend` solo conserva el modo de despliegue —la cascada manual
   vive en la copia de ese script dentro de `project-automation`.
 
-  Detalles de despliegue del Lambda en `infra/github-webhook-relay/README.md`.
+  Detalles de despliegue del Lambda en `infra/github-webhook-relay/README.md` — ese directorio vive en el
+  repositorio de infraestructura, no en `docurural-backend`.
 
   > Los workflows de `repository_dispatch` solo corren desde la rama por defecto del repo que los recibe —
   > `project-cascade.yml` no reacciona a nada hasta que esté mergeado en `main` de `project-automation`.

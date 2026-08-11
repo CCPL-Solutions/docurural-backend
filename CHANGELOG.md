@@ -47,11 +47,21 @@ acción sobre el sistema queda registrada para trazabilidad.
   —ya sea por el pipeline o porque alguien mueve la tarjeta a mano en el tablero— sus sub-issues
   (las HU técnicas de la release) se alinean automáticamente, vía un relay en AWS Lambda
   (`github-webhook-relay/`) para el caso manual.
+- Añadido disparo manual (`workflow_dispatch`) de los pipelines de despliegue a Desarrollo, QA y
+  Producción, para reponer el componente en un ambiente cuya infraestructura fue recreada con
+  Terraform sin necesidad de un commit ni de avanzar la release. Un despliegue manual nunca mueve
+  el tablero de GitHub Projects.
 
 ### Changed
 
 - Movido el workflow de la cascada manual (`project-cascade.yml`) al repo `CCPL-Solutions/project-automation`,
   para que sus ejecuciones no se mezclen con los pipelines de CI/CD de este repo en la pestaña de Actions. El
   caso automático (disparado por el propio pipeline de despliegue) no cambia.
+- En el pipeline de Producción, el despliegue manual mantiene la aprobación del Environment
+  `production` pero omite la verificación manual post-despliegue (`verify-production`), para no
+  dejar la reposición de infraestructura pausada esperando una segunda aprobación.
+- Los tres jobs de despliegue (`_deploy.yml`) ahora usan `concurrency` por ambiente, para que dos
+  ejecuciones al mismo ambiente (ej. un push y un disparo manual solapados) se encolen en vez de
+  corromper el respaldo del JAR (`JAR_BACKUP_PATH`).
 
 [Unreleased]: https://github.com/CCPL-Solutions/docurural-backend/compare/main...develop
