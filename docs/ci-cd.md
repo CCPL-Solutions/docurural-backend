@@ -259,8 +259,8 @@ el padre lo mueve el pipeline o una persona a mano:
   Alguien arrastra la tarjeta del padre
     → webhook de organización  projects_v2_item / edited
     → AWS Lambda (infra/github-webhook-relay) — verifica firma HMAC, filtra ruido
-    → repository_dispatch en este repo
-    → .github/workflows/project-cascade.yml
+    → repository_dispatch en CCPL-Solutions/project-automation
+    → project-cascade.yml (checkout cruzado de release-configuration.json)
     → update_project_status.py MODE=cascade
     → los sub-issues quedan en el mismo estado que el padre
   ```
@@ -270,10 +270,17 @@ el padre lo mueve el pipeline o una persona a mano:
   recibido no coincide con el issue de `releaseIssueUrl`, no hace nada — así, mover cualquier otra tarjeta del
   tablero no dispara una cascada indebida.
 
+  Este workflow vive en el repo aparte `project-automation` (no en `docurural-backend`) a propósito: el evento
+  que lo dispara no tiene relación con el pipeline de este repo, y mezclarlo ensuciaría su pestaña de Actions
+  con corridas ajenas a CI/CD. El script en `project-automation` hace un checkout cruzado de este repo (con un
+  token de solo lectura, guardado como secret `RELEASE_CONFIG_READ_TOKEN`) para leer `release-configuration.json`.
+  Por eso `update_project_status.py` en `docurural-backend` solo conserva el modo de despliegue —la cascada manual
+  vive en la copia de ese script dentro de `project-automation`.
+
   Detalles de despliegue del Lambda en `infra/github-webhook-relay/README.md`.
 
-  > Los workflows de `repository_dispatch` solo corren desde la rama por defecto — `project-cascade.yml` no
-  > reacciona a nada hasta que esté mergeado en `main`.
+  > Los workflows de `repository_dispatch` solo corren desde la rama por defecto del repo que los recibe —
+  > `project-cascade.yml` no reacciona a nada hasta que esté mergeado en `main` de `project-automation`.
 
 En ambos casos, un hijo que no esté en el mismo Project que el padre se reporta como `::warning::` y se omite,
 sin interrumpir a los demás.

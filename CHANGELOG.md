@@ -48,4 +48,10 @@ acción sobre el sistema queda registrada para trazabilidad.
   (las HU técnicas de la release) se alinean automáticamente, vía un relay en AWS Lambda
   (`github-webhook-relay/`) para el caso manual.
 
+### Changed
+
+- Movido el workflow de la cascada manual (`project-cascade.yml`) al repo `CCPL-Solutions/project-automation`,
+  para que sus ejecuciones no se mezclen con los pipelines de CI/CD de este repo en la pestaña de Actions. El
+  caso automático (disparado por el propio pipeline de despliegue) no cambia.
+
 [Unreleased]: https://github.com/CCPL-Solutions/docurural-backend/compare/main...develop
