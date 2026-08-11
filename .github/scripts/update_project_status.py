@@ -4,34 +4,24 @@ y propaga ese estado a sus sub-issues (las HU tecnicas que entran con la release
 
 Lee `release-configuration.json` para saber cual es el issue padre y la version
 en curso, y usa la API GraphQL de GitHub para mover el campo "Status" del
-Project.
+Project. Lo invocan los workflows de despliegue (cd-dev.yml, cd-qa.yml,
+cd-prod.yml) en cada punto determinista del pipeline.
 
 Disenado para nunca tumbar un despliegue: cualquier condicion que no permita
 completar una transicion (config invalida, version distinta, issue fuera del
 proyecto, estado actual distinto al esperado, error de red o de la API)
 termina en exit 0 con un mensaje de warning, nunca en una excepcion sin capturar.
 
-Modos (variable de entorno MODE, default "deploy"):
-
-    MODE=deploy   Mueve el issue padre de FROM_STATUS a TO_STATUS y despues
-                  propaga TO_STATUS a todos sus sub-issues. Lo invocan los
-                  workflows de despliegue (cd-dev.yml, cd-qa.yml, cd-prod.yml).
-
-    MODE=cascade  No mueve al padre — lee su estado actual en el tablero y lo
-                  propaga a sus sub-issues. Lo invoca project-cascade.yml
-                  cuando alguien mueve la tarjeta del padre a mano. Requiere
-                  CONTENT_NODE_ID (el node id del issue editado, que llega via
-                  el webhook) para confirmar que el issue editado es realmente
-                  el padre declarado en la configuracion — de lo contrario,
-                  mover cualquier tarjeta del tablero dispararia una cascada.
+La cascada cuando alguien mueve la tarjeta del padre a mano (en vez de via
+pipeline) la cubre un workflow aparte en el repo project-automation, para no
+ensuciar las ejecuciones de Actions de este repo — ver docs/ci-cd.md, seccion
+6.1.
 
 Variables de entorno:
-    GH_TOKEN          PAT con scope 'project' (requerido en ambos modos)
-    MODE              "deploy" (default) o "cascade"
-    TO_STATUS         Nombre exacto del estado destino (requerido en MODE=deploy)
-    FROM_STATUS       Nombre exacto del estado origen esperado (requerido en MODE=deploy)
-    DEPLOY_VERSION    Version que se esta desplegando, ej. "1.0.0-rc.3" (requerido en MODE=deploy)
-    CONTENT_NODE_ID   Node id del issue editado (requerido en MODE=cascade)
+    GH_TOKEN          PAT con scope 'project' (requerido)
+    TO_STATUS         Nombre exacto del estado destino (requerido)
+    FROM_STATUS       Nombre exacto del estado origen esperado (requerido)
+    DEPLOY_VERSION    Version que se esta desplegando, ej. "1.0.0-rc.3" (requerido)
     CONFIG_PATH       Ruta al JSON de configuracion (default: release-configuration.json)
 """
 
@@ -340,64 +330,9 @@ def run_deploy(config_path: str) -> int:
     return 0
 
 
-def run_cascade(config_path: str) -> int:
-    token = os.environ.get("GH_TOKEN")
-    content_node_id = os.environ.get("CONTENT_NODE_ID")
-
-    missing = [name for name, value in (("GH_TOKEN", token), ("CONTENT_NODE_ID", content_node_id)) if not value]
-    if missing:
-        warn(f"faltan variables de entorno requeridas: {', '.join(missing)} — no se propaga nada.")
-        return 0
-
-    resolved = load_release_config(config_path)
-    if resolved is None:
-        return 0
-    owner, repo, issue_number, project_number, _config = resolved
-
-    try:
-        item_id, project_id, current_status, issue_node_id = find_project_item(
-            token, owner, repo, issue_number, project_number
-        )
-    except (urllib.error.URLError, RuntimeError, ValueError) as exc:
-        warn(f"no se pudo consultar el issue padre: {exc} — no se propaga nada.")
-        return 0
-
-    if content_node_id != issue_node_id:
-        info("el issue editado no es el padre de la release declarado en la configuracion — no se hace nada.")
-        return 0
-
-    if item_id is None:
-        warn(
-            f"el issue padre {owner}/{repo}#{issue_number} no esta en el Project #{project_number} "
-            "— no se propaga nada."
-        )
-        return 0
-
-    if current_status is None:
-        warn(f"el issue padre {owner}/{repo}#{issue_number} no tiene un estado en el campo '{STATUS_FIELD_NAME}'.")
-        return 0
-
-    try:
-        children = find_sub_issues(token, owner, repo, issue_number, project_number)
-    except (urllib.error.URLError, RuntimeError, ValueError) as exc:
-        warn(f"no se pudieron consultar los sub-issues del padre: {exc}")
-        return 0
-
-    cascade_to_children(token, project_id, children, current_status)
-    return 0
-
-
 def run() -> int:
-    mode = os.environ.get("MODE", "deploy")
     config_path = os.environ.get("CONFIG_PATH", "release-configuration.json")
-
-    if mode == "deploy":
-        return run_deploy(config_path)
-    if mode == "cascade":
-        return run_cascade(config_path)
-
-    warn(f"MODE desconocido: {mode!r} (se esperaba 'deploy' o 'cascade') — no se hace nada.")
-    return 0
+    return run_deploy(config_path)
 
 
 if __name__ == "__main__":
