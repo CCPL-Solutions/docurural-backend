@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - develop
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versión a desplegar (vacío = la del pom.xml del ref seleccionado)"
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -24,10 +30,16 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: maven
-      - name: Leer version del pom
+      - name: Resolver versión a desplegar
+        # En workflow_dispatch, inputs.version permite fijar exactamente qué versión
+        # reponer (ej. tras recrear la infra con Terraform). Vacío = comportamiento
+        # de siempre: la versión SNAPSHOT del pom.xml del ref seleccionado.
         id: pom-version
         run: |
-          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout --batch-mode --no-transfer-progress)
+          VERSION="${{ inputs.version }}"
+          if [ -z "$VERSION" ]; then
+            VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout --batch-mode --no-transfer-progress)
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
   deploy:
@@ -40,6 +52,8 @@ jobs:
       version: ${{ needs.read-version.outputs.version }}
       spring_profile: dev
       publish_package: false
-      project_status_on_success: "Ready for installation in certification"
-      project_status_from_on_success: "Development Completed"
+      # Un despliegue manual (workflow_dispatch) nunca mueve el tablero de GitHub
+      # Projects — solo repone el componente, no representa avance de la release.
+      project_status_on_success: ${{ github.event_name == 'push' && 'Ready for installation in certification' || '' }}
+      project_status_from_on_success: ${{ github.event_name == 'push' && 'Development Completed' || '' }}
     secrets: inherit

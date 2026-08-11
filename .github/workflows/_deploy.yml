@@ -64,6 +64,13 @@ jobs:
     name: Construir y desplegar en ${{ inputs.environment }}
     runs-on: [self-hosted, "${{ inputs.runner_label }}", docurural-backend]
     environment: ${{ inputs.environment }}
+    # Con workflow_dispatch sumado a los triggers de push, dos despliegues al mismo
+    # ambiente pueden solaparse en el mismo host y corromper JAR_BACKUP_PATH (el
+    # segundo respaldaría el JAR que el primero acaba de reemplazar). Se encolan en
+    # vez de cancelarse para no interrumpir un despliegue a medio camino.
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
 
     env:
       SERVICE_NAME: docurural

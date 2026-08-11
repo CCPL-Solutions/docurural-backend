@@ -3,12 +3,26 @@ name: CD — Despliegue a QA
 # Se dispara con cada push a una rama de corte de release o de hotfix. Cubre tanto
 # el primer despliegue de la certificación (rc.1) como cada fix que QA reporta
 # durante la certificación (rc.2, rc.3, ...) — ver .claude/plans (flujo CI/CD).
+#
+# También se puede disparar a mano (workflow_dispatch) para reponer el componente
+# en QA sin generar un nuevo commit, ej. tras recrear la infra con Terraform.
 
 on:
   push:
     branches:
       - 'release/**'
       - 'hotfix/**'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versión exacta a desplegar, ej. 1.0.0-rc.3 (vacío = x.y.z-rc.<run_number>)"
+        required: false
+        type: string
+      publish_package:
+        description: "Publicar el JAR en GitHub Packages (falla si esa versión ya existe)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -33,7 +47,22 @@ jobs:
             exit 1
           fi
 
-          VERSION="${BASE}-rc.${{ github.run_number }}"
+          INPUT_VERSION="${{ inputs.version }}"
+          if [ -z "$INPUT_VERSION" ]; then
+            VERSION="${BASE}-rc.${{ github.run_number }}"
+          else
+            if ! [[ "$INPUT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]; then
+              echo "version='$INPUT_VERSION' no sigue el patrón x.y.z o x.y.z-rc.N."
+              exit 1
+            fi
+            INPUT_BASE="${INPUT_VERSION%%-*}"
+            if [ "$INPUT_BASE" != "$BASE" ]; then
+              echo "version='$INPUT_VERSION' no corresponde a la rama '$BRANCH' (se esperaba base '$BASE')."
+              exit 1
+            fi
+            VERSION="$INPUT_VERSION"
+          fi
+
           echo "Versión calculada: $VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
@@ -46,9 +75,13 @@ jobs:
       runner_label: qa
       version: ${{ needs.compute-version.outputs.version }}
       spring_profile: qa
-      publish_package: true
-      project_status_on_start: "Deploying to Certification"
-      project_status_from_on_start: "Ready for installation in certification"
-      project_status_on_success: "Deployed to Certification"
-      project_status_from_on_success: "Deploying to Certification"
+      # En manual, publish_package solo si se pide explícitamente: publicar una
+      # versión que ya existe en GitHub Packages responde 409 y rompe el job.
+      publish_package: ${{ github.event_name == 'push' || inputs.publish_package }}
+      # Un despliegue manual (workflow_dispatch) nunca mueve el tablero de GitHub
+      # Projects — solo repone el componente, no representa avance de la release.
+      project_status_on_start: ${{ github.event_name == 'push' && 'Deploying to Certification' || '' }}
+      project_status_from_on_start: ${{ github.event_name == 'push' && 'Ready for installation in certification' || '' }}
+      project_status_on_success: ${{ github.event_name == 'push' && 'Deployed to Certification' || '' }}
+      project_status_from_on_success: ${{ github.event_name == 'push' && 'Deploying to Certification' || '' }}
     secrets: inherit

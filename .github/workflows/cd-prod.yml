@@ -9,11 +9,29 @@ name: CD — Despliegue a Producción
 # pipeline para que alguien confirme manualmente que todo funciona: si
 # aprueba, el issue padre pasa a "Deployed to Production"; si rechaza (o la
 # aprobación vence), se revierte automáticamente al JAR anterior.
+#
+# También se puede disparar a mano (workflow_dispatch) eligiendo un tag existente
+# en "Use workflow from", ej. para reponer el componente tras recrear la infra
+# con Terraform. En ese modo se mantiene la aprobación del Environment
+# "production", pero se salta la verificación manual post-despliegue y el
+# tablero de GitHub Projects no se toca.
 
 on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      publish_package:
+        description: "Publicar el JAR en GitHub Packages (falla si la versión ya existe)"
+        required: false
+        type: boolean
+        default: false
+      create_release:
+        description: "Crear/actualizar la GitHub Release del tag"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -58,18 +76,24 @@ jobs:
       runner_label: prod
       version: ${{ needs.verify-tag.outputs.version }}
       spring_profile: prod
-      publish_package: true
-      create_release: true
-      project_status_on_start: "Deploying to Production"
-      project_status_from_on_start: "Ready for Production Deployment"
-      project_status_on_success: "Verifying in Production"
-      project_status_from_on_success: "Deploying to Production"
+      # En manual, publish_package/create_release solo si se piden explícitamente:
+      # publicar o crear una release que ya existe rompe el job (409 Conflict).
+      publish_package: ${{ github.event_name == 'push' || inputs.publish_package }}
+      create_release: ${{ github.event_name == 'push' || inputs.create_release }}
+      # Un despliegue manual (workflow_dispatch) nunca mueve el tablero de GitHub
+      # Projects — solo repone el componente, no representa avance de la release.
+      project_status_on_start: ${{ github.event_name == 'push' && 'Deploying to Production' || '' }}
+      project_status_from_on_start: ${{ github.event_name == 'push' && 'Ready for Production Deployment' || '' }}
+      project_status_on_success: ${{ github.event_name == 'push' && 'Verifying in Production' || '' }}
+      project_status_from_on_success: ${{ github.event_name == 'push' && 'Deploying to Production' || '' }}
     secrets: inherit
 
   verify-production:
     name: Verificar despliegue en Producción
     needs: [verify-tag, deploy]
-    if: needs.deploy.result == 'success'
+    # En manual (workflow_dispatch) se salta la verificación post-despliegue para
+    # no dejar la reposición de infra pausada esperando una segunda aprobación.
+    if: github.event_name == 'push' && needs.deploy.result == 'success'
     runs-on: ubuntu-latest
     environment: production-verification
     steps:
