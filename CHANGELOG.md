@@ -11,6 +11,8 @@ La fecha de cada versión corresponde a su **paso a producción**.
 
 ## [Unreleased]
 
+## [1.0.0] - AAAA-MM-DD
+
 Primera versión productiva del sistema de gestión documental de la IERD Mina y Ticha. Cubre el
 ciclo completo del archivo digital: los administrativos cargan y clasifican documentos
 institucionales, y docentes y personal autorizado los consultan y descargan según su rol. Toda
