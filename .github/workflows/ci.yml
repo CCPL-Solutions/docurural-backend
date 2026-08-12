@@ -6,12 +6,6 @@ on:
       - 'feature/**'
       - 'bugfix/**'
       - 'hotfix/**'
-  pull_request:
-    branches:
-      - develop
-      - main
-      - 'release/**'
-      - 'hotfix/**'
 
 jobs:
   build-and-test:

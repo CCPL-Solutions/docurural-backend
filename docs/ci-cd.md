@@ -56,9 +56,10 @@ git switch -c feature/mi-feature develop
 git push -u origin feature/mi-feature
 ```
 
-El push dispara `ci.yml` (build + tests). Al abrir el PR hacia `develop`, `ci.yml` vuelve a correr como *status check*
-del PR — se necesita ≥1 aprobación y CI en verde para mergear (regla de rama protegida). Al mergear, el push resultante
-a `develop` dispara `cd-dev.yml`, que despliega el `SNAPSHOT` del `pom.xml` a Desarrollo.
+El push dispara `ci.yml` (build + tests). Abrir el PR hacia `develop` no dispara ningún workflow — la creación de PRs
+no ejecuta CI. Se necesita ≥1 aprobación y el CI en verde del último push a la rama para mergear (regla de rama
+protegida, revisada manualmente). Al mergear, el push resultante a `develop` dispara `cd-dev.yml`, que despliega el
+`SNAPSHOT` del `pom.xml` a Desarrollo.
 
 ### 2.2 Corte de release
 
@@ -87,7 +88,8 @@ curl https://<host-qa>/api/version
    ```bash
    git switch -c bugfix/QA-123-descripcion release/1.0.0
    ```
-2. PR hacia `release/1.0.0` (no hacia `develop` todavía). Corre `ci.yml`.
+2. PR hacia `release/1.0.0` (no hacia `develop` todavía). El PR en sí no dispara ningún workflow — `ci.yml` ya corrió
+   con el push a `bugfix/QA-123-descripcion`.
 3. Al mergear, el push a `release/1.0.0` hace que `cd-qa.yml` redespliegue automáticamente a QA con `1.0.0-rc.2`.
 4. QA repite la certificación (regresión sobre lo que falló).
 5. Se repite tantas veces como haga falta (`rc.3`, `rc.4`, ...) hasta certificar.
@@ -166,7 +168,7 @@ release qué combinación de versiones fue certificada junta.
 
 | Workflow                | Disparador                                                                                      | Qué hace                                                                                                                                                                                                                                                                 |
 |-------------------------|-------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `ci.yml`                | Push a `feature/*`, `bugfix/*`, `hotfix/*`; PR hacia `develop`, `main`, `release/*`, `hotfix/*` | `mvn verify` (tests + gate JaCoCo 80%/65%)                                                                                                                                                                                                                               |
+| `ci.yml`                | Push a `feature/*`, `bugfix/*`, `hotfix/*` (no se dispara al crear/actualizar un PR)             | `mvn verify` (tests + gate JaCoCo 80%/65%)                                                                                                                                                                                                                               |
 | `cd-dev.yml`            | Push a `develop`, o manual (`workflow_dispatch`)                                                | Despliega a Desarrollo con la versión `SNAPSHOT` del pom (o el input `version` en manual)                                                                                                                                                                                |
 | `cd-qa.yml`             | Push a `release/**` o `hotfix/**`, o manual (`workflow_dispatch`)                                | Calcula `x.y.z-rc.N` desde el nombre de rama y despliega a QA (o usa el input `version` en manual)                                                                                                                                                                       |
 | `cd-prod.yml`           | Push de un tag `v*.*.*`, o manual (`workflow_dispatch`) sobre un tag existente                    | Verifica que el tag esté en `main`, despliega a Producción (requiere aprobación del Environment `production`), publica GitHub Release, y pausa en el Environment `production-verification` para confirmar o revertir — ver [2.5](#25-cierre-de-release-certificación-ok) |
@@ -217,7 +219,9 @@ respaldo (`JAR_BACKUP_PATH`) — si el health check falla, no hay rollback autom
 
 ## 5. Protecciones de rama recomendadas (configurar en GitHub)
 
-- `main`, `develop`, `release/*`: sin push directo, solo PR, ≥1 aprobación, status check `build-and-test` en verde.
+- `main`, `develop`, `release/*`: sin push directo, solo PR, ≥1 aprobación. `ci.yml` no corre sobre el PR (solo sobre
+  el push a la rama de origen), así que **no** debe configurarse `build-and-test` como status check requerido — de
+  hacerlo, el check nunca se reporta y el PR queda bloqueado indefinidamente.
 - `main`: adicionalmente restringir quién puede pushear directamente y prohibir force-push.
 - Environment `production`: required reviewers, y restringido a que solo tags `v*` puedan desplegar.
 - Environment `production-verification`: required reviewers (puede ser el mismo grupo que `production`) — sin esto el
