@@ -35,8 +35,9 @@ trazabilidad completa de cada acción realizada en el sistema.
 - **JDK 17** o superior
 - **PostgreSQL** en ejecución
 - **Maven** (o usar el wrapper incluido `./mvnw`)
-- **AWS CLI** configurado con un perfil que tenga acceso a S3 y Parameter Store (necesario en `qa` y `prod`; opcional
-  en `dev` si se usa el proveedor de almacenamiento `local`)
+- **AWS CLI** configurado con un perfil que tenga acceso a S3 (y a Parameter Store en `develop`, `qa`
+  y `prod`) — necesario también en `local` (perfil por defecto), que almacena archivos en el bucket S3
+  de `develop`
 
 ---
 

@@ -1,6 +1,6 @@
 spring:
   config:
-    import: optional:aws-parameterstore:/docurural/develop/
+    import: aws-parameterstore:/docurural/develop/
   jpa:
     show-sql: true
     properties:
@@ -9,7 +9,7 @@ spring:
 
 docurural:
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
 
 logging:
   level:

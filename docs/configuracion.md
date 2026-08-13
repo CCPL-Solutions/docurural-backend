@@ -18,7 +18,7 @@ cp .env.example .env
 | `JWT_SECRET`                         | Clave secreta para firmar tokens JWT (mínimo 32 bytes)  | —                       |
 | `JWT_EXPIRATION_MS`                  | Tiempo de vida del token en milisegundos                | `1800000` (30 min)      |
 | `JWT_ISSUER`                         | Emisor incluido en el claim `iss` del JWT               | `docurural`             |
-| `SPRING_PROFILES_ACTIVE`             | Perfil activo (`develop`, `qa` o `prod`)                | `develop`               |
+| `SPRING_PROFILES_ACTIVE`             | Perfil activo (`local`, `develop`, `qa` o `prod`)       | `local`                 |
 | `CORS_ALLOWED_ORIGINS`               | Orígenes permitidos en CORS                             | `http://localhost:4200` |
 | `ADMIN_SEED_EMAIL`                   | Email del administrador inicial (opcional, idempotente) | —                       |
 | `ADMIN_SEED_PASSWORD`                | Contraseña del administrador inicial (opcional)         | —                       |
@@ -34,34 +34,51 @@ cp .env.example .env
 ## Perfiles de Spring
 
 Los perfiles se configuran en `application-<perfil>.yaml` y se activan con `SPRING_PROFILES_ACTIVE`.
+Además existe `application-test.yaml`, usado únicamente por la suite de pruebas (ver más abajo).
 
-| Perfil    | Archivo                    | Descripción                                                                                     |
-|-----------|----------------------------|-------------------------------------------------------------------------------------------------|
-| `develop` | `application-develop.yaml` | Logs SQL formateados + nivel `DEBUG`. Sin Parameter Store; secretos vienen del `.env`.          |
-| `qa`      | `application-qa.yaml`      | Entorno de certificación. Importa secretos de `/docurural/qa/` en Parameter Store.              |
-| `prod`    | `application-prod.yaml`    | Producción. Importa secretos de `/docurural/prod/`. Swagger UI y `/v3/api-docs` deshabilitados. |
+| Perfil    | Archivo                    | Descripción                                                                                                                                                                    |
+|-----------|----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `local`   | `application-local.yaml`   | Portátil del desarrollador. Almacenamiento en S3 (bucket de `develop`) vía credenciales AWS propias del desarrollador; Parameter Store deshabilitado. Logs SQL + `DEBUG`.      |
+| `develop` | `application-develop.yaml` | Entorno desplegado en AWS (EC2 + PostgreSQL local a la instancia, `dev.ccplsolutions.link`). Importa secretos de `/docurural/develop/` en Parameter Store. Logs SQL + `DEBUG`. |
+| `qa`      | `application-qa.yaml`      | Entorno de certificación. Importa secretos de `/docurural/qa/` en Parameter Store.                                                                                             |
+| `prod`    | `application-prod.yaml`    | Producción. Importa secretos de `/docurural/prod/`. Swagger UI y `/v3/api-docs` deshabilitados.                                                                                |
 
 La resolución de secretos sigue un orden de prioridad: **Parameter Store → variable de entorno → valor por defecto**.
-En `develop`, donde no hay Parameter Store configurado, basta con definir las variables en el `.env`.
+En `local`, donde no hay Parameter Store, todo sale de las variables de entorno. En `develop`, `qa` y
+`prod` el import **no** lleva el prefijo `optional:` — si Parameter Store no responde al arrancar, la
+aplicación falla en el arranque en vez de continuar con secretos vacíos (fail-fast).
+
+`mvn verify`/CI siempre corren con el perfil `test` (fijado por `maven-surefire-plugin` en el
+`pom.xml`, independientemente de lo que tengas exportado en tu shell), así que nunca requieren
+credenciales AWS.
 
 ## AWS Parameter Store
 
-Los perfiles `qa` y `prod` importan secretos automáticamente desde Parameter Store al arrancar:
+Los perfiles `develop`, `qa` y `prod` importan secretos automáticamente desde Parameter Store al
+arrancar, bajo el prefijo `/docurural/<entorno>/`:
 
-| Clave SSM        | Propiedad Spring                |
-|------------------|---------------------------------|
-| `db-password`    | `spring.datasource.password`    |
-| `jwt-secret`     | `docurural.security.jwt.secret` |
-| `s3-bucket-docs` | `docurural.storage.s3.bucket`   |
-| `aws-region`     | `docurural.storage.s3.region`   |
+| Clave SSM           | Propiedad Spring                                                |
+|---------------------|-----------------------------------------------------------------|
+| `db-password`       | `spring.datasource.password`                                    |
+| `jwt-secret`        | `docurural.security.jwt.secret`                                 |
+| `s3-bucket-docs`    | `docurural.storage.s3.bucket`                                   |
+| `s3-bucket-backups` | (sin consumidor en la app; reservado para el script de backups) |
+| `aws-region`        | `docurural.storage.s3.region`                                   |
 
-## Credenciales AWS en desarrollo local
+La región del cliente de Parameter Store se fija de forma estática en `application.yaml`
+(`spring.cloud.aws.region.static`) para no depender del IMDS de EC2 ni de un `~/.aws/config`
+ambiental — necesario porque esa resolución ocurre antes de que se procesen los perfiles.
+
+## Credenciales AWS para el perfil `local`
+
+El perfil `local` usa S3 (el bucket de `develop`, bajo el prefijo `documents/local`), así que necesita
+credenciales AWS propias del desarrollador:
 
 ```bash
 aws configure sso --profile docurural-dev
 aws sso login --profile docurural-dev
 
 export AWS_PROFILE=docurural-dev
-export AWS_REGION=us-east-1
+export SPRING_PROFILES_ACTIVE=local
 ./mvnw spring-boot:run
 ```
