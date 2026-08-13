@@ -18,7 +18,7 @@ cp .env.example .env
 | `JWT_SECRET`                         | Clave secreta para firmar tokens JWT (mínimo 32 bytes)  | —                       |
 | `JWT_EXPIRATION_MS`                  | Tiempo de vida del token en milisegundos                | `1800000` (30 min)      |
 | `JWT_ISSUER`                         | Emisor incluido en el claim `iss` del JWT               | `docurural`             |
-| `SPRING_PROFILES_ACTIVE`             | Perfil activo (`dev`, `qa` o `prod`)                    | `dev`                   |
+| `SPRING_PROFILES_ACTIVE`             | Perfil activo (`develop`, `qa` o `prod`)                | `develop`               |
 | `CORS_ALLOWED_ORIGINS`               | Orígenes permitidos en CORS                             | `http://localhost:4200` |
 | `ADMIN_SEED_EMAIL`                   | Email del administrador inicial (opcional, idempotente) | —                       |
 | `ADMIN_SEED_PASSWORD`                | Contraseña del administrador inicial (opcional)         | —                       |
@@ -35,11 +35,11 @@ cp .env.example .env
 
 Los perfiles se configuran en `application-<perfil>.yaml` y se activan con `SPRING_PROFILES_ACTIVE`.
 
-| Perfil | Archivo                    | Descripción                                                                                     |
-|--------|----------------------------|-------------------------------------------------------------------------------------------------|
-| `dev`  | `application-develop.yaml` | Logs SQL formateados + nivel `DEBUG`. Sin Parameter Store; secretos vienen del `.env`.          |
-| `qa`   | `application-qa.yaml`      | Entorno de certificación. Importa secretos de `/docurural/qa/` en Parameter Store.              |
-| `prod` | `application-prod.yaml`    | Producción. Importa secretos de `/docurural/prod/`. Swagger UI y `/v3/api-docs` deshabilitados. |
+| Perfil    | Archivo                    | Descripción                                                                                     |
+|-----------|----------------------------|-------------------------------------------------------------------------------------------------|
+| `develop` | `application-develop.yaml` | Logs SQL formateados + nivel `DEBUG`. Sin Parameter Store; secretos vienen del `.env`.          |
+| `qa`      | `application-qa.yaml`      | Entorno de certificación. Importa secretos de `/docurural/qa/` en Parameter Store.              |
+| `prod`    | `application-prod.yaml`    | Producción. Importa secretos de `/docurural/prod/`. Swagger UI y `/v3/api-docs` deshabilitados. |
 
 La resolución de secretos sigue un orden de prioridad: **Parameter Store → variable de entorno → valor por defecto**.
 En `develop`, donde no hay Parameter Store configurado, basta con definir las variables en el `.env`.

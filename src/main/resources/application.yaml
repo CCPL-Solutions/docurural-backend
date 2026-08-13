@@ -2,7 +2,7 @@ spring:
   application:
     name: docurural-backend
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:dev}
+    active: ${SPRING_PROFILES_ACTIVE:develop}
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:docurural_db}
     username: ${DB_USER:docurural}
