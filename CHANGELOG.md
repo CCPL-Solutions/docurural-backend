@@ -7,7 +7,11 @@ se adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
 La fecha de cada versión corresponde a su **paso a producción**.
 
+---
+
 ## [Unreleased]
+
+## [1.0.0] - AAAA-MM-DD
 
 Primera versión productiva del sistema de gestión documental de la IERD Mina y Ticha. Cubre el
 ciclo completo del archivo digital: los administrativos cargan y clasifican documentos
@@ -36,32 +40,5 @@ acción sobre el sistema queda registrada para trazabilidad.
   archivo para verificar que no fue alterado.
 - Añadido **almacenamiento en la nube**: archivos en Amazon S3, con alternativa en disco local
   para desarrollo.
-- Añadidos **pipelines de CI/CD** para los ambientes de desarrollo, QA y producción, y endpoints
-  de salud y versión (`/api/actuator/health`, `/api/version`) para verificar cada despliegue.
-- Añadida **sincronización automática con el tablero de GitHub Projects**: el issue padre de la
-  release, declarado en `release-configuration.json`, avanza de estado solo en los puntos
-  deterministas del pipeline (fin de despliegue a Desarrollo, inicio/fin de despliegue a QA,
-  inicio/fin de despliegue a Producción y verificación aprobada), sin afectar las demás
-  transiciones que siguen siendo manuales.
-- Añadida **cascada de estado del issue padre a sus sub-issues**: cuando el padre avanza de estado
-  —ya sea por el pipeline o porque alguien mueve la tarjeta a mano en el tablero— sus sub-issues
-  (las HU técnicas de la release) se alinean automáticamente, vía un relay en AWS Lambda
-  (`github-webhook-relay/`) para el caso manual.
-- Añadido disparo manual (`workflow_dispatch`) de los pipelines de despliegue a Desarrollo, QA y
-  Producción, para reponer el componente en un ambiente cuya infraestructura fue recreada con
-  Terraform sin necesidad de un commit ni de avanzar la release. Un despliegue manual nunca mueve
-  el tablero de GitHub Projects.
 
-### Changed
-
-- Movido el workflow de la cascada manual (`project-cascade.yml`) al repo `CCPL-Solutions/project-automation`,
-  para que sus ejecuciones no se mezclen con los pipelines de CI/CD de este repo en la pestaña de Actions. El
-  caso automático (disparado por el propio pipeline de despliegue) no cambia.
-- En el pipeline de Producción, el despliegue manual mantiene la aprobación del Environment
-  `production` pero omite la verificación manual post-despliegue (`verify-production`), para no
-  dejar la reposición de infraestructura pausada esperando una segunda aprobación.
-- Los tres jobs de despliegue (`_deploy.yml`) ahora usan `concurrency` por ambiente, para que dos
-  ejecuciones al mismo ambiente (ej. un push y un disparo manual solapados) se encolen en vez de
-  corromper el respaldo del JAR (`JAR_BACKUP_PATH`).
-
-[Unreleased]: https://github.com/CCPL-Solutions/docurural-backend/compare/main...develop
+---

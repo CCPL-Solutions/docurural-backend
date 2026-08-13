@@ -1,0 +1,10 @@
+spring:
+  cloud:
+    aws:
+      parameterstore:
+        enabled: false
+
+docurural:
+  storage:
+    provider: local
+    base-path: ./target/test-uploads
