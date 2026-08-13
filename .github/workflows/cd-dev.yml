@@ -50,7 +50,7 @@ jobs:
       environment: development
       runner_label: develop
       version: ${{ needs.read-version.outputs.version }}
-      spring_profile: dev
+      spring_profile: develop
       publish_package: false
       # Un despliegue manual (workflow_dispatch) nunca mueve el tablero de GitHub
       # Projects — solo repone el componente, no representa avance de la release.

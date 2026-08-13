@@ -1,0 +1,25 @@
+spring:
+  cloud:
+    aws:
+      parameterstore:
+        enabled: false
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+docurural:
+  storage:
+    provider: s3
+    s3:
+      bucket: ${DOCURURAL_STORAGE_S3_BUCKET:docurural-develop-documentos}
+      key-prefix: ${DOCURURAL_STORAGE_S3_KEY_PREFIX:documents/local}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+
+logging:
+  level:
+    co.edu.docurural: DEBUG
+    org.springframework.security: DEBUG
+    org.flywaydb: DEBUG
