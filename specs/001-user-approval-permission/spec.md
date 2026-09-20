@@ -8,6 +8,12 @@
 
 **Input**: User description: "HU-32 — Permiso para aprobar documentos (RF-07, prioridad Alta, versión v2.0 Flujo de aprobación). Como administrador del sistema, quiero indicar qué usuarios pueden revisar y aprobar documentos, para que la responsabilidad de aprobar recaiga solo en las personas autorizadas por la institución, como la rectoría o la coordinación."
 
+## Clarifications
+
+### Session 2026-09-20
+
+- Q: ¿Esta historia entrega un punto de verificación reutilizable de "aprobador activo" o solo guarda y expone el indicador? → A: Entrega `UserService.isActiveApprover(userId)`, que lee el estado vigente de la base de datos, con pruebas unitarias.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Otorgar el permiso de aprobar al crear o editar un usuario (Priority: P1)
@@ -116,7 +122,7 @@ usuario y protege la trazabilidad y la seguridad de la asignación.
 
 **Independent Test**: desactivar a un aprobador y verificar que no cuenta como aprobador activo;
 reactivarlo y verificar que conserva el permiso. Retirar el permiso a alguien con sesión vigente
-y verificar que su siguiente intento de aprobar o devolver es rechazado.
+y verificar que `isActiveApprover` devuelve falso en la siguiente consulta.
 
 **Acceptance Scenarios**:
 
@@ -177,8 +183,10 @@ y verificar que su siguiente intento de aprobar o devolver es rechazado.
   de acción `EDIT_USER` cuyo detalle incluya `can_approve: [valor anterior] → [valor nuevo]`. Si
   el valor no cambia, MUST NOT registrarse esa línea.
 - **FR-011**: El permiso MUST NOT viajar como dato fijo dentro de la credencial de sesión (token).
-  Cualquier acción que exija ser aprobador (aprobar o devolver un documento, funcionalidad
-  posterior) MUST verificar el valor vigente del permiso y el estado activo del usuario en cada
+  El sistema MUST ofrecer en la interfaz `UserService` el método `isActiveApprover(userId)`, que
+  consulta el estado vigente en la base de datos y devuelve verdadero solo si el permiso está
+  activo, el usuario está activo y su rol no es READER. Cualquier acción que exija ser aprobador
+  (aprobar o devolver un documento, funcionalidad posterior) MUST usar ese método en cada
   ocasión, de modo que retirarlo surta efecto de inmediato aunque el usuario tenga una sesión
   vigente.
 - **FR-012**: Una solicitud de edición que no incluya el indicador MUST conservar el valor actual
@@ -206,8 +214,9 @@ y verificar que su siguiente intento de aprobar o devolver es rechazado.
   lector aparece con el permiso activo en el sistema.
 - **SC-003**: El 100% de los cambios del permiso (manuales o automáticos) quedan registrados en la
   bitácora con el valor anterior y el nuevo.
-- **SC-004**: Tras retirar el permiso, el usuario afectado no puede aprobar ni devolver documentos
-  en su siguiente intento, incluso con una sesión abierta antes del retiro.
+- **SC-004**: Tras retirar el permiso, `isActiveApprover` devuelve falso para el usuario afectado
+  en su siguiente consulta, incluso con una sesión abierta antes del retiro; la funcionalidad de
+  aprobar/devolver, al usarlo, lo rechazará.
 - **SC-005**: En el listado de usuarios, el administrador identifica quiénes son aprobadores sin
   abrir el detalle de cada usuario.
 - **SC-006**: Ningún visto bueno registrado desaparece ni cambia como consecuencia de retirar el
@@ -217,8 +226,8 @@ y verificar que su siguiente intento de aprobar o devolver es rechazado.
 
 - Los formularios de creación y edición de usuarios (HU-03, HU-04), la desactivación (HU-05) y el
   listado (HU-08) ya existen; esta historia los extiende. La funcionalidad de aprobar y devolver
-  documentos es posterior y queda fuera de alcance: aquí solo se define el permiso y la regla de
-  verificación que esa funcionalidad deberá respetar.
+  documentos es posterior y queda fuera de alcance: aquí se define el permiso y se entrega la
+  verificación `isActiveApprover` que esa funcionalidad deberá usar.
 - La parte visual (casilla, texto de ayuda, aviso previo al guardado, etiqueta "Aprobador") es
   responsabilidad del cliente web. El backend garantiza las reglas, expone el valor del permiso y
   rechaza los estados inválidos; el aviso previo se apoya en que el cliente conoce el rol
