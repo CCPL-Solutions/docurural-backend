@@ -301,9 +301,6 @@ tercera salida de ignorarla.
   ya inyecta `DocumentCommandService`; hay que romperlo extrayendo una interfaz de solo lectura de
   `category` que no dependa de `document`, no con `@Lazy`. Fecha objetivo: por definir.
 
-D-1, D-2 y D-3 se retiran en esta enmienda: quedaron corregidas y verificadas antes de su fecha
-objetivo.
-
 ### Regla de flujo de trabajo: changelog
 
 Todo cambio con efecto visible para el usuario MUST registrarse en `CHANGELOG.md` en el mismo PR
