@@ -291,28 +291,18 @@ tercera salida de ignorarla.
 
 **Desviaciones registradas:**
 
-- **D-1 — `CategoryRepository` consulta la tabla `documents` (Principio I).**
-  `CategoryRepository` ejecuta dos consultas SQL nativas contra `documents` para contar documentos
-  activos por categoría, en lugar de pedir el dato a los servicios del módulo `document`. Aceptada
-  como deuda técnica a corregir, **no** como excepción permanente: el Principio I sigue siendo
-  vinculante para todo código nuevo. Pendiente de refactor hacia una interfaz de servicio de
-  `document`.
+- **D-4 — Dependencias cruzadas de repositorio entre `document`, `category` y `dashboard`
+  (Principio I).** `DocumentCommandServiceImpl`, `DocumentBatchServiceImpl` y
+  `DocumentSearchServiceImpl` inyectan `CategoryRepository` para resolver y validar categorías;
+  `DashboardServiceImpl` inyecta `DocumentRepository` para sus conteos y para el top-10. En ambos
+  casos un módulo usa el repositorio de otro en lugar de su interfaz de servicio. Aceptada como
+  deuda técnica a corregir, **no** como excepción permanente. Atención al abordarla: inyectar
+  `CategoryService` en el módulo `document` cierra un ciclo de Spring, porque `CategoryServiceImpl`
+  ya inyecta `DocumentCommandService`; hay que romperlo extrayendo una interfaz de solo lectura de
+  `category` que no dependa de `document`, no con `@Lazy`. Fecha objetivo: por definir.
 
-- **D-2 — `UpdateUserRequestDto.confirmPassword` sin restricción (Principio IX).**
-  Es el único componente de los 36 que hay en los diez `RequestDto` que no lleva ninguna anotación
-  de `jakarta.validation.constraints`: solo `@Schema`. El chequeo cruzado lo cubre `@PasswordsMatch`
-  a nivel de clase, así que no hay defecto funcional, pero el campo no tiene cota de longitud.
-  Corrección: añadir `@Size(max = 128)`. Fecha objetivo: 2026-10-31.
-
-- **D-3 — Componentes opcionales sin `@Nullable` (Principio IX).**
-  Siete componentes admiten `null` sin marcarlo con `@Nullable`; algunos lo insinúan con
-  `@Schema(nullable = true)` o en su texto descriptivo, que no es un marcador verificable:
-  `CreateCategoryRequestDto.description`, `UpdateCategoryRequestDto.description`,
-  `BatchUploadDocumentRequestDto.titles`, `UpdateDocumentMetadataRequestDto.description`,
-  `UploadDocumentRequestDto.description`, `UpdateUserRequestDto.password` y
-  `UpdateUserRequestDto.confirmPassword`. `jakarta.annotation.Nullable` ya está en el classpath
-  (`jakarta.annotation-api`), por lo que la corrección no añade dependencias.
-  Fecha objetivo: 2026-10-31.
+D-1, D-2 y D-3 se retiran en esta enmienda: quedaron corregidas y verificadas antes de su fecha
+objetivo.
 
 ### Regla de flujo de trabajo: changelog
 
@@ -338,4 +328,4 @@ que lo introduce:
 de mapper y de test, y comandos habituales. Es complementario a esta constitución y subordinado a
 ella.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-19 | **Last Amended**: 2026-09-19
+**Version**: 1.0.1 | **Ratified**: 2026-09-19 | **Last Amended**: 2026-09-20
