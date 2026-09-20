@@ -154,6 +154,46 @@ inconsistentes entre endpoints. Externalizar los mensajes mantiene el sistema tr
 la transacción de auditoría garantiza que un fallo al registrar la bitácora nunca tumbe la carga
 de un documento que ya se guardó.
 
+### IX. Seguridad por Defecto y Protección de Datos (NO NEGOCIABLE)
+
+Todo endpoint MUST tener una regla de autorización explícita para los roles `ADMIN`, `EDITOR` o
+`READER`, ya sea con `@PreAuthorize` (a nivel de método o de clase) o en `SecurityConfig`.
+
+`SecurityConfig` MUST terminar con `anyRequest().authenticated()`. Los endpoints públicos son
+únicamente los enumerados de forma explícita antes de esa regla; hoy son `POST /auth/login`, la
+documentación OpenAPI/Swagger, `/version` y `/actuator/health`. Añadir un endpoint a esa lista
+MUST justificarse en el PR.
+
+Los secretos (clave de firma JWT, credenciales de base de datos, credenciales de AWS) MUST NOT
+estar en el repositorio ni en archivos `application*.yaml` versionados: se obtienen de variables
+de entorno o de AWS Parameter Store.
+
+Las contraseñas MUST almacenarse con un hash adaptativo (BCrypt o Argon2), nunca en claro ni con
+un hash rápido.
+
+Contraseñas, tokens JWT y contenido de documentos MUST NOT escribirse en los logs ni en los
+mensajes de las excepciones.
+
+Todo componente de un `record` con sufijo `RequestDto` MUST llevar al menos una anotación de
+`jakarta.validation.constraints` que acote su valor (`@NotNull`, `@NotBlank`, `@Size`, `@Email`,
+`@Pattern`, entre otras). En una colección, las restricciones declaradas sobre los elementos
+(`List<@NotBlank String>`) cuentan como acotación de ese componente, y la colección MUST llevar
+además `@Valid` para que se evalúen.
+
+Un componente que admita `null` MUST marcarse con `@Nullable` (`jakarta.annotation.Nullable`), para
+que la ausencia de `@NotNull` o `@NotBlank` sea una decisión declarada y no un olvido. `@Schema`
+describe la API; no sustituye a la restricción ni al marcador de nulabilidad.
+
+El parámetro del controlador MUST llevar `@Valid`. Ningún controlador MUST devolver una entidad
+JPA: solo `record` de response.
+
+**Rationale:** el sistema custodia documentos institucionales, algunos con datos personales de
+estudiantes y familias. Un endpoint sin regla de autorización, o un secreto filtrado al
+repositorio, es una brecha que no se corrige con una migración ni con un refactor. Es verificable:
+se revisan los controladores en busca de endpoints sin regla, se busca en el historial de Git
+cadenas de credenciales, se buscan llamadas a `log.*` con argumentos sensibles y se recorre cada
+`RequestDto` comprobando que ningún componente quede sin restricción ni sin marcador de nulabilidad.
+
 ## Restricciones Técnicas
 
 Estas restricciones describen el stack comprometido. Cambiarlas requiere enmienda.
@@ -215,9 +255,10 @@ Añadir, modificar o retirar un principio requiere estos pasos, en orden:
 2. **Verificabilidad.** El principio propuesto debe redactarse con MUST / MUST NOT / SHOULD y ser
    comprobable en una revisión de código o por una herramienta. Si no se puede señalar qué archivo
    lo incumpliría, es una convención y va a `CLAUDE.md`, no aquí.
-3. **Límite de tamaño.** El total SHOULD mantenerse en un máximo de ocho principios. Para añadir
-   el noveno hay que argumentar por qué ninguno de los ocho existentes puede absorberlo ni
-   retirarse. Una constitución que nadie recuerda no se cumple.
+3. **Límite de tamaño.** El conjunto SHOULD mantenerse en un número que un revisor pueda tener en
+   la cabeza durante un PR, en torno a diez. No hay un tope rígido: lo que se exige es que cada
+   principio nuevo venga acompañado de la razón por la que ninguno de los existentes puede
+   absorberlo. Una constitución que nadie recuerda no se cumple.
 4. **Impacto.** Enumerar en el PR el código existente que quedaría en violación. Si hay
    violaciones, el PR debe incluir el plan: corregirlas en el mismo PR, o registrarlas como
    desviación con fecha objetivo (ver más abajo).
@@ -256,6 +297,22 @@ tercera salida de ignorarla.
   como deuda técnica a corregir, **no** como excepción permanente: el Principio I sigue siendo
   vinculante para todo código nuevo. Pendiente de refactor hacia una interfaz de servicio de
   `document`.
+
+- **D-2 — `UpdateUserRequestDto.confirmPassword` sin restricción (Principio IX).**
+  Es el único componente de los 36 que hay en los diez `RequestDto` que no lleva ninguna anotación
+  de `jakarta.validation.constraints`: solo `@Schema`. El chequeo cruzado lo cubre `@PasswordsMatch`
+  a nivel de clase, así que no hay defecto funcional, pero el campo no tiene cota de longitud.
+  Corrección: añadir `@Size(max = 128)`. Fecha objetivo: 2026-10-31.
+
+- **D-3 — Componentes opcionales sin `@Nullable` (Principio IX).**
+  Siete componentes admiten `null` sin marcarlo con `@Nullable`; algunos lo insinúan con
+  `@Schema(nullable = true)` o en su texto descriptivo, que no es un marcador verificable:
+  `CreateCategoryRequestDto.description`, `UpdateCategoryRequestDto.description`,
+  `BatchUploadDocumentRequestDto.titles`, `UpdateDocumentMetadataRequestDto.description`,
+  `UploadDocumentRequestDto.description`, `UpdateUserRequestDto.password` y
+  `UpdateUserRequestDto.confirmPassword`. `jakarta.annotation.Nullable` ya está en el classpath
+  (`jakarta.annotation-api`), por lo que la corrección no añade dependencias.
+  Fecha objetivo: 2026-10-31.
 
 ### Regla de flujo de trabajo: changelog
 

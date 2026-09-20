@@ -16,10 +16,10 @@ La fecha de cada versión corresponde a su **paso a producción**.
 - Inicializado **Spec Kit** como flujo de trabajo de desarrollo: plantillas de especificación,
   plan, tareas y checklist, scripts de apoyo y los comandos de ciclo de vida de una funcionalidad
   (`/speckit-specify`, `/speckit-plan`, `/speckit-tasks`, `/speckit-implement`, entre otros).
-- Añadida la **constitución del proyecto** (`.specify/memory/constitution.md` v1.0.0): ocho
+- Añadida la **constitución del proyecto** (`.specify/memory/constitution.md` v1.0.0): nueve
   principios verificables sobre arquitectura modular por feature, inversión de dependencias,
   simplicidad, contrato de pruebas por capa, umbrales de cobertura, migraciones inmutables,
-  borrado lógico y manejo tipificado de errores y auditoría.
+  borrado lógico, manejo tipificado de errores y auditoría, y seguridad por defecto.
 - Añadido `CLAUDE.md` con las convenciones de detalle del proyecto: naming de clases, métodos,
   base de datos y claves i18n, niveles de log, patrón MapStruct, reparto CQRS del módulo
   `document` y plantillas de prueba.
