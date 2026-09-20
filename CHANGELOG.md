@@ -24,6 +24,11 @@ La fecha de cada versión corresponde a su **paso a producción**.
   base de datos y claves i18n, niveles de log, patrón MapStruct, reparto CQRS del módulo
   `document` y plantillas de prueba.
 
+### Fixed
+
+- Acotada la longitud de `confirmPassword` en la edición de usuario: ahora se rechaza con 400 una
+  confirmación de más de 128 caracteres.
+
 ### Removed
 
 - Eliminados los documentos de reglas heredados (`.claude/rules/`, `docs/legacy-rules/`), cuyo

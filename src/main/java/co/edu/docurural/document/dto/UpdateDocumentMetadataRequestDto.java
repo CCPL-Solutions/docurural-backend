@@ -2,6 +2,7 @@ package co.edu.docurural.document.dto;
 
 import co.edu.docurural.shared.enums.SensitivityLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -35,6 +36,7 @@ public record UpdateDocumentMetadataRequestDto(
         @Schema(description = "Fecha del documento (YYYY-MM-DD)", example = "2026-03-15")
         LocalDate documentDate,
 
+        @Nullable
         @Size(max = 500, message = "{validation.document.description.size}")
         @Schema(description = "Descripción opcional. Si se omite, se conserva la actual", nullable = true,
                 example = "Versión corregida del acta del 15 de marzo")

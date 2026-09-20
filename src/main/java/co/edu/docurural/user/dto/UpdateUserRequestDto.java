@@ -3,6 +3,7 @@ package co.edu.docurural.user.dto;
 import co.edu.docurural.user.enums.UserRole;
 import co.edu.docurural.user.dto.validation.PasswordsMatch;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -40,6 +41,7 @@ public record UpdateUserRequestDto(
         @Schema(description = "Nuevo rol", example = "READER")
         UserRole role,
 
+        @Nullable
         @Size(min = 12, max = 128, message = "{validation.user.password.size}")
         @Pattern(
                 regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d]).+$",
@@ -47,6 +49,8 @@ public record UpdateUserRequestDto(
         @Schema(description = "Nueva contraseña opcional (mín. 12 caracteres, mayúscula, minúscula, dígito y símbolo)", example = "NuevaClave1!")
         String password,
 
+        @Nullable
+        @Size(max = 128, message = "{validation.user.confirm-password.size}")
         @Schema(description = "Confirmación de la nueva contraseña (debe coincidir con 'password')", example = "NuevaClave1!")
         String confirmPassword
 ) {

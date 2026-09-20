@@ -2,6 +2,7 @@ package co.edu.docurural.category.dto;
 
 import co.edu.docurural.shared.enums.SensitivityLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -17,6 +18,7 @@ public record CreateCategoryRequestDto(
         @Schema(description = "Nombre único de la categoría", example = "Proyectos Biotecnología")
         String name,
 
+        @Nullable
         @Size(max = 500, message = "{validation.category.description.size}")
         @Schema(description = "Descripción opcional del tipo de documentos que agrupa",
                 example = "Proyectos e informes del laboratorio de biotecnología en tejido vegetal")
