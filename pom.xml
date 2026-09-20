@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>co.edu.docurural</groupId>
 	<artifactId>docurural-backend</artifactId>
-	<version>1.0.0-SNAPSHOT</version>
+	<version>1.1.0-SNAPSHOT</version>
 	<name>docurural-backend</name>
 	<description>Sistema de gestion documental y archivo digital para la IERD Mina y Ticha</description>
 	<url>https://github.com/CCPL-Solutions/docurural-backend</url>
