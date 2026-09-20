@@ -41,6 +41,9 @@ public interface DocumentRepository extends JpaRepository<Document, Long>, JpaSp
             """)
     List<CategoryDocumentCount> countActiveByCategoryId(@Param("status") DocumentStatus status);
 
+    /** Conteo de documentos de una categoría con el status indicado (CAT-02 / HU-18). */
+    long countByCategoryIdAndStatus(Long categoryId, DocumentStatus status);
+
     /** Total de documentos con el status indicado (DSH-01 / HU-24). */
     long countByStatus(DocumentStatus status);
 

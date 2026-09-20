@@ -14,9 +14,9 @@ import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.mapper.CategoryMapper;
 import co.edu.docurural.category.repository.CategoryRepository;
-import co.edu.docurural.category.repository.projection.CategoryCountView;
 import co.edu.docurural.category.repository.projection.CategoryNameView;
 import co.edu.docurural.document.service.DocumentCommandService;
+import co.edu.docurural.document.service.DocumentQueryService;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.enums.SensitivityLevel;
 import co.edu.docurural.user.repository.UserRepository;
@@ -37,14 +37,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Servicio de gestión de categorías documentales (CAT-01..CAT-05 / HU-16..HU-19).
  *
- * <p>Los conteos de documentos activos se obtienen directamente del repositorio
- * de categorías mediante SQL nativo, eliminando la dependencia cruzada con el
- * módulo {@code document}.
+ * <p>Los conteos de documentos activos se piden a {@link DocumentQueryService}:
+ * la tabla {@code documents} pertenece al módulo {@code document} y solo se
+ * accede a ella a través de su interfaz de servicio (Principio I).
  */
 @Service
 @RequiredArgsConstructor
@@ -62,6 +61,7 @@ public class CategoryServiceImpl implements CategoryService {
     private final SortingValidator sortingValidator;
     private final CategoryMapper categoryMapper;
     private final DocumentCommandService documentCommandService;
+    private final DocumentQueryService documentQueryService;
 
     @Override
     @Transactional(readOnly = true)
@@ -72,7 +72,7 @@ public class CategoryServiceImpl implements CategoryService {
                 "category.sort.unsupported-field", "category.sort.unsupported-direction");
 
         List<Category> categories = categoryRepository.findAll(sort);
-        Map<Long, Long> counts = buildCountsMap();
+        Map<Long, Long> counts = documentQueryService.getActiveCountsByCategory();
 
         log.debug("Listado de categorías: total={} sortBy={} sortDir={}",
                 categories.size(), sortBy, sortDir);
@@ -86,7 +86,7 @@ public class CategoryServiceImpl implements CategoryService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         messageResolver.get("category.not-found", id)));
 
-        long count = categoryRepository.countActiveDocumentsByCategoryId(id);
+        long count = documentQueryService.getActiveCountByCategory(id);
 
         return categoryMapper.toDetailResponse(category, count);
     }
@@ -198,11 +198,6 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional(readOnly = true)
     public List<CategoryNameView> findAllCategoryNames(Sort sort) {
         return categoryRepository.findAllBy(sort);
-    }
-
-    private Map<Long, Long> buildCountsMap() {
-        return categoryRepository.countActiveDocumentsByCategory().stream()
-                .collect(Collectors.toMap(CategoryCountView::getCategoryId, CategoryCountView::getCount));
     }
 
     private List<String> applyUpdates(Category category, UpdateCategoryRequestDto request,

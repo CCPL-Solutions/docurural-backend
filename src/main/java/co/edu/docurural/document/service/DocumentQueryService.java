@@ -16,4 +16,10 @@ public interface DocumentQueryService {
      * @return mapa de {@code categoryId → count}; categorías sin documentos no aparecen.
      */
     Map<Long, Long> getActiveCountsByCategory();
+
+    /**
+     * Conteo de documentos ACTIVE de una categoría concreta.
+     * Usado por {@code CategoryService} para el detalle de una categoría.
+     */
+    long getActiveCountByCategory(Long categoryId);
 }

@@ -2,6 +2,7 @@ package co.edu.docurural.document.dto;
 
 import co.edu.docurural.shared.enums.SensitivityLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Nullable;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -32,6 +33,7 @@ public record BatchUploadDocumentRequestDto(
                 example = "INTERNAL", allowableValues = {"INTERNAL", "RESTRICTED", "CONFIDENTIAL"})
         SensitivityLevel sensitivityLevel,
 
+        @Nullable
         @Valid
         @Schema(description = "Títulos por archivo (en el mismo orden que files[]). "
                 + "Si se omite o la posición está vacía, se usa el nombre original del archivo. "

@@ -2,6 +2,7 @@ package co.edu.docurural.document.dto;
 
 import co.edu.docurural.shared.enums.SensitivityLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -34,6 +35,7 @@ public record UploadDocumentRequestDto(
         @Schema(description = "Fecha del documento (no la de carga)", example = "2026-03-15")
         LocalDate documentDate,
 
+        @Nullable
         @Size(max = 500, message = "{validation.document.description.size}")
         @Schema(description = "Descripción opcional del contenido",
                 example = "Acta de la reunión del consejo directivo del 15 de marzo de 2026",

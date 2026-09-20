@@ -11,7 +11,30 @@ La fecha de cada versión corresponde a su **paso a producción**.
 
 ## [Unreleased]
 
-## [1.0.0] - AAAA-MM-DD
+### Added
+
+- Inicializado **Spec Kit** como flujo de trabajo de desarrollo: plantillas de especificación,
+  plan, tareas y checklist, scripts de apoyo y los comandos de ciclo de vida de una funcionalidad
+  (`/speckit-specify`, `/speckit-plan`, `/speckit-tasks`, `/speckit-implement`, entre otros).
+- Añadida la **constitución del proyecto** (`.specify/memory/constitution.md` v1.0.0): nueve
+  principios verificables sobre arquitectura modular por feature, inversión de dependencias,
+  simplicidad, contrato de pruebas por capa, umbrales de cobertura, migraciones inmutables,
+  borrado lógico, manejo tipificado de errores y auditoría, y seguridad por defecto.
+- Añadido `CLAUDE.md` con las convenciones de detalle del proyecto: naming de clases, métodos,
+  base de datos y claves i18n, niveles de log, patrón MapStruct, reparto CQRS del módulo
+  `document` y plantillas de prueba.
+
+### Fixed
+
+- Acotada la longitud de `confirmPassword` en la edición de usuario: ahora se rechaza con 400 una
+  confirmación de más de 128 caracteres.
+
+### Removed
+
+- Eliminados los documentos de reglas heredados (`.claude/rules/`, `docs/legacy-rules/`), cuyo
+  contenido quedó repartido entre la constitución y `CLAUDE.md`.
+
+## [1.0.0] - 2026-08-13
 
 Primera versión productiva del sistema de gestión documental de la IERD Mina y Ticha. Cubre el
 ciclo completo del archivo digital: los administrativos cargan y clasifican documentos

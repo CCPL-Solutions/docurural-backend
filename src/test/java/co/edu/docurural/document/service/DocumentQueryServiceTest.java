@@ -6,6 +6,7 @@ import co.edu.docurural.document.dto.DocumentDetailResponseDto;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.enums.DocumentStatus;
 import co.edu.docurural.document.repository.DocumentRepository;
+import co.edu.docurural.document.repository.projection.CategoryDocumentCount;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.exception.ResourceNotFoundException;
 import co.edu.docurural.shared.util.MessageResolver;
@@ -21,10 +22,13 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
@@ -93,5 +97,50 @@ class DocumentQueryServiceTest {
 
         assertThatThrownBy(() -> documentQueryService.findDetailById(99L, AUDIT))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    // ------------------------------------------------------------------
+    // Conteos por categoría — consumidos por CategoryService (Principio I)
+    // ------------------------------------------------------------------
+
+    @Test
+    void getActiveCountsByCategory_returnsMapKeyedByCategoryId_whenRepositoryReturnsRows() {
+        when(documentRepository.countActiveByCategoryId(DocumentStatus.ACTIVE))
+                .thenReturn(List.of(countRow(1L, 23L), countRow(5L, 7L)));
+
+        Map<Long, Long> counts = documentQueryService.getActiveCountsByCategory();
+
+        assertThat(counts).containsOnly(entry(1L, 23L), entry(5L, 7L));
+    }
+
+    @Test
+    void getActiveCountsByCategory_returnsEmptyMap_whenNoActiveDocuments() {
+        when(documentRepository.countActiveByCategoryId(DocumentStatus.ACTIVE))
+                .thenReturn(List.of());
+
+        assertThat(documentQueryService.getActiveCountsByCategory()).isEmpty();
+    }
+
+    @Test
+    void getActiveCountByCategory_returnsRepositoryCount_whenCategoryHasActiveDocuments() {
+        when(documentRepository.countByCategoryIdAndStatus(1L, DocumentStatus.ACTIVE))
+                .thenReturn(15L);
+
+        assertThat(documentQueryService.getActiveCountByCategory(1L)).isEqualTo(15L);
+    }
+
+    @Test
+    void getActiveCountByCategory_returnsZero_whenCategoryHasNoActiveDocuments() {
+        when(documentRepository.countByCategoryIdAndStatus(2L, DocumentStatus.ACTIVE))
+                .thenReturn(0L);
+
+        assertThat(documentQueryService.getActiveCountByCategory(2L)).isZero();
+    }
+
+    private static CategoryDocumentCount countRow(Long categoryId, long count) {
+        return new CategoryDocumentCount() {
+            @Override public Long getCategoryId() { return categoryId; }
+            @Override public Long getCount() { return count; }
+        };
     }
 }

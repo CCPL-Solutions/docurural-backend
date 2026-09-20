@@ -2,6 +2,7 @@ package co.edu.docurural.category.dto;
 
 import co.edu.docurural.shared.enums.SensitivityLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -17,6 +18,7 @@ public record UpdateCategoryRequestDto(
         @Schema(description = "Nuevo nombre único de la categoría", example = "Proyectos e Informes Biotecnología")
         String name,
 
+        @Nullable
         @Size(max = 500, message = "{validation.category.description.size}")
         @Schema(description = "Nueva descripción (null para conservar la actual)",
                 example = "Proyectos e informes detallados del programa de Biotecnología en Tejido Vegetal")

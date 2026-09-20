@@ -50,4 +50,10 @@ public class DocumentQueryServiceImpl implements DocumentQueryService {
                         CategoryDocumentCount::getCategoryId,
                         CategoryDocumentCount::getCount));
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long getActiveCountByCategory(Long categoryId) {
+        return documentRepository.countByCategoryIdAndStatus(categoryId, DocumentStatus.ACTIVE);
+    }
 }
