@@ -53,6 +53,31 @@ public final class TestFixtures {
                 .build();
     }
 
+    public static User userApprover(Long id) {
+        return User.builder()
+                .id(id)
+                .fullName("Aida Aprobadora")
+                .email("aida.aprobadora@docurural.edu.co")
+                .passwordHash("$2a$10$hashedApproverPwd")
+                .role(UserRole.EDITOR)
+                .status(UserStatus.ACTIVE)
+                .canApprove(true)
+                .createdAt(FIXED_CREATED_AT)
+                .build();
+    }
+
+    public static User userReader(Long id) {
+        return User.builder()
+                .id(id)
+                .fullName("Rita Reader")
+                .email("rita.reader@docurural.edu.co")
+                .passwordHash("$2a$10$hashedReaderPwd")
+                .role(UserRole.READER)
+                .status(UserStatus.ACTIVE)
+                .createdAt(FIXED_CREATED_AT)
+                .build();
+    }
+
     public static User userInactive(Long id) {
         return User.builder()
                 .id(id)
@@ -71,22 +96,33 @@ public final class TestFixtures {
 
     public static CreateUserRequestDto createUserRequest(
             String fullName, String email, String password, UserRole role) {
-        return new CreateUserRequestDto(fullName, email, password, password, role);
+        return new CreateUserRequestDto(fullName, email, password, password, role, null);
     }
 
     public static CreateUserRequestDto createUserRequest(
             String fullName, String email, String password, String confirmPassword, UserRole role) {
-        return new CreateUserRequestDto(fullName, email, password, confirmPassword, role);
+        return new CreateUserRequestDto(fullName, email, password, confirmPassword, role, null);
     }
 
     public static UpdateUserRequestDto updateUserRequest(
             String fullName, String email, UserRole role) {
-        return new UpdateUserRequestDto(fullName, email, role, null, null);
+        return new UpdateUserRequestDto(fullName, email, role, null, null, null);
     }
 
     public static UpdateUserRequestDto updateUserRequest(
             String fullName, String email, UserRole role, String password, String confirmPassword) {
-        return new UpdateUserRequestDto(fullName, email, role, password, confirmPassword);
+        return new UpdateUserRequestDto(fullName, email, role, password, confirmPassword, null);
+    }
+
+    public static CreateUserRequestDto createUserRequest(UserRole role, Boolean canApprove) {
+        return new CreateUserRequestDto(
+                "Nora Nueva", "nora.nueva@docurural.edu.co",
+                "Supersecreta1!", "Supersecreta1!", role, canApprove);
+    }
+
+    public static UpdateUserRequestDto updateUserRequest(UserRole role, Boolean canApprove) {
+        return new UpdateUserRequestDto(
+                "Erik Editor", "erik.editor@docurural.edu.co", role, null, null, canApprove);
     }
 
     public static UpdateStatusRequestDto updateStatusRequest(UserStatus status) {

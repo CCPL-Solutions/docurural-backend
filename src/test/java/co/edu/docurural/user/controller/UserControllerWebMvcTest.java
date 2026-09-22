@@ -5,6 +5,7 @@ import co.edu.docurural.shared.config.SecurityConfig;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.audit.AuditContextResolver;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
+import co.edu.docurural.support.TestFixtures;
 import co.edu.docurural.user.dto.UpdateStatusResponseDto;
 import co.edu.docurural.user.dto.UpdateUserResponseDto;
 import co.edu.docurural.user.dto.UserResponseDto;
@@ -77,6 +78,7 @@ class UserControllerWebMvcTest {
                 "erik.editor@docurural.edu.co",
                 "EDITOR",
                 "ACTIVE",
+                false,
                 LocalDateTime.of(2026, 1, 1, 8, 0),
                 null);
         when(userService.list("fullName", "asc")).thenReturn(new UserListResponseDto(1, List.of(user)));
@@ -127,6 +129,7 @@ class UserControllerWebMvcTest {
                 "erik.editor@docurural.edu.co",
                 "EDITOR",
                 "ACTIVE",
+                false,
                 LocalDateTime.of(2026, 1, 1, 8, 0),
                 LocalDateTime.of(2026, 2, 1, 10, 30));
 
@@ -162,7 +165,8 @@ class UserControllerWebMvcTest {
                 "nora.nueva@docurural.edu.co",
                 "Supersecreta1!",
                 "Supersecreta1!",
-                UserRole.READER);
+                UserRole.READER,
+                null);
 
         CreateUserResponseDto response = new CreateUserResponseDto(
                 55L,
@@ -170,6 +174,7 @@ class UserControllerWebMvcTest {
                 "nora.nueva@docurural.edu.co",
                 "READER",
                 "ACTIVE",
+                false,
                 LocalDateTime.of(2026, 1, 2, 9, 0),
                 "Usuario creado exitosamente");
 
@@ -223,6 +228,7 @@ class UserControllerWebMvcTest {
                 "erik.editor@docurural.edu.co",
                 UserRole.EDITOR,
                 null,
+                null,
                 null);
 
         UpdateUserResponseDto response = new UpdateUserResponseDto(
@@ -231,6 +237,7 @@ class UserControllerWebMvcTest {
                 "erik.editor@docurural.edu.co",
                 "EDITOR",
                 "ACTIVE",
+                false,
                 "Usuario actualizado exitosamente");
 
         when(userService.update(eq(2L), any(UpdateUserRequestDto.class), eq(ADMIN_AUDIT)))
@@ -286,6 +293,7 @@ class UserControllerWebMvcTest {
                 "existe@docurural.edu.co",
                 UserRole.EDITOR,
                 null,
+                null,
                 null);
 
         when(userService.update(eq(2L), any(UpdateUserRequestDto.class), eq(ADMIN_AUDIT)))
@@ -307,6 +315,7 @@ class UserControllerWebMvcTest {
                 "Erik Editor",
                 "erik.editor@docurural.edu.co",
                 UserRole.EDITOR,
+                null,
                 null,
                 null);
 
@@ -400,4 +409,116 @@ class UserControllerWebMvcTest {
                 .andExpect(jsonPath("$.fieldErrors.status").exists());
     }
 
+
+    private static final String READER_APPROVER_MESSAGE = "Los lectores no pueden aprobar documentos";
+
+    @Test
+    void create_returns201WithCanApprove_whenEditorFlagged() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
+        CreateUserRequestDto request = TestFixtures.createUserRequest(UserRole.EDITOR, true);
+        when(userService.create(any(CreateUserRequestDto.class), eq(ADMIN_AUDIT)))
+                .thenReturn(new CreateUserResponseDto(
+                        56L, "Nora Nueva", "nora.nueva@docurural.edu.co", "EDITOR", "ACTIVE", true,
+                        LocalDateTime.of(2026, 1, 2, 9, 0), "Usuario creado exitosamente"));
+
+        mockMvc.perform(post("/users")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.canApprove").value(true));
+
+        verify(userService).create(argThat(req -> Boolean.TRUE.equals(req.canApprove())), eq(ADMIN_AUDIT));
+    }
+
+    @Test
+    void update_returns200WithCanApprove_whenFlagSent() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
+        UpdateUserRequestDto request = TestFixtures.updateUserRequest(UserRole.EDITOR, true);
+        when(userService.update(eq(2L), any(UpdateUserRequestDto.class), eq(ADMIN_AUDIT)))
+                .thenReturn(new UpdateUserResponseDto(
+                        2L, "Erik Editor", "erik.editor@docurural.edu.co", "EDITOR", "ACTIVE", true,
+                        "Usuario actualizado exitosamente"));
+
+        mockMvc.perform(put("/users/2")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.canApprove").value(true));
+
+        verify(userService).update(eq(2L), argThat(req -> Boolean.TRUE.equals(req.canApprove())), eq(ADMIN_AUDIT));
+    }
+
+    @Test
+    void create_returns400_whenReaderWithCanApproveTrue() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
+        CreateUserRequestDto request = TestFixtures.createUserRequest(UserRole.READER, true);
+        when(userService.create(any(CreateUserRequestDto.class), eq(ADMIN_AUDIT)))
+                .thenThrow(new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, READER_APPROVER_MESSAGE));
+
+        mockMvc.perform(post("/users")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value(READER_APPROVER_MESSAGE));
+    }
+
+    @Test
+    void update_returns400_whenReaderWithCanApproveTrue() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
+        UpdateUserRequestDto request = TestFixtures.updateUserRequest(UserRole.READER, true);
+        when(userService.update(eq(2L), any(UpdateUserRequestDto.class), eq(ADMIN_AUDIT)))
+                .thenThrow(new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, READER_APPROVER_MESSAGE));
+
+        mockMvc.perform(put("/users/2")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value(READER_APPROVER_MESSAGE));
+    }
+
+    @Test
+    void update_returns200WithCanApproveFalse_whenRoleChangesToReader() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
+        UpdateUserRequestDto request = TestFixtures.updateUserRequest(UserRole.READER, true);
+        when(userService.update(eq(2L), any(UpdateUserRequestDto.class), eq(ADMIN_AUDIT)))
+                .thenReturn(new UpdateUserResponseDto(
+                        2L, "Erik Editor", "erik.editor@docurural.edu.co", "READER", "ACTIVE", false,
+                        "Usuario actualizado exitosamente"));
+
+        mockMvc.perform(put("/users/2")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.role").value("READER"))
+                .andExpect(jsonPath("$.canApprove").value(false));
+    }
+
+    @Test
+    void list_returnsCanApprove_forEachUser() throws Exception {
+        UserResponseDto approver = new UserResponseDto(
+                2L, "Aida Aprobadora", "aida@docurural.edu.co", "EDITOR", "ACTIVE", true,
+                LocalDateTime.of(2026, 1, 1, 8, 0), null);
+        UserResponseDto regular = new UserResponseDto(
+                3L, "Erik Editor", "erik@docurural.edu.co", "EDITOR", "ACTIVE", false,
+                LocalDateTime.of(2026, 1, 1, 8, 0), null);
+        when(userService.list(any(), any())).thenReturn(new UserListResponseDto(2, List.of(approver, regular)));
+
+        mockMvc.perform(get("/users"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.users[0].canApprove").value(true))
+                .andExpect(jsonPath("$.users[1].canApprove").value(false));
+    }
+
+    @Test
+    void getById_returnsCanApprove() throws Exception {
+        when(userService.findById(2L)).thenReturn(new UserResponseDto(
+                2L, "Aida Aprobadora", "aida@docurural.edu.co", "EDITOR", "ACTIVE", true,
+                LocalDateTime.of(2026, 1, 1, 8, 0), null));
+
+        mockMvc.perform(get("/users/2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.canApprove").value(true));
+    }
 }

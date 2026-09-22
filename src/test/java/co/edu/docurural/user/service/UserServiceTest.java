@@ -44,6 +44,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -379,6 +380,173 @@ class UserServiceTest {
                 eq("Campos modificados: [fullName, email, role, password]"));
     }
 
+
+    // ------------------------------------------------------------------
+    // canApprove (HU-32): US1 + US2
+    // ------------------------------------------------------------------
+
+    private static final String READER_APPROVER_KEY = "user.can-approve.reader-not-allowed";
+
+    private void stubCreateDependencies() {
+        when(passwordEncoder.encode(anyString())).thenReturn("$2a$10$encoded");
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> {
+            User u = inv.getArgument(0);
+            u.setId(50L);
+            return u;
+        });
+    }
+
+    private User createAndCaptureSaved(CreateUserRequestDto request) {
+        stubCreateDependencies();
+        userService.create(request, AUDIT_ADMIN);
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        return captor.getValue();
+    }
+
+    private void stubExistingUserForUpdate(User existing) {
+        when(userRepository.findById(existing.getId())).thenReturn(Optional.of(existing));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+    }
+
+    private UpdateUserResponseDto updateSameProfile(User existing, UserRole role, Boolean canApprove) {
+        UpdateUserRequestDto request = new UpdateUserRequestDto(
+                existing.getFullName(), existing.getEmail(), role, null, null, canApprove);
+        return userService.update(existing.getId(), request, AUDIT_ADMIN);
+    }
+
+    @Test
+    void create_setsCanApproveFalse_whenFieldOmitted() {
+        User saved = createAndCaptureSaved(TestFixtures.createUserRequest(UserRole.EDITOR, null));
+
+        assertThat(saved.isCanApprove()).isFalse();
+    }
+
+    @Test
+    void create_persistsCanApproveTrue_whenRoleIsEditorAndFlagTrue() {
+        User saved = createAndCaptureSaved(TestFixtures.createUserRequest(UserRole.EDITOR, true));
+
+        assertThat(saved.isCanApprove()).isTrue();
+    }
+
+    @Test
+    void create_leavesAdminWithoutPermission_whenFlagNotSent() {
+        User saved = createAndCaptureSaved(TestFixtures.createUserRequest(UserRole.ADMIN, null));
+
+        assertThat(saved.isCanApprove()).isFalse();
+    }
+
+    @Test
+    void create_persistsCanApprove_whenAdminFlagged() {
+        User saved = createAndCaptureSaved(TestFixtures.createUserRequest(UserRole.ADMIN, true));
+
+        assertThat(saved.isCanApprove()).isTrue();
+    }
+
+    @Test
+    void create_logsCanApprove_whenCreatedWithPermission() {
+        createAndCaptureSaved(TestFixtures.createUserRequest(UserRole.EDITOR, true));
+
+        verify(activityLogService).record(
+                eq(ActivityAction.CREATE_USER),
+                eq(AUDIT_ADMIN),
+                isNull(),
+                eq("Usuario creado: 50; can_approve=true"));
+    }
+
+    @Test
+    void create_acceptsReader_whenCanApproveFalseOrOmitted() {
+        User withFalse = createAndCaptureSaved(TestFixtures.createUserRequest(UserRole.READER, false));
+
+        assertThat(withFalse.isCanApprove()).isFalse();
+        assertThat(userService.create(
+                TestFixtures.createUserRequest(UserRole.READER, null), AUDIT_ADMIN).canApprove()).isFalse();
+    }
+
+    @Test
+    void create_throwsBusinessRule_whenReaderWithCanApproveTrue() {
+        CreateUserRequestDto request = TestFixtures.createUserRequest(UserRole.READER, true);
+
+        assertThatThrownBy(() -> userService.create(request, AUDIT_ADMIN))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessage(READER_APPROVER_KEY)
+                .satisfies(ex -> assertThat(((BusinessRuleException) ex).getCode())
+                        .isEqualTo(BusinessErrorCode.INVALID_ARGUMENT));
+
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(activityLogService);
+    }
+
+    @Test
+    void update_setsCanApproveTrueAndLogsChange_whenEditorFlagged() {
+        User existing = TestFixtures.userEditor(20L);
+        stubExistingUserForUpdate(existing);
+
+        UpdateUserResponseDto response = updateSameProfile(existing, UserRole.EDITOR, true);
+
+        assertThat(response.canApprove()).isTrue();
+        assertThat(existing.isCanApprove()).isTrue();
+        verify(activityLogService).record(
+                eq(ActivityAction.EDIT_USER),
+                eq(AUDIT_ADMIN),
+                isNull(),
+                eq("Campos modificados: []; can_approve: false → true"));
+    }
+
+    @Test
+    void update_logsCanApproveLine_whenOnlyPermissionChanges() {
+        User existing = TestFixtures.userApprover(20L);
+        stubExistingUserForUpdate(existing);
+
+        updateSameProfile(existing, UserRole.EDITOR, false);
+
+        verify(activityLogService).record(
+                eq(ActivityAction.EDIT_USER),
+                eq(AUDIT_ADMIN),
+                isNull(),
+                eq("Campos modificados: []; can_approve: true → false"));
+    }
+
+    @Test
+    void update_keepsCanApprove_whenFieldOmitted() {
+        User existing = TestFixtures.userApprover(20L);
+        stubExistingUserForUpdate(existing);
+
+        UpdateUserResponseDto response = updateSameProfile(existing, UserRole.EDITOR, null);
+
+        assertThat(response.canApprove()).isTrue();
+        assertThat(existing.isCanApprove()).isTrue();
+    }
+
+    @Test
+    void update_doesNotLogCanApprove_whenValueUnchanged() {
+        User existing = TestFixtures.userApprover(20L);
+        stubExistingUserForUpdate(existing);
+
+        updateSameProfile(existing, UserRole.EDITOR, true);
+
+        verify(activityLogService).record(
+                eq(ActivityAction.EDIT_USER),
+                eq(AUDIT_ADMIN),
+                isNull(),
+                eq("Campos modificados: []"));
+    }
+
+    @Test
+    void update_throwsBusinessRule_whenReaderStaysReaderWithCanApproveTrue() {
+        User reader = TestFixtures.userReader(20L);
+        when(userRepository.findById(20L)).thenReturn(Optional.of(reader));
+
+        assertThatThrownBy(() -> updateSameProfile(reader, UserRole.READER, true))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessage(READER_APPROVER_KEY)
+                .satisfies(ex -> assertThat(((BusinessRuleException) ex).getCode())
+                        .isEqualTo(BusinessErrorCode.INVALID_ARGUMENT));
+
+        assertThat(reader.isCanApprove()).isFalse();
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(activityLogService);
+    }
     // ------------------------------------------------------------------
     // changeStatus()
     // ------------------------------------------------------------------
@@ -470,5 +638,136 @@ class UserServiceTest {
 
         verify(userRepository, never()).save(any());
         verifyNoInteractions(activityLogService);
+    }
+
+    // ------------------------------------------------------------------
+    // canApprove (HU-32): US3 retiro automatico al pasar a lector
+    // ------------------------------------------------------------------
+
+    @Test
+    void update_removesCanApprove_whenRoleChangesToReader() {
+        User approver = TestFixtures.userApprover(20L);
+        stubExistingUserForUpdate(approver);
+
+        UpdateUserResponseDto response = updateSameProfile(approver, UserRole.READER, null);
+
+        assertThat(response.role()).isEqualTo("READER");
+        assertThat(response.canApprove()).isFalse();
+        assertThat(approver.isCanApprove()).isFalse();
+    }
+
+    @Test
+    void update_removesCanApproveWithoutError_whenRoleChangesToReaderAndFlagTrueSent() {
+        User approver = TestFixtures.userApprover(20L);
+        stubExistingUserForUpdate(approver);
+
+        UpdateUserResponseDto response = updateSameProfile(approver, UserRole.READER, true);
+
+        assertThat(response.canApprove()).isFalse();
+        assertThat(approver.isCanApprove()).isFalse();
+    }
+
+    @Test
+    void update_logsCanApproveTrueToFalse_whenRoleChangesToReader() {
+        User approver = TestFixtures.userApprover(20L);
+        stubExistingUserForUpdate(approver);
+
+        updateSameProfile(approver, UserRole.READER, null);
+
+        verify(activityLogService).record(
+                eq(ActivityAction.EDIT_USER),
+                eq(AUDIT_ADMIN),
+                isNull(),
+                eq("Campos modificados: [role]; can_approve: true → false"));
+    }
+
+    @Test
+    void update_doesNotLogCanApprove_whenReaderAlreadyFalseAndFieldOmitted() {
+        User reader = TestFixtures.userReader(20L);
+        stubExistingUserForUpdate(reader);
+
+        updateSameProfile(reader, UserRole.READER, null);
+
+        verify(activityLogService).record(
+                eq(ActivityAction.EDIT_USER),
+                eq(AUDIT_ADMIN),
+                isNull(),
+                eq("Campos modificados: []"));
+    }
+
+    // ------------------------------------------------------------------
+    // canApprove (HU-32): US4 exposicion en respuestas
+    // ------------------------------------------------------------------
+
+    @Test
+    void list_exposesCanApprove_forApproverAndNonApprover() {
+        when(userRepository.findAll(any(Sort.class)))
+                .thenReturn(List.of(TestFixtures.userApprover(2L), TestFixtures.userEditor(3L)));
+
+        UserListResponseDto response = userService.list(null, null);
+
+        assertThat(response.users())
+                .extracting(UserResponseDto::canApprove)
+                .containsExactly(true, false);
+    }
+
+    // ------------------------------------------------------------------
+    // canApprove (HU-32): US5 aprobador activo y ciclo de vida
+    // ------------------------------------------------------------------
+
+    @Test
+    void isActiveApprover_returnsTrue_whenPermissionActiveAndUserActiveAndNotReader() {
+        when(userRepository.existsByIdAndCanApproveTrueAndStatusAndRoleNot(
+                30L, UserStatus.ACTIVE, UserRole.READER)).thenReturn(true);
+
+        assertThat(userService.isActiveApprover(30L)).isTrue();
+    }
+
+    @Test
+    void isActiveApprover_returnsFalse_whenRepositoryReportsNoMatch() {
+        when(userRepository.existsByIdAndCanApproveTrueAndStatusAndRoleNot(
+                30L, UserStatus.ACTIVE, UserRole.READER)).thenReturn(false);
+
+        assertThat(userService.isActiveApprover(30L)).isFalse();
+    }
+
+    @Test
+    void isActiveApprover_queriesRepositoryOnEveryCall() {
+        when(userRepository.existsByIdAndCanApproveTrueAndStatusAndRoleNot(
+                30L, UserStatus.ACTIVE, UserRole.READER)).thenReturn(true, false);
+
+        assertThat(userService.isActiveApprover(30L)).isTrue();
+        assertThat(userService.isActiveApprover(30L)).isFalse();
+
+        verify(userRepository, times(2)).existsByIdAndCanApproveTrueAndStatusAndRoleNot(
+                30L, UserStatus.ACTIVE, UserRole.READER);
+    }
+
+    @Test
+    void changeStatus_keepsCanApprove_whenDeactivatedAndReactivated() {
+        User approver = TestFixtures.userApprover(41L);
+        when(userRepository.findById(41L)).thenReturn(Optional.of(approver));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        userService.changeStatus(41L, TestFixtures.updateStatusRequest(UserStatus.INACTIVE), AUDIT_ADMIN);
+        assertThat(approver.isCanApprove()).isTrue();
+
+        userService.changeStatus(41L, TestFixtures.updateStatusRequest(UserStatus.ACTIVE), AUDIT_ADMIN);
+        assertThat(approver.isCanApprove()).isTrue();
+    }
+
+    @Test
+    void update_isActiveApproverFalseImmediately_afterPermissionRemoved() {
+        User approver = TestFixtures.userApprover(20L);
+        stubExistingUserForUpdate(approver);
+        when(userRepository.existsByIdAndCanApproveTrueAndStatusAndRoleNot(
+                20L, UserStatus.ACTIVE, UserRole.READER))
+                .thenAnswer(inv -> approver.isCanApprove());
+
+        assertThat(userService.isActiveApprover(20L)).isTrue();
+
+        updateSameProfile(approver, UserRole.EDITOR, false);
+
+        assertThat(userService.isActiveApprover(20L)).isFalse();
     }
 }

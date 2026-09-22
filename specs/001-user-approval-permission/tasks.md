@@ -31,7 +31,7 @@ description: "Lista de tareas para HU-32 — Permiso para aprobar documentos"
 
 **Purpose**: verificar el punto de partida
 
-- [ ] T001 Confirmar línea base verde ejecutando `./mvnw clean verify` en la raíz del repo y confirmar que en `src/main/java/co/edu/docurural/user/controller/UserController.java` los endpoints de crear, editar y listar usuarios están protegidos con `@PreAuthorize("hasRole('ADMIN')")` (R8 del research; si no lo están, anotarlo como hallazgo aparte, no corregirlo aquí)
+- [X] T001 Confirmar línea base verde ejecutando `./mvnw clean verify` en la raíz del repo y confirmar que en `src/main/java/co/edu/docurural/user/controller/UserController.java` los endpoints de crear, editar y listar usuarios están protegidos con `@PreAuthorize("hasRole('ADMIN')")` (R8 del research; si no lo están, anotarlo como hallazgo aparte, no corregirlo aquí)
 
 ---
 
@@ -41,13 +41,13 @@ description: "Lista de tareas para HU-32 — Permiso para aprobar documentos"
 
 **⚠️ CRITICAL**: ninguna historia puede empezar hasta terminar esta fase
 
-- [ ] T002 [P] Crear `src/main/resources/db/migration/V3__add_can_approve_to_users.sql` (NO tocar V1/V2): `ALTER TABLE users ADD COLUMN IF NOT EXISTS can_approve BOOLEAN NOT NULL DEFAULT FALSE;` seguido de `ALTER TABLE users DROP CONSTRAINT IF EXISTS ck_users_can_approve_not_reader;` y `ALTER TABLE users ADD CONSTRAINT ck_users_can_approve_not_reader CHECK (NOT (role = 'READER' AND can_approve));`
-- [ ] T003 [P] Añadir a `src/main/java/co/edu/docurural/user/entity/User.java` el campo `private boolean canApprove;` con `@Builder.Default` = `false` y `@Column(name = "can_approve", nullable = false)` (columna `can_approve` `BOOLEAN NOT NULL DEFAULT FALSE`)
-- [ ] T004 [P] Añadir el componente `@Nullable Boolean canApprove` (sin anotación de `jakarta.validation.constraints`; null = omitido, FR-002/FR-012) con `@Schema` descriptivo en `src/main/java/co/edu/docurural/user/dto/CreateUserRequestDto.java` y en `src/main/java/co/edu/docurural/user/dto/UpdateUserRequestDto.java`, y actualizar todos los puntos que construyen estos records (servicio, pruebas existentes, `TestFixtures`) para que compilen. Ver Complexity Tracking del plan (declarar en el PR)
-- [ ] T005 [P] Añadir el componente `boolean canApprove` a `src/main/java/co/edu/docurural/user/dto/UserResponseDto.java`, `src/main/java/co/edu/docurural/user/dto/CreateUserResponseDto.java` y `src/main/java/co/edu/docurural/user/dto/UpdateUserResponseDto.java` (NO añadir a `UpdateStatusResponseDto` ni al DTO de login, R7); corregir los constructores/usos existentes. `UserMapper` no cambia: MapStruct mapea por nombre
-- [ ] T006 [P] Añadir en `src/main/resources/messages.properties` la clave `user.can-approve.reader-not-allowed=Los lectores no pueden aprobar documentos` junto a las demás claves `user.*`
-- [ ] T007 [P] En `src/test/java/co/edu/docurural/support/TestFixtures.java` añadir `userApprover(Long id)` (EDITOR activo con `canApprove(true)`), un builder/variante `userReader(Long id)` si no existe, y helpers de request `createUserRequest(role, canApprove)` y `updateUserRequest(role, canApprove)` que acepten `Boolean` nulable, siguiendo el estilo de los builders existentes
-- [ ] T008 Verificar que `./mvnw clean verify` compila y las pruebas existentes siguen verdes con los cambios de T002–T007 (Flyway aplica V3 en el perfil de prueba)
+- [X] T002 [P] Crear `src/main/resources/db/migration/V3__add_can_approve_to_users.sql` (NO tocar V1/V2): `ALTER TABLE users ADD COLUMN IF NOT EXISTS can_approve BOOLEAN NOT NULL DEFAULT FALSE;` seguido de `ALTER TABLE users DROP CONSTRAINT IF EXISTS ck_users_can_approve_not_reader;` y `ALTER TABLE users ADD CONSTRAINT ck_users_can_approve_not_reader CHECK (NOT (role = 'READER' AND can_approve));`
+- [X] T003 [P] Añadir a `src/main/java/co/edu/docurural/user/entity/User.java` el campo `private boolean canApprove;` con `@Builder.Default` = `false` y `@Column(name = "can_approve", nullable = false)` (columna `can_approve` `BOOLEAN NOT NULL DEFAULT FALSE`)
+- [X] T004 [P] Añadir el componente `@Nullable Boolean canApprove` (sin anotación de `jakarta.validation.constraints`; null = omitido, FR-002/FR-012) con `@Schema` descriptivo en `src/main/java/co/edu/docurural/user/dto/CreateUserRequestDto.java` y en `src/main/java/co/edu/docurural/user/dto/UpdateUserRequestDto.java`, y actualizar todos los puntos que construyen estos records (servicio, pruebas existentes, `TestFixtures`) para que compilen. Ver Complexity Tracking del plan (declarar en el PR)
+- [X] T005 [P] Añadir el componente `boolean canApprove` a `src/main/java/co/edu/docurural/user/dto/UserResponseDto.java`, `src/main/java/co/edu/docurural/user/dto/CreateUserResponseDto.java` y `src/main/java/co/edu/docurural/user/dto/UpdateUserResponseDto.java` (NO añadir a `UpdateStatusResponseDto` ni al DTO de login, R7); corregir los constructores/usos existentes. `UserMapper` no cambia: MapStruct mapea por nombre
+- [X] T006 [P] Añadir en `src/main/resources/messages.properties` la clave `user.can-approve.reader-not-allowed=Los lectores no pueden aprobar documentos` junto a las demás claves `user.*`
+- [X] T007 [P] En `src/test/java/co/edu/docurural/support/TestFixtures.java` añadir `userApprover(Long id)` (EDITOR activo con `canApprove(true)`), un builder/variante `userReader(Long id)` si no existe, y helpers de request `createUserRequest(role, canApprove)` y `updateUserRequest(role, canApprove)` que acepten `Boolean` nulable, siguiendo el estilo de los builders existentes
+- [X] T008 Verificar que `./mvnw clean verify` compila y las pruebas existentes siguen verdes con los cambios de T002–T007 (Flyway aplica V3 en el perfil de prueba)
 
 **Checkpoint**: modelo, DTOs y fixtures listos; las historias pueden empezar
 
@@ -63,16 +63,16 @@ description: "Lista de tareas para HU-32 — Permiso para aprobar documentos"
 
 > Escribirlas primero y comprobar que FALLAN antes de implementar
 
-- [ ] T009 [P] [US1] En `src/test/java/co/edu/docurural/user/service/UserServiceTest.java` añadir: `create_setsCanApproveFalse_whenFieldOmitted`, `create_persistsCanApproveTrue_whenRoleIsEditorAndFlagTrue`, `create_logsCanApprove_whenCreatedWithPermission` (el detalle de `CREATE_USER` incluye `can_approve=true`), `update_setsCanApproveTrueAndLogsChange_whenEditorFlagged` (detalle contiene `can_approve: false → true`), `update_keepsCanApprove_whenFieldOmitted`, `update_doesNotLogCanApprove_whenValueUnchanged`, `update_logsCanApproveLine_whenOnlyPermissionChanges` (lista de campos `[]` y línea igual registrada), `create_leavesAdminWithoutPermission_whenFlagNotSent`
-- [ ] T010 [P] [US1] En `src/test/java/co/edu/docurural/user/controller/UserControllerWebMvcTest.java` añadir pruebas de `POST /api/users` y `PUT /api/users/{id}` con `canApprove` en request y verificar `canApprove` en el JSON de respuesta (`create_returns201WithCanApprove_whenEditorFlagged`, `update_returns200WithCanApprove_whenFlagSent`), siguiendo la plantilla `@WebMvcTest` de CLAUDE.md
-- [ ] T011 [P] [US1] En `src/test/java/co/edu/docurural/user/dto/UpdateUserRequestDtoTest.java` añadir prueba de que `canApprove` nulo es válido (`validate_passes_whenCanApproveIsNull`) y `true`/`false` también
+- [X] T009 [P] [US1] En `src/test/java/co/edu/docurural/user/service/UserServiceTest.java` añadir: `create_setsCanApproveFalse_whenFieldOmitted`, `create_persistsCanApproveTrue_whenRoleIsEditorAndFlagTrue`, `create_logsCanApprove_whenCreatedWithPermission` (el detalle de `CREATE_USER` incluye `can_approve=true`), `update_setsCanApproveTrueAndLogsChange_whenEditorFlagged` (detalle contiene `can_approve: false → true`), `update_keepsCanApprove_whenFieldOmitted`, `update_doesNotLogCanApprove_whenValueUnchanged`, `update_logsCanApproveLine_whenOnlyPermissionChanges` (lista de campos `[]` y línea igual registrada), `create_leavesAdminWithoutPermission_whenFlagNotSent`
+- [X] T010 [P] [US1] En `src/test/java/co/edu/docurural/user/controller/UserControllerWebMvcTest.java` añadir pruebas de `POST /api/users` y `PUT /api/users/{id}` con `canApprove` en request y verificar `canApprove` en el JSON de respuesta (`create_returns201WithCanApprove_whenEditorFlagged`, `update_returns200WithCanApprove_whenFlagSent`), siguiendo la plantilla `@WebMvcTest` de CLAUDE.md
+- [X] T011 [P] [US1] En `src/test/java/co/edu/docurural/user/dto/UpdateUserRequestDtoTest.java` añadir prueba de que `canApprove` nulo es válido (`validate_passes_whenCanApproveIsNull`) y `true`/`false` también
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] En `src/main/java/co/edu/docurural/user/service/UserServiceImpl.java` implementar `private boolean resolveCanApproveOnCreate(CreateUserRequestDto request)` (null → `false`; sin flags booleanos de bifurcación, Principio III) y usarlo al construir la entidad en `create`
-- [ ] T013 [US1] En `UserServiceImpl.update` implementar `private boolean resolveCanApproveOnUpdate(User current, UpdateUserRequestDto request)` para el caso base (null → conserva valor actual; si no, el valor enviado) y aplicarlo a la entidad; máximo 3 parámetros por método (depende de T012, mismo archivo)
-- [ ] T014 [US1] En `UserServiceImpl` extender el detalle de auditoría: `EDIT_USER` añade `; can_approve: <anterior> → <nuevo>` solo si el valor cambió (si solo cambió el permiso, la lista de campos queda `[]` y la línea igual se registra); `CREATE_USER` añade `; can_approve=true` solo cuando se crea con el permiso activo (R5). Un log `info` por operación exitosa siguiendo el estilo existente
-- [ ] T015 [US1] Ejecutar `./mvnw test -Dtest=UserServiceTest,UserControllerWebMvcTest,UpdateUserRequestDtoTest` y confirmar que T009–T011 pasan
+- [X] T012 [US1] En `src/main/java/co/edu/docurural/user/service/UserServiceImpl.java` implementar `private boolean resolveCanApproveOnCreate(CreateUserRequestDto request)` (null → `false`; sin flags booleanos de bifurcación, Principio III) y usarlo al construir la entidad en `create`
+- [X] T013 [US1] En `UserServiceImpl.update` implementar `private boolean resolveCanApproveOnUpdate(User current, UpdateUserRequestDto request)` para el caso base (null → conserva valor actual; si no, el valor enviado) y aplicarlo a la entidad; máximo 3 parámetros por método (depende de T012, mismo archivo)
+- [X] T014 [US1] En `UserServiceImpl` extender el detalle de auditoría: `EDIT_USER` añade `; can_approve: <anterior> → <nuevo>` solo si el valor cambió (si solo cambió el permiso, la lista de campos queda `[]` y la línea igual se registra); `CREATE_USER` añade `; can_approve=true` solo cuando se crea con el permiso activo (R5). Un log `info` por operación exitosa siguiendo el estilo existente
+- [X] T015 [US1] Ejecutar `./mvnw test -Dtest=UserServiceTest,UserControllerWebMvcTest,UpdateUserRequestDtoTest` y confirmar que T009–T011 pasan
 
 **Checkpoint**: US1 funcional y comprobable por sí sola (MVP)
 
@@ -86,14 +86,14 @@ description: "Lista de tareas para HU-32 — Permiso para aprobar documentos"
 
 ### Tests for User Story 2
 
-- [ ] T016 [P] [US2] En `UserServiceTest.java` añadir: `create_throwsBusinessRule_whenReaderWithCanApproveTrue` (verificar `BusinessErrorCode.INVALID_ARGUMENT`, clave `user.can-approve.reader-not-allowed` y `verify(userRepository, never()).save(any())`), `update_throwsBusinessRule_whenReaderStaysReaderWithCanApproveTrue` (sin guardado), `create_persistsCanApprove_whenAdminFlagged`, `create_acceptsReader_whenCanApproveFalseOrOmitted`
-- [ ] T017 [P] [US2] En `UserControllerWebMvcTest.java` añadir `create_returns400_whenReaderWithCanApproveTrue` y `update_returns400_whenReaderWithCanApproveTrue` verificando el cuerpo de error del `GlobalExceptionHandler`
+- [X] T016 [P] [US2] En `UserServiceTest.java` añadir: `create_throwsBusinessRule_whenReaderWithCanApproveTrue` (verificar `BusinessErrorCode.INVALID_ARGUMENT`, clave `user.can-approve.reader-not-allowed` y `verify(userRepository, never()).save(any())`), `update_throwsBusinessRule_whenReaderStaysReaderWithCanApproveTrue` (sin guardado), `create_persistsCanApprove_whenAdminFlagged`, `create_acceptsReader_whenCanApproveFalseOrOmitted`
+- [X] T017 [P] [US2] En `UserControllerWebMvcTest.java` añadir `create_returns400_whenReaderWithCanApproveTrue` y `update_returns400_whenReaderWithCanApproveTrue` verificando el cuerpo de error del `GlobalExceptionHandler`
 
 ### Implementation for User Story 2
 
-- [ ] T018 [US2] En `UserServiceImpl.create` (al inicio del método, fail fast) lanzar `BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, ...)` con el mensaje resuelto por `MessageResolver` de la clave `user.can-approve.reader-not-allowed` cuando el rol sea `READER` y `canApprove` sea `true`; NO modificar `GlobalExceptionHandler` (Principio VIII). Extraer el chequeo a un método privado reutilizable para T019 (regla DRY)
-- [ ] T019 [US2] En `UserServiceImpl.update`, dentro de `resolveCanApproveOnUpdate`, lanzar el mismo error cuando el rol actual y el nuevo sean `READER` y el valor enviado sea `true`, antes de mutar la entidad
-- [ ] T020 [US2] Ejecutar `./mvnw test -Dtest=UserServiceTest,UserControllerWebMvcTest` y confirmar T016–T017 verdes
+- [X] T018 [US2] En `UserServiceImpl.create` (al inicio del método, fail fast) lanzar `BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, ...)` con el mensaje resuelto por `MessageResolver` de la clave `user.can-approve.reader-not-allowed` cuando el rol sea `READER` y `canApprove` sea `true`; NO modificar `GlobalExceptionHandler` (Principio VIII). Extraer el chequeo a un método privado reutilizable para T019 (regla DRY)
+- [X] T019 [US2] En `UserServiceImpl.update`, dentro de `resolveCanApproveOnUpdate`, lanzar el mismo error cuando el rol actual y el nuevo sean `READER` y el valor enviado sea `true`, antes de mutar la entidad
+- [X] T020 [US2] Ejecutar `./mvnw test -Dtest=UserServiceTest,UserControllerWebMvcTest` y confirmar T016–T017 verdes
 
 **Checkpoint**: US1 y US2 funcionan; ningún READER queda con el permiso vía API
 
@@ -107,13 +107,13 @@ description: "Lista de tareas para HU-32 — Permiso para aprobar documentos"
 
 ### Tests for User Story 3
 
-- [ ] T021 [P] [US3] En `UserServiceTest.java` añadir: `update_removesCanApprove_whenRoleChangesToReader`, `update_removesCanApproveWithoutError_whenRoleChangesToReaderAndFlagTrueSent`, `update_logsCanApproveTrueToFalse_whenRoleChangesToReader`, `update_doesNotLogCanApprove_whenReaderAlreadyFalseAndFieldOmitted` (READER con `false` editado sin tocar la casilla → sin registro)
-- [ ] T022 [P] [US3] En `UserControllerWebMvcTest.java` añadir `update_returns200WithCanApproveFalse_whenRoleChangesToReader` (el servicio mockeado devuelve la respuesta efectiva; verificar que el JSON expone `canApprove: false`)
+- [X] T021 [P] [US3] En `UserServiceTest.java` añadir: `update_removesCanApprove_whenRoleChangesToReader`, `update_removesCanApproveWithoutError_whenRoleChangesToReaderAndFlagTrueSent`, `update_logsCanApproveTrueToFalse_whenRoleChangesToReader`, `update_doesNotLogCanApprove_whenReaderAlreadyFalseAndFieldOmitted` (READER con `false` editado sin tocar la casilla → sin registro)
+- [X] T022 [P] [US3] En `UserControllerWebMvcTest.java` añadir `update_returns200WithCanApproveFalse_whenRoleChangesToReader` (el servicio mockeado devuelve la respuesta efectiva; verificar que el JSON expone `canApprove: false`)
 
 ### Implementation for User Story 3
 
-- [ ] T023 [US3] En `UserServiceImpl.resolveCanApproveOnUpdate` añadir la rama "rol nuevo READER y rol actual distinto de READER → resultado `false` sin error, incluso si el valor enviado es `true`" (FR-005); comprobar el orden de ramas contra la tabla de R4 del research; la auditoría de T014 ya registra `true → false`
-- [ ] T024 [US3] Ejecutar `./mvnw test -Dtest=UserServiceTest,UserControllerWebMvcTest` y confirmar T021–T022 verdes
+- [X] T023 [US3] En `UserServiceImpl.resolveCanApproveOnUpdate` añadir la rama "rol nuevo READER y rol actual distinto de READER → resultado `false` sin error, incluso si el valor enviado es `true`" (FR-005); comprobar el orden de ramas contra la tabla de R4 del research; la auditoría de T014 ya registra `true → false`
+- [X] T024 [US3] Ejecutar `./mvnw test -Dtest=UserServiceTest,UserControllerWebMvcTest` y confirmar T021–T022 verdes
 
 **Checkpoint**: la regla de integridad de READER es completa (crear, editar, cambio de rol)
 
@@ -127,13 +127,13 @@ description: "Lista de tareas para HU-32 — Permiso para aprobar documentos"
 
 ### Tests for User Story 4
 
-- [ ] T025 [P] [US4] En `src/test/java/co/edu/docurural/user/mapper/UserMapperTest.java` (instanciar con `Mappers.getMapper(UserMapper.class)`) añadir pruebas de que `canApprove` se mapea a `UserResponseDto`, `CreateUserResponseDto` y `UpdateUserResponseDto` tanto en `true` (`userApprover`) como en `false`, y que `passwordHash` sigue ausente
-- [ ] T026 [P] [US4] En `UserControllerWebMvcTest.java` añadir `list_returnsCanApprove_forEachUser` y `getById_returnsCanApprove` sobre `GET /api/users` y `GET /api/users/{id}` con un aprobador y un no aprobador
-- [ ] T027 [P] [US4] En `UserServiceTest.java` añadir `findAll_exposesCanApprove_forApproverAndNonApprover` (con `@Spy` del mapper real)
+- [X] T025 [P] [US4] En `src/test/java/co/edu/docurural/user/mapper/UserMapperTest.java` (instanciar con `Mappers.getMapper(UserMapper.class)`) añadir pruebas de que `canApprove` se mapea a `UserResponseDto`, `CreateUserResponseDto` y `UpdateUserResponseDto` tanto en `true` (`userApprover`) como en `false`, y que `passwordHash` sigue ausente
+- [X] T026 [P] [US4] En `UserControllerWebMvcTest.java` añadir `list_returnsCanApprove_forEachUser` y `getById_returnsCanApprove` sobre `GET /api/users` y `GET /api/users/{id}` con un aprobador y un no aprobador
+- [X] T027 [P] [US4] En `UserServiceTest.java` añadir `findAll_exposesCanApprove_forApproverAndNonApprover` (con `@Spy` del mapper real)
 
 ### Implementation for User Story 4
 
-- [ ] T028 [US4] Si T025 falla por algún mapeo, corregir `src/main/java/co/edu/docurural/user/mapper/UserMapper.java` (esperado: sin cambios, mapeo por nombre desde `boolean canApprove`); en cualquier caso, ejecutar `./mvnw test -Dtest=UserMapperTest,UserControllerWebMvcTest,UserServiceTest` y confirmar T025–T027 verdes
+- [X] T028 [US4] Si T025 falla por algún mapeo, corregir `src/main/java/co/edu/docurural/user/mapper/UserMapper.java` (esperado: sin cambios, mapeo por nombre desde `boolean canApprove`); en cualquier caso, ejecutar `./mvnw test -Dtest=UserMapperTest,UserControllerWebMvcTest,UserServiceTest` y confirmar T025–T027 verdes
 
 **Checkpoint**: la etiqueta "Aprobador" tiene el dato necesario en todas las respuestas pedidas
 
@@ -147,14 +147,14 @@ description: "Lista de tareas para HU-32 — Permiso para aprobar documentos"
 
 ### Tests for User Story 5
 
-- [ ] T029 [P] [US5] En `UserServiceTest.java` añadir: `isActiveApprover_returnsTrue_whenPermissionActiveAndUserActiveAndNotReader`, `isActiveApprover_returnsFalse_whenRepositoryReportsNoMatch` (cubre inactivo, READER, sin permiso e inexistente mockeando `existsByIdAndCanApproveTrueAndStatusAndRoleNot(id, UserStatus.ACTIVE, UserRole.READER)`), `isActiveApprover_queriesRepositoryOnEveryCall` (`verify(..., times(2))` tras dos llamadas consecutivas: sin caché), `changeStatus_keepsCanApprove_whenDeactivatedAndReactivated`, `update_isActiveApproverFalseImmediately_afterPermissionRemoved`
-- [ ] T030 [P] [US5] Comprobar por prueba que el permiso no está en el token: en la prueba existente del generador/servicio de JWT (localizar con `Grep "tokenVersion"` bajo `src/test`) añadir un caso que verifique que los claims emitidos no contienen `canApprove`; si no existe una clase de prueba adecuada, crear `src/test/java/co/edu/docurural/auth/...` siguiendo la convención `{ClaseTesteada}Test`
+- [X] T029 [P] [US5] En `UserServiceTest.java` añadir: `isActiveApprover_returnsTrue_whenPermissionActiveAndUserActiveAndNotReader`, `isActiveApprover_returnsFalse_whenRepositoryReportsNoMatch` (cubre inactivo, READER, sin permiso e inexistente mockeando `existsByIdAndCanApproveTrueAndStatusAndRoleNot(id, UserStatus.ACTIVE, UserRole.READER)`), `isActiveApprover_queriesRepositoryOnEveryCall` (`verify(..., times(2))` tras dos llamadas consecutivas: sin caché), `changeStatus_keepsCanApprove_whenDeactivatedAndReactivated`, `update_isActiveApproverFalseImmediately_afterPermissionRemoved`
+- [X] T030 [P] [US5] Comprobar por prueba que el permiso no está en el token: en la prueba existente del generador/servicio de JWT (localizar con `Grep "tokenVersion"` bajo `src/test`) añadir un caso que verifique que los claims emitidos no contienen `canApprove`; si no existe una clase de prueba adecuada, crear `src/test/java/co/edu/docurural/auth/...` siguiendo la convención `{ClaseTesteada}Test`
 
 ### Implementation for User Story 5
 
-- [ ] T031 [US5] En `src/main/java/co/edu/docurural/user/repository/UserRepository.java` añadir el método derivado `boolean existsByIdAndCanApproveTrueAndStatusAndRoleNot(Long id, UserStatus status, UserRole role);` (sin `@Query`, Principio VI)
-- [ ] T032 [US5] En `src/main/java/co/edu/docurural/user/service/UserService.java` declarar `boolean isActiveApprover(Long userId);` con Javadoc del contrato (true solo si permiso activo, usuario ACTIVE y rol ≠ READER; inexistente → `false`; los consumidores deben invocarlo en cada operación sin cachear ni derivarlo del token) y en `UserServiceImpl.java` implementarlo delegando en el repositorio con `UserStatus.ACTIVE` y `UserRole.READER`; no modificar `tokenVersion`
-- [ ] T033 [US5] Verificar que `changeStatus` en `UserServiceImpl.java` no toca `canApprove` (solo lectura del código; ajustar solo si algo lo modifica) y ejecutar `./mvnw test -Dtest=UserServiceTest` confirmando T029–T030 verdes
+- [X] T031 [US5] En `src/main/java/co/edu/docurural/user/repository/UserRepository.java` añadir el método derivado `boolean existsByIdAndCanApproveTrueAndStatusAndRoleNot(Long id, UserStatus status, UserRole role);` (sin `@Query`, Principio VI)
+- [X] T032 [US5] En `src/main/java/co/edu/docurural/user/service/UserService.java` declarar `boolean isActiveApprover(Long userId);` con Javadoc del contrato (true solo si permiso activo, usuario ACTIVE y rol ≠ READER; inexistente → `false`; los consumidores deben invocarlo en cada operación sin cachear ni derivarlo del token) y en `UserServiceImpl.java` implementarlo delegando en el repositorio con `UserStatus.ACTIVE` y `UserRole.READER`; no modificar `tokenVersion`
+- [X] T033 [US5] Verificar que `changeStatus` en `UserServiceImpl.java` no toca `canApprove` (solo lectura del código; ajustar solo si algo lo modifica) y ejecutar `./mvnw test -Dtest=UserServiceTest` confirmando T029–T030 verdes
 
 **Checkpoint**: todas las historias completas; punto de verificación listo para el flujo de aprobación posterior
 
@@ -162,11 +162,11 @@ description: "Lista de tareas para HU-32 — Permiso para aprobar documentos"
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T034 [P] Añadir bajo `## [Unreleased]` → `### Added` de `CHANGELOG.md` una entrada (HU-32): indicador `canApprove` en usuarios, restricción para READER con retiro automático, auditoría `can_approve: a → b`, `UserService.isActiveApprover`, migración `V3`, y su exposición en las respuestas de usuarios
-- [ ] T035 [P] Revisar `src/main/java/co/edu/docurural/user/service/UserServiceImpl.java` contra CLAUDE.md: métodos ≤3 parámetros, métodos que caben en pantalla, sin código comentado, nombres que revelan intención; refactorizar helpers privados si `create`/`update` crecieron demasiado
-- [ ] T036 Ejecutar `./mvnw clean verify` y confirmar verde con los umbrales JaCoCo (≥80% líneas, ≥65% ramas) sin añadir exclusiones nuevas
-- [ ] T037 Recorrer `specs/001-user-approval-permission/quickstart.md`: comprobar la migración (`ck_users_can_approve_not_reader` rechaza `UPDATE users SET can_approve = true WHERE role = 'READER'`) y el recorrido manual de la API (pasos 1–7)
-- [ ] T038 Preparar la descripción del PR incluyendo la desviación de Principio IX (`@Nullable Boolean canApprove` sin restricción de `jakarta.validation.constraints`) tal como se registró en Complexity Tracking del plan
+- [X] T034 [P] Añadir bajo `## [Unreleased]` → `### Added` de `CHANGELOG.md` una entrada (HU-32): indicador `canApprove` en usuarios, restricción para READER con retiro automático, auditoría `can_approve: a → b`, `UserService.isActiveApprover`, migración `V3`, y su exposición en las respuestas de usuarios
+- [X] T035 [P] Revisar `src/main/java/co/edu/docurural/user/service/UserServiceImpl.java` contra CLAUDE.md: métodos ≤3 parámetros, métodos que caben en pantalla, sin código comentado, nombres que revelan intención; refactorizar helpers privados si `create`/`update` crecieron demasiado
+- [X] T036 Ejecutar `./mvnw clean verify` y confirmar verde con los umbrales JaCoCo (≥80% líneas, ≥65% ramas) sin añadir exclusiones nuevas
+- [X] T037 Recorrer `specs/001-user-approval-permission/quickstart.md`: comprobar la migración (`ck_users_can_approve_not_reader` rechaza `UPDATE users SET can_approve = true WHERE role = 'READER'`) y el recorrido manual de la API (pasos 1–7)
+- [X] T038 Preparar la descripción del PR incluyendo la desviación de Principio IX (`@Nullable Boolean canApprove` sin restricción de `jakarta.validation.constraints`) tal como se registró en Complexity Tracking del plan
 
 ---
 

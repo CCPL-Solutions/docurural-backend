@@ -212,4 +212,17 @@ class JwtTokenProviderTest {
         verify(jwtProperties, atLeastOnce()).getSecret();
         verifyNoInteractions(messageResolver);
     }
+
+    @Test
+    void generateToken_doesNotEmbedCanApprove_whenUserIsApprover() {
+        when(jwtProperties.getSecret()).thenReturn(SECRET);
+        when(jwtProperties.getIssuer()).thenReturn(ISSUER);
+        when(jwtProperties.getExpirationMs()).thenReturn(EXPIRATION_MS);
+
+        String token = jwtTokenProvider.generateToken(TestFixtures.userApprover(7L));
+
+        DecodedJWT decoded = JWT.decode(token);
+        assertThat(decoded.getClaims()).doesNotContainKey("canApprove");
+        assertThat(decoded.getClaims()).doesNotContainKey("can_approve");
+    }
 }

@@ -24,6 +24,13 @@ La fecha de cada versión corresponde a su **paso a producción**.
   base de datos y claves i18n, niveles de log, patrón MapStruct, reparto CQRS del módulo
   `document` y plantillas de prueba.
 
+- Añadido el **permiso para aprobar documentos** (HU-32): indicador `canApprove` en los usuarios,
+  independiente del rol, que el administrador asigna al crear o editar y que se devuelve en las
+  respuestas de creación, edición, detalle y listado. Los lectores no pueden tenerlo (se rechaza
+  con 400 y se retira automáticamente al cambiar el rol a lector), los cambios se registran en la
+  bitácora como `can_approve: a → b`, y `UserService.isActiveApprover` consulta el estado vigente
+  en cada llamada. Incluye la migración `V3__add_can_approve_to_users.sql`.
+
 ### Fixed
 
 - Acotada la longitud de `confirmPassword` en la edición de usuario: ahora se rechaza con 400 una

@@ -52,6 +52,10 @@ public record UpdateUserRequestDto(
         @Nullable
         @Size(max = 128, message = "{validation.user.confirm-password.size}")
         @Schema(description = "Confirmación de la nueva contraseña (debe coincidir con 'password')", example = "NuevaClave1!")
-        String confirmPassword
+        String confirmPassword,
+
+        @Nullable
+        @Schema(description = "Permiso para aprobar documentos (omitido = conserva el valor actual; no aplica a READER)", example = "true", nullable = true)
+        Boolean canApprove
 ) {
 }

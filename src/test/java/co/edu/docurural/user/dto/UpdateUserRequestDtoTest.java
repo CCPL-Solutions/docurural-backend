@@ -60,4 +60,17 @@ class UpdateUserRequestDtoTest {
 
         assertThat(violations).isEmpty();
     }
+
+    @Test
+    void validate_passes_whenCanApproveIsNull() {
+        UpdateUserRequestDto request = TestFixtures.updateUserRequest(UserRole.EDITOR, null);
+
+        assertThat(validator.validate(request)).isEmpty();
+    }
+
+    @Test
+    void validate_passes_whenCanApproveIsTrueOrFalse() {
+        assertThat(validator.validate(TestFixtures.updateUserRequest(UserRole.EDITOR, true))).isEmpty();
+        assertThat(validator.validate(TestFixtures.updateUserRequest(UserRole.EDITOR, false))).isEmpty();
+    }
 }
