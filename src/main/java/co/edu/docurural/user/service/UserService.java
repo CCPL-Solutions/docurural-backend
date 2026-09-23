@@ -21,4 +21,14 @@ public interface UserService {
     UpdateUserResponseDto update(Long id, UpdateUserRequestDto request, AuditContext audit);
 
     UpdateStatusResponseDto changeStatus(Long id, UpdateStatusRequestDto request, AuditContext audit);
+
+    /**
+     * Indica si el usuario puede aprobar documentos en este momento.
+     *
+     * <p>Es {@code true} solo si tiene el permiso activo, su estado es {@code ACTIVE} y su rol no
+     * es {@code READER}. Un usuario inexistente devuelve {@code false}. Consulta la base de datos
+     * en cada llamada: los consumidores deben invocarlo en cada operación, sin cachear el
+     * resultado ni derivarlo del token.
+     */
+    boolean isActiveApprover(Long userId);
 }

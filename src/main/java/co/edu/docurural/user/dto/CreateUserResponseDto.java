@@ -23,6 +23,8 @@ public record CreateUserResponseDto(
         String role,
         @Schema(description = "Estado del usuario", example = "ACTIVE")
         String status,
+        @Schema(description = "Indica si el usuario tiene el permiso para aprobar documentos", example = "false")
+        boolean canApprove,
         @Schema(description = "Fecha y hora de creación del usuario", example = "2024-06-01T12:34:56")
         LocalDateTime createdAt,
         @Schema(description = "Mensaje de confirmación", example = "Usuario creado exitosamente")

@@ -47,7 +47,8 @@ class PasswordsMatchValidatorTest {
                 "ana.admin@docurural.edu.co",
                 "Password123!",
                 "Password123!",
-                UserRole.ADMIN
+                UserRole.ADMIN,
+                null
         );
 
         Set<ConstraintViolation<CreateUserRequestDto>> violations = validator.validate(request);
@@ -62,7 +63,8 @@ class PasswordsMatchValidatorTest {
                 "ana.admin@docurural.edu.co",
                 "password123",
                 "password999",
-                UserRole.ADMIN
+                UserRole.ADMIN,
+                null
         );
 
         Set<ConstraintViolation<CreateUserRequestDto>> violations = validator.validate(request);
@@ -81,7 +83,8 @@ class PasswordsMatchValidatorTest {
                 "ana.admin@docurural.edu.co",
                 "   ",
                 "different123",
-                UserRole.ADMIN
+                UserRole.ADMIN,
+                null
         );
 
         Set<ConstraintViolation<CreateUserRequestDto>> violations = validator.validate(request);
@@ -102,6 +105,7 @@ class PasswordsMatchValidatorTest {
                 "erik.editor@docurural.edu.co",
                 UserRole.EDITOR,
                 null,
+                null,
                 null
         );
 
@@ -117,7 +121,8 @@ class PasswordsMatchValidatorTest {
                 "erik.editor@docurural.edu.co",
                 UserRole.EDITOR,
                 "newpass123",
-                "another999"
+                "another999",
+                null
         );
 
         Set<ConstraintViolation<UpdateUserRequestDto>> violations = validator.validate(request);

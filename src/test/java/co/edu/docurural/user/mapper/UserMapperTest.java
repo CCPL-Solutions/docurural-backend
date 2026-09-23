@@ -167,4 +167,22 @@ class UserMapperTest {
         assertThatThrownBy(() -> mapper.toStatusResponse(null, "message"))
                 .isInstanceOf(NullPointerException.class);
     }
+
+    @Test
+    void toResponse_mapsCanApprove_forApproverAndNonApprover() {
+        assertThat(mapper.toResponse(TestFixtures.userApprover(1L)).canApprove()).isTrue();
+        assertThat(mapper.toResponse(TestFixtures.userEditor(2L)).canApprove()).isFalse();
+    }
+
+    @Test
+    void toCreateResponse_mapsCanApprove_forApproverAndNonApprover() {
+        assertThat(mapper.toCreateResponse(TestFixtures.userApprover(1L), "ok").canApprove()).isTrue();
+        assertThat(mapper.toCreateResponse(TestFixtures.userEditor(2L), "ok").canApprove()).isFalse();
+    }
+
+    @Test
+    void toUpdateResponse_mapsCanApprove_forApproverAndNonApprover() {
+        assertThat(mapper.toUpdateResponse(TestFixtures.userApprover(1L), "ok").canApprove()).isTrue();
+        assertThat(mapper.toUpdateResponse(TestFixtures.userEditor(2L), "ok").canApprove()).isFalse();
+    }
 }

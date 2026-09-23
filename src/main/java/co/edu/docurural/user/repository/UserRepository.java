@@ -1,6 +1,7 @@
 package co.edu.docurural.user.repository;
 
 import co.edu.docurural.user.entity.User;
+import co.edu.docurural.user.enums.UserRole;
 import co.edu.docurural.user.enums.UserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -17,4 +18,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmail(String email);
 
     boolean existsByEmailAndIdNot(String email, Long id);
+
+    boolean existsByIdAndCanApproveTrueAndStatusAndRoleNot(Long id, UserStatus status, UserRole role);
 }

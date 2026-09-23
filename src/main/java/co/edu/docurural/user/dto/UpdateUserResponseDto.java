@@ -17,6 +17,8 @@ public record UpdateUserResponseDto(
         String role,
         @Schema(description = "Estado del usuario", example = "ACTIVE")
         String status,
+        @Schema(description = "Indica si el usuario tiene el permiso para aprobar documentos", example = "false")
+        boolean canApprove,
         @Schema(description = "Mensaje de confirmación", example = "Usuario actualizado correctamente")
         String message
 ) {

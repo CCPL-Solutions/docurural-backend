@@ -3,6 +3,7 @@ package co.edu.docurural.user.dto;
 import co.edu.docurural.user.enums.UserRole;
 import co.edu.docurural.user.dto.validation.PasswordsMatch;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -45,6 +46,10 @@ public record CreateUserRequestDto(
 
         @NotNull(message = "{validation.user.role.required}")
         @Schema(description = "Rol asignado: ADMIN | EDITOR | READER", example = "EDITOR")
-        UserRole role
+        UserRole role,
+
+        @Nullable
+        @Schema(description = "Permiso para aprobar documentos (omitido = false; no aplica a READER)", example = "true", nullable = true)
+        Boolean canApprove
 ) {
 }

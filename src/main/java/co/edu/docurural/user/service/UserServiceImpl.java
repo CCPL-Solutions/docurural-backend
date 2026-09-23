@@ -6,6 +6,7 @@ import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.user.dto.CreateUserResponseDto;
 import co.edu.docurural.user.dto.UserResponseDto;
 import co.edu.docurural.user.entity.User;
+import co.edu.docurural.user.enums.UserRole;
 import co.edu.docurural.user.enums.UserStatus;
 import co.edu.docurural.user.repository.UserRepository;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
@@ -79,6 +80,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public CreateUserResponseDto create(CreateUserRequestDto request, AuditContext audit) {
         Long adminId = requireActorUserId(audit);
+        boolean canApprove = resolveCanApproveOnCreate(request);
 
         if (!request.password().equals(request.confirmPassword())) {
             throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT, messageResolver.get("user.passwords.mismatch"));
@@ -95,6 +97,7 @@ public class UserServiceImpl implements UserService {
                 .passwordHash(passwordEncoder.encode(request.password()))
                 .role(request.role())
                 .status(UserStatus.ACTIVE)
+                .canApprove(canApprove)
                 .build();
 
         User savedUser = userRepository.save(newUser);
@@ -103,7 +106,7 @@ public class UserServiceImpl implements UserService {
                 ActivityAction.CREATE_USER,
                 audit,
                 null,
-                "Usuario creado: " + savedUser.getId());
+                buildCreateDetail(savedUser));
 
         log.info("Usuario creado: id={} email={} role={} por adminId={}",
                 savedUser.getId(), savedUser.getEmail(), savedUser.getRole(), adminId);
@@ -126,11 +129,15 @@ public class UserServiceImpl implements UserService {
         validateRoleChange(request.role(), user, id, adminId);
         validatePasswordConsistency(request.password(), request.confirmPassword());
 
+        boolean previousCanApprove = user.isCanApprove();
+        boolean newCanApprove = resolveCanApproveOnUpdate(user, request);
+
         List<String> modifiedFields = applyUpdates(user, request, normalizedEmail);
+        user.setCanApprove(newCanApprove);
 
         User updatedUser = userRepository.save(user);
 
-        recordUpdateLog(audit, modifiedFields);
+        recordUpdateLog(audit, buildUpdateDetail(modifiedFields, previousCanApprove, newCanApprove));
 
         log.info("Usuario actualizado: id={} modifiedFields={} por adminId={}",
                 updatedUser.getId(), modifiedFields, adminId);
@@ -182,6 +189,13 @@ public class UserServiceImpl implements UserService {
         return userMapper.toStatusResponse(updatedUser, message);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isActiveApprover(Long userId) {
+        return userRepository.existsByIdAndCanApproveTrueAndStatusAndRoleNot(
+                userId, UserStatus.ACTIVE, UserRole.READER);
+    }
+
     private void validateEmailUniqueness(String newEmail, Long userId, User currentUser) {
         boolean emailChanged = !newEmail.equalsIgnoreCase(currentUser.getEmail());
         if (emailChanged && userRepository.existsByEmailAndIdNot(newEmail, userId)) {
@@ -224,12 +238,51 @@ public class UserServiceImpl implements UserService {
         return modifiedFields;
     }
 
-    private void recordUpdateLog(AuditContext audit, List<String> modifiedFields) {
-        activityLogService.record(
-                ActivityAction.EDIT_USER,
-                audit,
-                null,
-                "Campos modificados: " + modifiedFields);
+    private boolean resolveCanApproveOnCreate(CreateUserRequestDto request) {
+        boolean requested = Boolean.TRUE.equals(request.canApprove());
+        rejectReaderWithCanApprove(request.role(), requested);
+        return requested;
+    }
+
+    private boolean resolveCanApproveOnUpdate(User current, UpdateUserRequestDto request) {
+        if (isChangeToReader(current, request)) {
+            return false;
+        }
+        if (request.canApprove() == null) {
+            return current.isCanApprove();
+        }
+        if (current.getRole() == UserRole.READER) {
+            rejectReaderWithCanApprove(request.role(), request.canApprove());
+        }
+        return request.canApprove();
+    }
+
+    private boolean isChangeToReader(User current, UpdateUserRequestDto request) {
+        return request.role() == UserRole.READER && current.getRole() != UserRole.READER;
+    }
+
+    private void rejectReaderWithCanApprove(UserRole role, boolean canApprove) {
+        if (role == UserRole.READER && canApprove) {
+            throw new BusinessRuleException(BusinessErrorCode.INVALID_ARGUMENT,
+                    messageResolver.get("user.can-approve.reader-not-allowed"));
+        }
+    }
+
+    private String buildCreateDetail(User createdUser) {
+        String detail = "Usuario creado: " + createdUser.getId();
+        return createdUser.isCanApprove() ? detail + "; can_approve=true" : detail;
+    }
+
+    private String buildUpdateDetail(List<String> modifiedFields, boolean previousCanApprove, boolean newCanApprove) {
+        String detail = "Campos modificados: " + modifiedFields;
+        if (previousCanApprove == newCanApprove) {
+            return detail;
+        }
+        return detail + "; can_approve: " + previousCanApprove + " → " + newCanApprove;
+    }
+
+    private void recordUpdateLog(AuditContext audit, String detail) {
+        activityLogService.record(ActivityAction.EDIT_USER, audit, null, detail);
     }
 
     private Long requireActorUserId(AuditContext audit) {
