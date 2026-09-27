@@ -30,15 +30,31 @@ Todos los endpoints de usuarios requieren rol **`ADMIN`**.
 | `PUT`   | `/users/{id}`         | Actualiza los datos de un usuario existente.                              |
 | `PATCH` | `/users/{id}/status`  | Activa o desactiva un usuario.                                               |
 
+> Crear y editar aceptan `canApprove` (permiso para aprobar documentos, ver
+> [seguridad](seguridad.md#permiso-para-aprobar-documentos)). Si se omite al crear queda en `false` y si se omite
+> al editar se conserva. No se puede activar en un `READER` (400), y cambiar el rol de un usuario a `READER` lo
+> retira automáticamente. Todas las respuestas de usuario lo incluyen.
+
 ## Categorías
 
 | Método  | Ruta                       | Acceso                | Descripción                                                                |
 |---------|-----------------------------|-------------------------|---------------------------------------------------------------------------------|
 | `GET`   | `/categories`               | `ADMIN`, `EDITOR`        | Lista todas las categorías con conteo de documentos activos.                        |
 | `GET`   | `/categories/{id}`          | `ADMIN`, `EDITOR`        | Obtiene el detalle de una categoría por ID.                                            |
-| `POST`  | `/categories`                | `ADMIN`                  | Crea una nueva categoría documental.                                                      |
-| `PUT`   | `/categories/{id}`           | `ADMIN`                  | Edita el nombre y descripción de una categoría.                                              |
+| `POST`  | `/categories`                | `ADMIN`                  | Crea una categoría documental: nombre, descripción, sensibilidad por defecto y `requiresApproval`. |
+| `PUT`   | `/categories/{id}`           | `ADMIN`                  | Edita nombre, descripción, sensibilidad por defecto y `requiresApproval` de una categoría activa. |
 | `PATCH` | `/categories/{id}/status`    | `ADMIN`                  | Activa o desactiva una categoría (soft delete).                                                 |
+
+- **Sensibilidad por defecto:** si al editar se sube `defaultSensitivityLevel`, los documentos activos de la
+  categoría con un nivel inferior se reclasifican al nuevo nivel.
+- **`requiresApproval`** (HU-31) indica si los documentos que se carguen desde ese momento deben pasar por el flujo
+  de aprobación.
+  - Valor por defecto y omisión: si se omite al crear queda en `false`, y si se omite al editar se conserva.
+  - Respuestas: el detalle, el listado y las respuestas de guardado siempre lo incluyen, también para `EDITOR`.
+  - `approvalScopeNotice`: la respuesta del `PUT` lo incluye cuando el valor cambió. El aviso indica que el cambio
+    no afecta a los documentos existentes.
+  - `approverWarning`: la respuesta de `POST` y `PUT` lo incluye cuando el indicador pasa a `true` con menos de
+    dos aprobadores activos. Es una advertencia no bloqueante.
 
 ## Documentos
 

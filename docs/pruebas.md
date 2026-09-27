@@ -27,3 +27,7 @@ tipos de prueba:
 | `@WebMvcTest` (capa web)         | `DocumentControllerWebMvcTest`                              |
 | Unitarias con Mockito              | `DocumentCommandServiceTest`                                   |
 | Puras (mappers/validadores)           | `DocumentMapperTest`, `PasswordsMatchValidatorTest`                |
+
+Los objetos de dominio de las pruebas se construyen con los builders de
+`src/test/java/co/edu/docurural/support/TestFixtures.java`. Las convenciones de nombres y las plantillas de cada
+tipo de prueba están en [`CLAUDE.md`](../CLAUDE.md#detalles-de-pruebas).

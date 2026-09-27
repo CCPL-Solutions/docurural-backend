@@ -4,7 +4,8 @@ API REST del sistema de gestión documental y archivo digital de la **IERD Miña
 usuarios, categorías y documentos institucionales, con control de acceso por rol, niveles de confidencialidad y
 trazabilidad completa de cada acción realizada en el sistema.
 
-> Versión actual: `1.0.0-SNAPSHOT`. Aún no se ha publicado una versión productiva — ver [`CHANGELOG.md`](CHANGELOG.md).
+> Última versión en producción: `1.0.0` (2026-08-13). En desarrollo: `1.1.0-SNAPSHOT` (flujo de aprobación, v2.0) —
+> ver [`CHANGELOG.md`](CHANGELOG.md).
 
 ---
 
@@ -75,3 +76,6 @@ disponible en `http://localhost:8080/api/swagger-ui.html` — deshabilitada en e
 | [`docs/pruebas.md`](docs/pruebas.md)                             | Cómo ejecutar las pruebas y generar el reporte de cobertura.                                             |
 | [`docs/ci-cd.md`](docs/ci-cd.md)                                   | Flujo de ramas (GitFlow), pipelines de CI/CD y despliegue.                                                  |
 | [`CHANGELOG.md`](CHANGELOG.md)                                       | Historial de versiones desplegadas a producción y su contenido.                                                |
+| [`CLAUDE.md`](CLAUDE.md)                                             | Convenciones del día a día: naming, logging, patrones de mapper y de pruebas.                                    |
+| [`.specify/memory/constitution.md`](.specify/memory/constitution.md) | Constitución del proyecto: reglas no negociables de arquitectura, pruebas, base de datos y seguridad.             |
+| [`specs/`](specs)                                                    | Especificaciones por funcionalidad (Spec Kit): spec, plan, contratos y tareas de cada historia de usuario.        |
