@@ -17,6 +17,8 @@ public record CategoryDetailResponseDto(
         String createdBy,
         @Schema(description = "Nivel de sensibilidad por defecto para documentos de esta categoría",
                 example = "INTERNAL", allowableValues = {"INTERNAL", "RESTRICTED", "CONFIDENTIAL"})
-        String defaultSensitivityLevel
+        String defaultSensitivityLevel,
+        @Schema(description = "Indica si los documentos de esta categoría requieren aprobación", example = "false")
+        boolean requiresApproval
 ) {
 }

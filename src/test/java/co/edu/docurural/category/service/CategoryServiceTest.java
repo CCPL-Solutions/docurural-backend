@@ -20,6 +20,7 @@ import co.edu.docurural.document.service.DocumentQueryService;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.enums.SensitivityLevel;
 import co.edu.docurural.user.repository.UserRepository;
+import co.edu.docurural.user.service.UserService;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.exception.ConflictException;
@@ -30,6 +31,8 @@ import co.edu.docurural.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -70,6 +73,8 @@ class CategoryServiceTest {
     DocumentCommandService documentCommandService;
     @Mock
     DocumentQueryService documentQueryService;
+    @Mock
+    UserService userService;
 
     CategoryServiceImpl categoryService;
 
@@ -82,7 +87,7 @@ class CategoryServiceTest {
         categoryService = new CategoryServiceImpl(categoryRepository, userRepository,
                 activityLogService, messageResolver, new SortingValidator(messageResolver),
                 Mappers.getMapper(CategoryMapper.class), documentCommandService,
-                documentQueryService);
+                documentQueryService, userService);
     }
 
     // ------------------------------------------------------------------
@@ -124,7 +129,7 @@ class CategoryServiceTest {
                 eq(ActivityAction.CREATE_CATEGORY),
                 eq(AUDIT_ADMIN),
                 isNull(),
-                eq("Categoria creada: Proyectos Biotecnología"));
+                eq("Categoria creada: Proyectos Biotecnología (requires_approval: false)"));
     }
 
     @Test
@@ -658,4 +663,270 @@ class CategoryServiceTest {
         assertThat(detailCaptor.getValue()).contains("defaultSensitivityLevel: INTERNAL → RESTRICTED");
     }
 
+    // ------------------------------------------------------------------
+    // requiresApproval (HU-31)
+    // ------------------------------------------------------------------
+
+    @Test
+    void create_setsRequiresApprovalFalse_whenFieldOmitted() {
+        stubSuccessfulCreate("Circulares");
+
+        CreateCategoryResponseDto response = categoryService.create(
+                TestFixtures.createCategoryRequest("Circulares", null), AUDIT_ADMIN);
+
+        assertThat(response.requiresApproval()).isFalse();
+        assertThat(capturePersistedCategory().isRequiresApproval()).isFalse();
+    }
+
+    @Test
+    void create_persistsRequiresApprovalTrue_whenFlagTrue() {
+        stubSuccessfulCreate("Actas Consejo");
+
+        CreateCategoryResponseDto response = categoryService.create(
+                TestFixtures.createCategoryRequest("Actas Consejo", null, Boolean.TRUE), AUDIT_ADMIN);
+
+        assertThat(response.requiresApproval()).isTrue();
+        assertThat(capturePersistedCategory().isRequiresApproval()).isTrue();
+    }
+
+    @Test
+    void update_setsRequiresApprovalTrue_whenFlagSent() {
+        stubSuccessfulUpdate(TestFixtures.categoryActive(9L, "Actas"));
+
+        UpdateCategoryResponseDto response = categoryService.update(
+                9L, TestFixtures.updateCategoryRequest("Actas", null, Boolean.TRUE), AUDIT_ADMIN);
+
+        assertThat(response.requiresApproval()).isTrue();
+        assertThat(capturePersistedCategory().isRequiresApproval()).isTrue();
+    }
+
+    @Test
+    void update_keepsRequiresApproval_whenFieldOmitted() {
+        stubSuccessfulUpdate(TestFixtures.categoryRequiringApproval(9L, "Actas"));
+
+        UpdateCategoryResponseDto response = categoryService.update(
+                9L, TestFixtures.updateCategoryRequest("Actas", null), AUDIT_ADMIN);
+
+        assertThat(response.requiresApproval()).isTrue();
+        assertThat(capturePersistedCategory().isRequiresApproval()).isTrue();
+    }
+
+    @Test
+    void update_setsRequiresApprovalFalse_whenFlagFalse() {
+        stubSuccessfulUpdate(TestFixtures.categoryRequiringApproval(9L, "Actas"));
+
+        UpdateCategoryResponseDto response = categoryService.update(
+                9L, TestFixtures.updateCategoryRequest("Actas", null, Boolean.FALSE), AUDIT_ADMIN);
+
+        assertThat(response.requiresApproval()).isFalse();
+        assertThat(capturePersistedCategory().isRequiresApproval()).isFalse();
+    }
+
+    @Test
+    void update_returnsScopeNotice_whenRequiresApprovalActivated() {
+        stubSuccessfulUpdate(TestFixtures.categoryActive(9L, "Actas"));
+
+        UpdateCategoryResponseDto response = categoryService.update(
+                9L, TestFixtures.updateCategoryRequest("Actas", null, Boolean.TRUE), AUDIT_ADMIN);
+
+        assertThat(response.approvalScopeNotice()).isEqualTo("category.requires-approval.scope-notice");
+    }
+
+    @Test
+    void update_returnsScopeNotice_whenRequiresApprovalDeactivated() {
+        stubSuccessfulUpdate(TestFixtures.categoryRequiringApproval(9L, "Actas"));
+
+        UpdateCategoryResponseDto response = categoryService.update(
+                9L, TestFixtures.updateCategoryRequest("Actas", null, Boolean.FALSE), AUDIT_ADMIN);
+
+        assertThat(response.approvalScopeNotice()).isEqualTo("category.requires-approval.scope-notice");
+    }
+
+    @Test
+    void update_omitsScopeNotice_whenRequiresApprovalUnchanged() {
+        stubSuccessfulUpdate(TestFixtures.categoryRequiringApproval(9L, "Actas"));
+
+        UpdateCategoryResponseDto response = categoryService.update(
+                9L, TestFixtures.updateCategoryRequest("Actas", null, Boolean.TRUE), AUDIT_ADMIN);
+
+        assertThat(response.approvalScopeNotice()).isNull();
+    }
+
+    @Test
+    void update_omitsScopeNotice_whenRequiresApprovalOmitted() {
+        stubSuccessfulUpdate(TestFixtures.categoryRequiringApproval(9L, "Actas"));
+
+        UpdateCategoryResponseDto response = categoryService.update(
+                9L, TestFixtures.updateCategoryRequest("Actas", null), AUDIT_ADMIN);
+
+        assertThat(response.approvalScopeNotice()).isNull();
+    }
+
+    @Test
+    void update_logsRequiresApprovalChange_whenValueChanges() {
+        stubSuccessfulUpdate(TestFixtures.categoryActive(9L, "Actas"));
+
+        categoryService.update(9L, TestFixtures.updateCategoryRequest("Actas", null, Boolean.TRUE), AUDIT_ADMIN);
+
+        assertThat(captureActivityDetail(ActivityAction.EDIT_CATEGORY))
+                .isEqualTo("Campos modificados: [requires_approval: false → true]");
+    }
+
+    @Test
+    void update_logsRequiresApprovalAlongOtherChanges_whenNameAlsoChanges() {
+        stubSuccessfulUpdate(TestFixtures.categoryRequiringApproval(9L, "Actas"));
+        when(categoryRepository.existsByNameAndIdNot("Actas Consejo", 9L)).thenReturn(false);
+
+        categoryService.update(9L, TestFixtures.updateCategoryRequest("Actas Consejo", null, Boolean.FALSE), AUDIT_ADMIN);
+
+        assertThat(captureActivityDetail(ActivityAction.EDIT_CATEGORY))
+                .isEqualTo("Campos modificados: [name, requires_approval: true → false]");
+    }
+
+    @Test
+    void update_doesNotLogRequiresApproval_whenValueUnchanged() {
+        stubSuccessfulUpdate(TestFixtures.categoryActive(9L, "Actas"));
+
+        categoryService.update(9L, TestFixtures.updateCategoryRequest("Actas", null, Boolean.FALSE), AUDIT_ADMIN);
+
+        assertThat(captureActivityDetail(ActivityAction.EDIT_CATEGORY)).doesNotContain("requires_approval");
+    }
+
+    @Test
+    void update_doesNotTouchDocuments_whenOnlyRequiresApprovalChanges() {
+        stubSuccessfulUpdate(TestFixtures.categoryRequiringApproval(9L, "Actas"));
+
+        categoryService.update(9L, TestFixtures.updateCategoryRequest("Actas", null, Boolean.FALSE), AUDIT_ADMIN);
+
+        verifyNoInteractions(documentCommandService);
+    }
+
+    @Test
+    void create_logsInitialRequiresApproval_whenCreatedWithApproval() {
+        stubSuccessfulCreate("Actas Consejo");
+
+        categoryService.create(TestFixtures.createCategoryRequest("Actas Consejo", null, Boolean.TRUE), AUDIT_ADMIN);
+
+        assertThat(captureActivityDetail(ActivityAction.CREATE_CATEGORY))
+                .isEqualTo("Categoria creada: Actas Consejo (requires_approval: true)");
+    }
+
+    @Test
+    void create_logsInitialRequiresApproval_whenCreatedWithoutApproval() {
+        stubSuccessfulCreate("Circulares");
+
+        categoryService.create(TestFixtures.createCategoryRequest("Circulares", null), AUDIT_ADMIN);
+
+        assertThat(captureActivityDetail(ActivityAction.CREATE_CATEGORY))
+                .isEqualTo("Categoria creada: Circulares (requires_approval: false)");
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {0L, 1L})
+    void create_returnsApproverWarning_whenFlagTrueAndFewerThanTwoApprovers(long activeApprovers) {
+        stubSuccessfulCreate("Actas Consejo");
+        when(userService.countActiveApprovers()).thenReturn(activeApprovers);
+
+        CreateCategoryResponseDto response = categoryService.create(
+                TestFixtures.createCategoryRequest("Actas Consejo", null, Boolean.TRUE), AUDIT_ADMIN);
+
+        assertThat(response.approverWarning()).isEqualTo("category.requires-approval.few-approvers");
+        verify(categoryRepository).save(any(Category.class));
+    }
+
+    @Test
+    void create_omitsApproverWarning_whenTwoApprovers() {
+        stubSuccessfulCreate("Actas Consejo");
+        when(userService.countActiveApprovers()).thenReturn(2L);
+
+        CreateCategoryResponseDto response = categoryService.create(
+                TestFixtures.createCategoryRequest("Actas Consejo", null, Boolean.TRUE), AUDIT_ADMIN);
+
+        assertThat(response.approverWarning()).isNull();
+    }
+
+    @Test
+    void create_skipsApproverCount_whenFlagFalse() {
+        stubSuccessfulCreate("Circulares");
+
+        CreateCategoryResponseDto response = categoryService.create(
+                TestFixtures.createCategoryRequest("Circulares", null, Boolean.FALSE), AUDIT_ADMIN);
+
+        assertThat(response.approverWarning()).isNull();
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    void update_returnsApproverWarning_whenActivatedAndOneApprover() {
+        stubSuccessfulUpdate(TestFixtures.categoryActive(9L, "Actas"));
+        when(userService.countActiveApprovers()).thenReturn(1L);
+
+        UpdateCategoryResponseDto response = categoryService.update(
+                9L, TestFixtures.updateCategoryRequest("Actas", null, Boolean.TRUE), AUDIT_ADMIN);
+
+        assertThat(response.requiresApproval()).isTrue();
+        assertThat(response.approverWarning()).isEqualTo("category.requires-approval.few-approvers");
+    }
+
+    @Test
+    void update_omitsApproverWarning_whenActivatedAndTwoApprovers() {
+        stubSuccessfulUpdate(TestFixtures.categoryActive(9L, "Actas"));
+        when(userService.countActiveApprovers()).thenReturn(2L);
+
+        UpdateCategoryResponseDto response = categoryService.update(
+                9L, TestFixtures.updateCategoryRequest("Actas", null, Boolean.TRUE), AUDIT_ADMIN);
+
+        assertThat(response.approverWarning()).isNull();
+    }
+
+    @Test
+    void update_omitsApproverWarning_whenDeactivated() {
+        stubSuccessfulUpdate(TestFixtures.categoryRequiringApproval(9L, "Actas"));
+
+        UpdateCategoryResponseDto response = categoryService.update(
+                9L, TestFixtures.updateCategoryRequest("Actas", null, Boolean.FALSE), AUDIT_ADMIN);
+
+        assertThat(response.approverWarning()).isNull();
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    void update_skipsApproverCount_whenAlreadyActive() {
+        stubSuccessfulUpdate(TestFixtures.categoryRequiringApproval(9L, "Actas"));
+
+        UpdateCategoryResponseDto response = categoryService.update(
+                9L, TestFixtures.updateCategoryRequest("Actas", null, Boolean.TRUE), AUDIT_ADMIN);
+
+        assertThat(response.approverWarning()).isNull();
+        verifyNoInteractions(userService);
+    }
+
+    private void stubSuccessfulCreate(String name) {
+        when(categoryRepository.existsByName(name)).thenReturn(false);
+        when(userRepository.getReferenceById(ADMIN_ID)).thenReturn(TestFixtures.userAdmin(ADMIN_ID));
+        when(categoryRepository.save(any(Category.class))).thenAnswer(inv -> {
+            Category c = inv.getArgument(0);
+            c.setId(9L);
+            c.setStatus(CategoryStatus.ACTIVE);
+            c.setCreatedAt(TestFixtures.FIXED_CREATED_AT);
+            return c;
+        });
+    }
+
+    private void stubSuccessfulUpdate(Category existing) {
+        when(categoryRepository.findById(existing.getId())).thenReturn(Optional.of(existing));
+        when(categoryRepository.save(any(Category.class))).thenAnswer(inv -> inv.getArgument(0));
+    }
+
+    private Category capturePersistedCategory() {
+        ArgumentCaptor<Category> captor = ArgumentCaptor.forClass(Category.class);
+        verify(categoryRepository).save(captor.capture());
+        return captor.getValue();
+    }
+
+    private String captureActivityDetail(ActivityAction action) {
+        ArgumentCaptor<String> detailCaptor = ArgumentCaptor.forClass(String.class);
+        verify(activityLogService).record(eq(action), eq(AUDIT_ADMIN), isNull(), detailCaptor.capture());
+        return detailCaptor.getValue();
+    }
 }

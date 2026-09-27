@@ -29,12 +29,16 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.lang.reflect.Method;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -85,6 +89,8 @@ class CategoryControllerWebMvcTest {
                 "ACTIVE",
                 LocalDateTime.of(2026, 4, 17, 10, 15),
                 "INTERNAL",
+                false,
+                null,
                 "Categoría creada exitosamente");
 
         when(categoryService.create(any(CreateCategoryRequestDto.class), eq(ADMIN_AUDIT)))
@@ -115,6 +121,8 @@ class CategoryControllerWebMvcTest {
                 10L, "Circulares", null, "ACTIVE",
                 LocalDateTime.of(2026, 4, 17, 10, 15),
                 "INTERNAL",
+                false,
+                null,
                 "Categoría creada exitosamente");
 
         when(categoryService.create(any(CreateCategoryRequestDto.class), eq(ADMIN_AUDIT)))
@@ -215,6 +223,9 @@ class CategoryControllerWebMvcTest {
                 "Proyectos e informes detallados",
                 "ACTIVE",
                 "INTERNAL",
+                false,
+                null,
+                null,
                 "Categoría actualizada exitosamente");
 
         when(categoryService.update(eq(9L), any(UpdateCategoryRequestDto.class), eq(ADMIN_AUDIT)))
@@ -243,7 +254,7 @@ class CategoryControllerWebMvcTest {
         UpdateCategoryRequestDto request = TestFixtures.updateCategoryRequest("Circulares", null);
 
         UpdateCategoryResponseDto response = new UpdateCategoryResponseDto(
-                10L, "Circulares", null, "ACTIVE", "INTERNAL", "Categoría actualizada exitosamente");
+                10L, "Circulares", null, "ACTIVE", "INTERNAL", false, null, null, "Categoría actualizada exitosamente");
 
         when(categoryService.update(eq(10L), any(UpdateCategoryRequestDto.class), eq(ADMIN_AUDIT)))
                 .thenReturn(response);
@@ -476,7 +487,7 @@ class CategoryControllerWebMvcTest {
     void list_returns200WithListResponse() throws Exception {
         CategoryDetailResponseDto item = new CategoryDetailResponseDto(
                 1L, "Actas", "Actas de reuniones, consejos directivos",
-                "ACTIVE", 23L, LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema", "INTERNAL");
+                "ACTIVE", 23L, LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema", "INTERNAL", false);
 
         CategoryListResponseDto response = new CategoryListResponseDto(1, 1, 0, List.of(item));
 
@@ -538,7 +549,7 @@ class CategoryControllerWebMvcTest {
     void getById_returns200WithDetailResponse() throws Exception {
         CategoryDetailResponseDto response = new CategoryDetailResponseDto(
                 1L, "Actas", "Actas de reuniones, consejos directivos",
-                "ACTIVE", 23L, LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema", "INTERNAL");
+                "ACTIVE", 23L, LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema", "INTERNAL", false);
 
         when(categoryService.findById(1L)).thenReturn(response);
 
@@ -567,12 +578,113 @@ class CategoryControllerWebMvcTest {
     void getById_returnsCreatedBySistema_whenCreatorMissing() throws Exception {
         CategoryDetailResponseDto response = new CategoryDetailResponseDto(
                 2L, "Resoluciones", null, "ACTIVE", 0L,
-                LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema", "INTERNAL");
+                LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema", "INTERNAL", false);
 
         when(categoryService.findById(2L)).thenReturn(response);
 
         mockMvc.perform(get("/categories/2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.createdBy").value("Sistema"));
+    }
+
+    // ------------------------------------------------------------------
+    // requiresApproval (HU-31)
+    // ------------------------------------------------------------------
+
+    @Test
+    void create_returns201WithRequiresApproval_whenFlagSent() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
+
+        CreateCategoryRequestDto request = TestFixtures.createCategoryRequest("Actas Consejo", null, Boolean.TRUE);
+        CreateCategoryResponseDto response = new CreateCategoryResponseDto(
+                11L, "Actas Consejo", null, "ACTIVE",
+                LocalDateTime.of(2026, 9, 26, 10, 0), "INTERNAL",
+                true, "advertencia", "Categoría creada exitosamente");
+
+        when(categoryService.create(any(CreateCategoryRequestDto.class), eq(ADMIN_AUDIT))).thenReturn(response);
+
+        mockMvc.perform(post("/categories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.requiresApproval").value(true))
+                .andExpect(jsonPath("$.approverWarning").value("advertencia"));
+
+        verify(categoryService).create(argThat(req -> Boolean.TRUE.equals(req.requiresApproval())), eq(ADMIN_AUDIT));
+    }
+
+    @Test
+    void update_returns200WithRequiresApproval_whenFlagSent() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
+
+        UpdateCategoryRequestDto request = TestFixtures.updateCategoryRequest("Actas", null, Boolean.TRUE);
+        UpdateCategoryResponseDto response = new UpdateCategoryResponseDto(
+                1L, "Actas", null, "ACTIVE", "INTERNAL",
+                true, "aviso", null, "Categoría actualizada exitosamente");
+
+        when(categoryService.update(eq(1L), any(UpdateCategoryRequestDto.class), eq(ADMIN_AUDIT))).thenReturn(response);
+
+        mockMvc.perform(put("/categories/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.requiresApproval").value(true))
+                .andExpect(jsonPath("$.approvalScopeNotice").value("aviso"));
+
+        verify(categoryService).update(eq(1L), argThat(req -> Boolean.TRUE.equals(req.requiresApproval())), eq(ADMIN_AUDIT));
+    }
+
+    @Test
+    void update_passesNullRequiresApproval_whenFieldOmitted() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(ADMIN_AUDIT);
+        when(categoryService.update(eq(1L), any(UpdateCategoryRequestDto.class), eq(ADMIN_AUDIT)))
+                .thenReturn(new UpdateCategoryResponseDto(
+                        1L, "Actas", null, "ACTIVE", "INTERNAL", false, null, null, "ok"));
+
+        mockMvc.perform(put("/categories/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Actas\",\"defaultSensitivityLevel\":\"INTERNAL\"}"))
+                .andExpect(status().isOk());
+
+        verify(categoryService).update(eq(1L), argThat(req -> req.requiresApproval() == null), eq(ADMIN_AUDIT));
+    }
+
+    @Test
+    void list_returnsRequiresApproval_forEachCategory() throws Exception {
+        CategoryDetailResponseDto actas = new CategoryDetailResponseDto(
+                1L, "Actas", null, "ACTIVE", 0L, LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema", "INTERNAL", true);
+        CategoryDetailResponseDto circulares = new CategoryDetailResponseDto(
+                2L, "Circulares", null, "ACTIVE", 0L, LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema", "INTERNAL", false);
+        when(categoryService.list(any(), any()))
+                .thenReturn(new CategoryListResponseDto(2, 2, 0, List.of(actas, circulares)));
+
+        mockMvc.perform(get("/categories"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.categories[0].requiresApproval").value(true))
+                .andExpect(jsonPath("$.categories[1].requiresApproval").value(false));
+    }
+
+    @Test
+    void getById_returnsRequiresApproval() throws Exception {
+        when(categoryService.findById(1L)).thenReturn(new CategoryDetailResponseDto(
+                1L, "Actas", null, "ACTIVE", 0L, LocalDateTime.of(2026, 4, 1, 8, 0), "Sistema", "INTERNAL", true));
+
+        mockMvc.perform(get("/categories/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.requiresApproval").value(true));
+    }
+
+    @Test
+    void createAndUpdate_requireAdminRole() {
+        assertThat(preAuthorizeOf("create")).isEqualTo("hasRole('ADMIN')");
+        assertThat(preAuthorizeOf("update")).isEqualTo("hasRole('ADMIN')");
+    }
+
+    private static String preAuthorizeOf(String methodName) {
+        Method method = Arrays.stream(CategoryController.class.getDeclaredMethods())
+                .filter(m -> m.getName().equals(methodName))
+                .findFirst()
+                .orElseThrow();
+        return method.getAnnotation(PreAuthorize.class).value();
     }
 }

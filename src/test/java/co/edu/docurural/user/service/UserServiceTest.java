@@ -716,6 +716,14 @@ class UserServiceTest {
     // ------------------------------------------------------------------
 
     @Test
+    void countActiveApprovers_delegatesToRepository_withActiveStatusAndExcludingReader() {
+        when(userRepository.countByCanApproveTrueAndStatusAndRoleNot(UserStatus.ACTIVE, UserRole.READER))
+                .thenReturn(3L);
+
+        assertThat(userService.countActiveApprovers()).isEqualTo(3L);
+    }
+
+    @Test
     void isActiveApprover_returnsTrue_whenPermissionActiveAndUserActiveAndNotReader() {
         when(userRepository.existsByIdAndCanApproveTrueAndStatusAndRoleNot(
                 30L, UserStatus.ACTIVE, UserRole.READER)).thenReturn(true);

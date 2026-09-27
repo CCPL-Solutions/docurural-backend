@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-26
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "HU-31 — Configuración de aprobación por categoría (RF-07, prioridad Alta, versión v2.0 Flujo de aprobación). Como administrador del sistema, quiero indicar qué categorías documentales requieren aprobación, para que solo los documentos que lo necesitan pasen por el flujo, sin agregar pasos a los demás."
 

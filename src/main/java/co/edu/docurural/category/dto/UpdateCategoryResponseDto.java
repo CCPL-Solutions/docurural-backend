@@ -18,6 +18,16 @@ public record UpdateCategoryResponseDto(
         @Schema(description = "Nivel de sensibilidad por defecto para documentos de esta categoría",
                 example = "INTERNAL", allowableValues = {"INTERNAL", "RESTRICTED", "CONFIDENTIAL"})
         String defaultSensitivityLevel,
+        @Schema(description = "Indica si los documentos de esta categoría requieren aprobación", example = "true")
+        boolean requiresApproval,
+        @Schema(description = "Aviso de alcance cuando cambia el valor de requiresApproval",
+                example = "Este cambio solo afecta a los documentos que se carguen desde ahora. Los documentos existentes conservan su estado actual",
+                nullable = true)
+        String approvalScopeNotice,
+        @Schema(description = "Advertencia no bloqueante cuando se activa la aprobación con menos de dos aprobadores activos",
+                example = "Hay menos de dos usuarios con permiso de aprobar. Los documentos que cargue un aprobador no podrán ser aprobados por él mismo",
+                nullable = true)
+        String approverWarning,
         @Schema(description = "Mensaje de confirmación", example = "Categoría actualizada exitosamente")
         String message
 ) {

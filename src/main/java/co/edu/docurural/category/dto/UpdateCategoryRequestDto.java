@@ -27,6 +27,11 @@ public record UpdateCategoryRequestDto(
         @NotNull(message = "{validation.category.default-sensitivity.required}")
         @Schema(description = "Nivel de sensibilidad que heredan los documentos de esta categoría por defecto",
                 example = "INTERNAL", allowableValues = {"INTERNAL", "RESTRICTED", "CONFIDENTIAL"})
-        SensitivityLevel defaultSensitivityLevel
+        SensitivityLevel defaultSensitivityLevel,
+
+        @Nullable
+        @Schema(description = "Indica si los documentos de la categoría requieren aprobación (null para conservar el valor actual)",
+                example = "true", nullable = true)
+        Boolean requiresApproval
 ) {
 }

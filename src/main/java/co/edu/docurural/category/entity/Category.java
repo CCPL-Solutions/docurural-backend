@@ -66,6 +66,10 @@ public class Category {
     @JoinColumn(name = "created_by")
     private User createdBy;
 
+    @Builder.Default
+    @Column(name = "requires_approval", nullable = false)
+    private boolean requiresApproval = false;
+
     /** Garantiza que la categoría está ACTIVE antes de permitir edición. */
     public void assertEditable(String errorMessage) {
         if (this.status == CategoryStatus.INACTIVE) {

@@ -174,22 +174,44 @@ public final class TestFixtures {
                 .build();
     }
 
+    public static Category categoryRequiringApproval(Long id, String name) {
+        return Category.builder()
+                .id(id)
+                .name(name)
+                .description(null)
+                .status(CategoryStatus.ACTIVE)
+                .defaultSensitivityLevel(SensitivityLevel.INTERNAL)
+                .createdAt(FIXED_CREATED_AT)
+                .requiresApproval(true)
+                .build();
+    }
+
     public static CreateCategoryRequestDto createCategoryRequest(String name, String description) {
-        return new CreateCategoryRequestDto(name, description, SensitivityLevel.INTERNAL);
+        return new CreateCategoryRequestDto(name, description, SensitivityLevel.INTERNAL, null);
     }
 
     public static CreateCategoryRequestDto createCategoryRequest(String name, String description,
                                                                   SensitivityLevel defaultSensitivityLevel) {
-        return new CreateCategoryRequestDto(name, description, defaultSensitivityLevel);
+        return new CreateCategoryRequestDto(name, description, defaultSensitivityLevel, null);
+    }
+
+    public static CreateCategoryRequestDto createCategoryRequest(String name, String description,
+                                                                  Boolean requiresApproval) {
+        return new CreateCategoryRequestDto(name, description, SensitivityLevel.INTERNAL, requiresApproval);
     }
 
     public static UpdateCategoryRequestDto updateCategoryRequest(String name, String description) {
-        return new UpdateCategoryRequestDto(name, description, SensitivityLevel.INTERNAL);
+        return new UpdateCategoryRequestDto(name, description, SensitivityLevel.INTERNAL, null);
     }
 
     public static UpdateCategoryRequestDto updateCategoryRequest(String name, String description,
                                                                   SensitivityLevel defaultSensitivityLevel) {
-        return new UpdateCategoryRequestDto(name, description, defaultSensitivityLevel);
+        return new UpdateCategoryRequestDto(name, description, defaultSensitivityLevel, null);
+    }
+
+    public static UpdateCategoryRequestDto updateCategoryRequest(String name, String description,
+                                                                  Boolean requiresApproval) {
+        return new UpdateCategoryRequestDto(name, description, SensitivityLevel.INTERNAL, requiresApproval);
     }
 
     public static Category categoryInactive(Long id, String name) {

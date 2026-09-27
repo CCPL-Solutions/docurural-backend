@@ -196,6 +196,12 @@ public class UserServiceImpl implements UserService {
                 userId, UserStatus.ACTIVE, UserRole.READER);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public long countActiveApprovers() {
+        return userRepository.countByCanApproveTrueAndStatusAndRoleNot(UserStatus.ACTIVE, UserRole.READER);
+    }
+
     private void validateEmailUniqueness(String newEmail, Long userId, User currentUser) {
         boolean emailChanged = !newEmail.equalsIgnoreCase(currentUser.getEmail());
         if (emailChanged && userRepository.existsByEmailAndIdNot(newEmail, userId)) {

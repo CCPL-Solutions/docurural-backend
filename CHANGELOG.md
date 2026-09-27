@@ -30,6 +30,14 @@ La fecha de cada versión corresponde a su **paso a producción**.
   con 400 y se retira automáticamente al cambiar el rol a lector), los cambios se registran en la
   bitácora como `can_approve: a → b`, y `UserService.isActiveApprover` consulta el estado vigente
   en cada llamada. Incluye la migración `V3__add_can_approve_to_users.sql`.
+- Añadida la opción **Requiere aprobación** en las categorías documentales (HU-31): indicador
+  `requiresApproval` que el administrador configura al crear o editar (omitido al editar conserva
+  el valor) y que se devuelve en creación, edición, detalle y listado, también para editores. Al
+  cambiarlo, la respuesta avisa que solo afecta a los documentos que se carguen desde ahora y, si
+  se activa con menos de dos aprobadores activos, incluye una advertencia no bloqueante. Los
+  cambios se registran en la bitácora (`requires_approval: a → b`; el valor inicial al crear), y
+  `CategoryQueryService.requiresApproval` expone el valor vigente para la carga de documentos.
+  Incluye la migración `V4__add_requires_approval_to_categories.sql`.
 
 ### Fixed
 

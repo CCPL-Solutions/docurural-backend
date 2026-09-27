@@ -2,6 +2,7 @@ package co.edu.docurural.category.service;
 
 import co.edu.docurural.activitylog.enums.ActivityAction;
 import co.edu.docurural.activitylog.service.ActivityLogService;
+import co.edu.docurural.category.dto.ApprovalNotices;
 import co.edu.docurural.category.dto.CategoryDetailResponseDto;
 import co.edu.docurural.category.dto.CategoryListResponseDto;
 import co.edu.docurural.category.dto.CreateCategoryRequestDto;
@@ -20,6 +21,7 @@ import co.edu.docurural.document.service.DocumentQueryService;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.enums.SensitivityLevel;
 import co.edu.docurural.user.repository.UserRepository;
+import co.edu.docurural.user.service.UserService;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
 import co.edu.docurural.shared.exception.ConflictException;
@@ -53,6 +55,7 @@ public class CategoryServiceImpl implements CategoryService {
     private static final String DEFAULT_SORT_BY = "name";
     private static final String DEFAULT_SORT_DIR = "asc";
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("name", "createdAt");
+    private static final long MIN_ACTIVE_APPROVERS = 2;
 
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
@@ -62,6 +65,7 @@ public class CategoryServiceImpl implements CategoryService {
     private final CategoryMapper categoryMapper;
     private final DocumentCommandService documentCommandService;
     private final DocumentQueryService documentQueryService;
+    private final UserService userService;
 
     @Override
     @Transactional(readOnly = true)
@@ -104,6 +108,7 @@ public class CategoryServiceImpl implements CategoryService {
                 .name(request.name())
                 .description(request.description())
                 .defaultSensitivityLevel(request.defaultSensitivityLevel())
+                .requiresApproval(Boolean.TRUE.equals(request.requiresApproval()))
                 .createdBy(userRepository.getReferenceById(adminId))
                 .build();
 
@@ -113,11 +118,13 @@ public class CategoryServiceImpl implements CategoryService {
                 ActivityAction.CREATE_CATEGORY,
                 audit,
                 null,
-                "Categoria creada: " + saved.getName());
+                "Categoria creada: " + saved.getName() + " (requires_approval: " + saved.isRequiresApproval() + ")");
 
-        log.info("Categoria creada: id={} name='{}' por adminId={}", saved.getId(), saved.getName(), adminId);
+        log.info("Categoria creada: id={} name='{}' requiresApproval={} por adminId={}",
+                saved.getId(), saved.getName(), saved.isRequiresApproval(), adminId);
 
-        return categoryMapper.toCreateResponse(saved, messageResolver.get("category.created.success"));
+        return categoryMapper.toCreateResponse(saved, messageResolver.get("category.created.success"),
+                resolveApproverWarning(saved));
     }
 
     @Override
@@ -138,6 +145,12 @@ public class CategoryServiceImpl implements CategoryService {
 
         SensitivityLevel previousLevel = category.getDefaultSensitivityLevel();
         List<String> modifiedFields = applyUpdates(category, request, nameChanged, previousLevel);
+        boolean previousRequiresApproval = category.isRequiresApproval();
+        applyRequiresApproval(category, request.requiresApproval());
+        boolean requiresApprovalChanged = previousRequiresApproval != category.isRequiresApproval();
+        if (requiresApprovalChanged) {
+            modifiedFields.add("requires_approval: " + previousRequiresApproval + " → " + category.isRequiresApproval());
+        }
 
         Category updated = categoryRepository.save(category);
 
@@ -154,7 +167,12 @@ public class CategoryServiceImpl implements CategoryService {
 
         log.info("Categoria actualizada: id={} modifiedFields={} por adminId={}", updated.getId(), modifiedFields, audit.actorUserId());
 
-        return categoryMapper.toUpdateResponse(updated, messageResolver.get("category.updated.success"));
+        ApprovalNotices notices = requiresApprovalChanged
+                ? new ApprovalNotices(messageResolver.get("category.requires-approval.scope-notice"),
+                        resolveApproverWarning(updated))
+                : ApprovalNotices.none();
+
+        return categoryMapper.toUpdateResponse(updated, messageResolver.get("category.updated.success"), notices);
     }
 
     @Override
@@ -219,6 +237,25 @@ public class CategoryServiceImpl implements CategoryService {
         }
 
         return modifiedFields;
+    }
+
+    /**
+     * Advertencia no bloqueante de HU-31. Se invoca al crear o cuando el indicador acaba de
+     * cambiar, de modo que una categoría que ya exigía aprobación no repite la advertencia; el
+     * conteo solo se consulta si la categoría quedó exigiendo aprobación.
+     */
+    private String resolveApproverWarning(Category category) {
+        if (!category.isRequiresApproval() || userService.countActiveApprovers() >= MIN_ACTIVE_APPROVERS) {
+            return null;
+        }
+        return messageResolver.get("category.requires-approval.few-approvers");
+    }
+
+    /** Un valor {@code null} conserva el actual (HU-31: el campo es opcional en la edición). */
+    private void applyRequiresApproval(Category category, Boolean requested) {
+        if (requested != null) {
+            category.setRequiresApproval(requested);
+        }
     }
 
     private Long requireActorUserId(AuditContext audit) {

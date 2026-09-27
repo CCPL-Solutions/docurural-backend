@@ -31,6 +31,14 @@ public record CreateCategoryResponseDto(
                 example = "INTERNAL", allowableValues = {"INTERNAL", "RESTRICTED", "CONFIDENTIAL"})
         String defaultSensitivityLevel,
 
+        @Schema(description = "Indica si los documentos de esta categoría requieren aprobación", example = "true")
+        boolean requiresApproval,
+
+        @Schema(description = "Advertencia no bloqueante cuando se activa la aprobación con menos de dos aprobadores activos",
+                example = "Hay menos de dos usuarios con permiso de aprobar. Los documentos que cargue un aprobador no podrán ser aprobados por él mismo",
+                nullable = true)
+        String approverWarning,
+
         @Schema(description = "Mensaje de confirmación", example = "Categoría creada exitosamente")
         String message
 ) {
