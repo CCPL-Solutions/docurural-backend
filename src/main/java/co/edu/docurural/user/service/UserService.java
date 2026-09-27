@@ -31,4 +31,10 @@ public interface UserService {
      * resultado ni derivarlo del token.
      */
     boolean isActiveApprover(Long userId);
+
+    /**
+     * Cuenta los aprobadores activos: usuarios con el permiso de aprobar, activos y con rol
+     * distinto de READER (la misma definición que {@link #isActiveApprover(Long)}).
+     */
+    long countActiveApprovers();
 }

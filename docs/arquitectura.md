@@ -33,3 +33,11 @@ Dentro de cada módulo, las capas típicas son:
 No todos los módulos tienen todas las capas: `activitylog` no expone `controller` ni `dto` (es auditoría interna),
 `dashboard` y `health` no tienen `entity`/`repository` propios (agregan datos de otros módulos), y `auth` no tiene
 `entity` (reutiliza `User` del módulo `user`).
+
+## Comunicación entre módulos
+
+Un módulo solo accede a otro a través de sus interfaces de servicio, nunca por su repositorio ni consultando sus
+tablas (constitución, Principio I). Cuando un módulo expone lecturas que otro necesita y usarlas a través del
+servicio principal crearía una dependencia circular, se publica una interfaz de solo lectura aparte. Es el caso
+de `CategoryQueryService`: `CategoryService` depende de `document`, así que `document` debe consultar
+categorías a través de `CategoryQueryService`.

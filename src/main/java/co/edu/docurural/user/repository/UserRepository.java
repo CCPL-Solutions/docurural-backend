@@ -20,4 +20,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmailAndIdNot(String email, Long id);
 
     boolean existsByIdAndCanApproveTrueAndStatusAndRoleNot(Long id, UserStatus status, UserRole role);
+
+    long countByCanApproveTrueAndStatusAndRoleNot(UserStatus status, UserRole role);
 }

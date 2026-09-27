@@ -1,5 +1,6 @@
 package co.edu.docurural.category.mapper;
 
+import co.edu.docurural.category.dto.ApprovalNotices;
 import co.edu.docurural.category.dto.CategoryDetailResponseDto;
 import co.edu.docurural.category.dto.CategoryListResponseDto;
 import co.edu.docurural.category.dto.CreateCategoryResponseDto;
@@ -35,13 +36,15 @@ public abstract class CategoryMapper {
             expression = "java(category.getStatus() != null ? category.getStatus().name() : null)")
     @Mapping(target = "defaultSensitivityLevel",
             expression = "java(category.getDefaultSensitivityLevel() != null ? category.getDefaultSensitivityLevel().name() : null)")
-    public abstract CreateCategoryResponseDto toCreateResponse(Category category, String message);
+    public abstract CreateCategoryResponseDto toCreateResponse(Category category, String message, String approverWarning);
 
     @Mapping(target = "status",
             expression = "java(category.getStatus() != null ? category.getStatus().name() : null)")
     @Mapping(target = "defaultSensitivityLevel",
             expression = "java(category.getDefaultSensitivityLevel() != null ? category.getDefaultSensitivityLevel().name() : null)")
-    public abstract UpdateCategoryResponseDto toUpdateResponse(Category category, String message);
+    @Mapping(target = "approvalScopeNotice", source = "notices.scopeNotice")
+    @Mapping(target = "approverWarning", source = "notices.approverWarning")
+    public abstract UpdateCategoryResponseDto toUpdateResponse(Category category, String message, ApprovalNotices notices);
 
     @Mapping(target = "status",
             expression = "java(category.getStatus() != null ? category.getStatus().name() : null)")

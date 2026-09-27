@@ -1,5 +1,6 @@
 package co.edu.docurural.category.mapper;
 
+import co.edu.docurural.category.dto.ApprovalNotices;
 import co.edu.docurural.category.dto.CategoryDetailResponseDto;
 import co.edu.docurural.category.dto.CategoryListResponseDto;
 import co.edu.docurural.category.dto.CreateCategoryResponseDto;
@@ -26,7 +27,7 @@ class CategoryMapperTest {
     void toCreateResponse_mapsAllFields() {
         Category category = TestFixtures.categoryActive(9L, "Actas", "Actas de reuniones");
 
-        CreateCategoryResponseDto response = mapper.toCreateResponse(category, "Categoría creada exitosamente");
+        CreateCategoryResponseDto response = mapper.toCreateResponse(category, "Categoría creada exitosamente", null);
 
         assertThat(response.id()).isEqualTo(9L);
         assertThat(response.name()).isEqualTo("Actas");
@@ -40,7 +41,7 @@ class CategoryMapperTest {
     void toCreateResponse_withNullDescription_mapsDescriptionAsNull() {
         Category category = TestFixtures.categoryActive(1L, "Resoluciones");
 
-        CreateCategoryResponseDto response = mapper.toCreateResponse(category, "ok");
+        CreateCategoryResponseDto response = mapper.toCreateResponse(category, "ok", null);
 
         assertThat(response.description()).isNull();
     }
@@ -53,14 +54,14 @@ class CategoryMapperTest {
                 .createdAt(TestFixtures.FIXED_CREATED_AT)
                 .build();
 
-        CreateCategoryResponseDto response = mapper.toCreateResponse(category, "ok");
+        CreateCategoryResponseDto response = mapper.toCreateResponse(category, "ok", null);
 
         assertThat(response.status()).isNull();
     }
 
     @Test
     void toCreateResponse_withNullCategory_throwsNullPointerException() {
-        assertThatThrownBy(() -> mapper.toCreateResponse(null, "msg"))
+        assertThatThrownBy(() -> mapper.toCreateResponse(null, "msg", null))
                 .isInstanceOf(NullPointerException.class);
     }
 
@@ -68,7 +69,7 @@ class CategoryMapperTest {
     void toCreateResponse_statusIsAlwaysActiveStringForNewCategory() {
         Category category = TestFixtures.categoryActive(5L, "Circulares");
 
-        CreateCategoryResponseDto response = mapper.toCreateResponse(category, "msg");
+        CreateCategoryResponseDto response = mapper.toCreateResponse(category, "msg", null);
 
         assertThat(response.status()).isEqualTo(CategoryStatus.ACTIVE.name());
     }
@@ -81,7 +82,7 @@ class CategoryMapperTest {
     void toUpdateResponse_mapsAllFields() {
         Category category = TestFixtures.categoryActive(9L, "Proyectos e Informes Biotecnología", "Descripción detallada");
 
-        UpdateCategoryResponseDto response = mapper.toUpdateResponse(category, "Categoría actualizada exitosamente");
+        UpdateCategoryResponseDto response = mapper.toUpdateResponse(category, "Categoría actualizada exitosamente", ApprovalNotices.none());
 
         assertThat(response.id()).isEqualTo(9L);
         assertThat(response.name()).isEqualTo("Proyectos e Informes Biotecnología");
@@ -94,14 +95,67 @@ class CategoryMapperTest {
     void toUpdateResponse_withNullDescription_mapsDescriptionAsNull() {
         Category category = TestFixtures.categoryActive(3L, "Circulares");
 
-        UpdateCategoryResponseDto response = mapper.toUpdateResponse(category, "ok");
+        UpdateCategoryResponseDto response = mapper.toUpdateResponse(category, "ok", ApprovalNotices.none());
 
         assertThat(response.description()).isNull();
     }
 
     @Test
+    void toDetailResponse_exposesRequiresApproval() {
+        assertThat(mapper.toDetailResponse(TestFixtures.categoryRequiringApproval(1L, "Actas"), 0L)
+                .requiresApproval()).isTrue();
+        assertThat(mapper.toDetailResponse(TestFixtures.categoryActive(2L, "Circulares"), 0L)
+                .requiresApproval()).isFalse();
+    }
+
+    @Test
+    void toListResponse_exposesRequiresApproval_forEachCategory() {
+        CategoryListResponseDto response = mapper.toListResponse(
+                List.of(TestFixtures.categoryRequiringApproval(1L, "Actas"),
+                        TestFixtures.categoryActive(2L, "Circulares")),
+                Map.of());
+
+        assertThat(response.categories())
+                .extracting(CategoryDetailResponseDto::requiresApproval)
+                .containsExactly(true, false);
+    }
+
+    @Test
+    void toCreateResponse_mapsRequiresApprovalAndWarning() {
+        CreateCategoryResponseDto response = mapper.toCreateResponse(
+                TestFixtures.categoryRequiringApproval(1L, "Actas"), "ok", "advertencia");
+
+        assertThat(response.requiresApproval()).isTrue();
+        assertThat(response.approverWarning()).isEqualTo("advertencia");
+        assertThat(response.message()).isEqualTo("ok");
+    }
+
+    @Test
+    void toUpdateResponse_mapsNotices_whenPresent() {
+        Category category = TestFixtures.categoryRequiringApproval(1L, "Actas");
+
+        UpdateCategoryResponseDto response = mapper.toUpdateResponse(
+                category, "ok", new ApprovalNotices("aviso", "advertencia"));
+
+        assertThat(response.requiresApproval()).isTrue();
+        assertThat(response.approvalScopeNotice()).isEqualTo("aviso");
+        assertThat(response.approverWarning()).isEqualTo("advertencia");
+    }
+
+    @Test
+    void toUpdateResponse_leavesNoticesNull_whenNone() {
+        Category category = TestFixtures.categoryActive(1L, "Actas");
+
+        UpdateCategoryResponseDto response = mapper.toUpdateResponse(category, "ok", ApprovalNotices.none());
+
+        assertThat(response.requiresApproval()).isFalse();
+        assertThat(response.approvalScopeNotice()).isNull();
+        assertThat(response.approverWarning()).isNull();
+    }
+
+    @Test
     void toUpdateResponse_withNullCategory_throwsNullPointerException() {
-        assertThatThrownBy(() -> mapper.toUpdateResponse(null, "msg"))
+        assertThatThrownBy(() -> mapper.toUpdateResponse(null, "msg", ApprovalNotices.none()))
                 .isInstanceOf(NullPointerException.class);
     }
 

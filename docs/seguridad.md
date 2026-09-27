@@ -28,8 +28,20 @@ una lista de revocación.
 | Rol      | Descripción                                                       |
 |----------|-----------------------------------------------------------------------|
 | `ADMIN`  | Acceso completo: gestión de usuarios, documentos y categorías.            |
-| `EDITOR` | Puede cargar y editar solo sus propios documentos.                           |
+| `EDITOR` | Puede cargar y editar solo sus propios documentos, y consultar las categorías. |
 | `READER` | Solo puede consultar y descargar documentos.                                    |
+
+## Permiso para aprobar documentos
+
+Además del rol, cada usuario tiene el indicador `canApprove` (HU-32).
+
+- **Quién lo asigna:** el `ADMIN`, al crear o editar el usuario.
+- **Independiente del rol:** ser `ADMIN` no lo otorga, y un `EDITOR` puede tenerlo.
+- **Nunca en `READER`:** el servicio rechaza activarlo en un lector, lo retira al cambiar el rol a `READER`, y
+  un `CHECK` en la base de datos lo impide.
+- **No viaja en el JWT:** `UserService.isActiveApprover(userId)` consulta el estado vigente en cada llamada, así
+  que retirar el permiso surte efecto de inmediato, aunque el usuario tenga una sesión abierta.
+- **Aprobador activo:** un usuario con el permiso, `ACTIVE` y con rol distinto de `READER`.
 
 ## Niveles de confidencialidad
 
