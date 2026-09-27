@@ -12,7 +12,7 @@
 
 ### Session 2026-09-26
 
-- Q: ¿Esta historia entrega un método reutilizable para saber si una categoría requiere aprobación o solo guarda y expone el indicador? → A: Entrega `CategoryService.requiresApproval(categoryId)`, que lee el valor vigente de la base de datos, con pruebas unitarias.
+- Q: ¿Esta historia entrega un método reutilizable para saber si una categoría requiere aprobación o solo guarda y expone el indicador? → A: Entrega `CategoryService.requiresApproval(categoryId)`, que lee el valor vigente de la base de datos, con pruebas unitarias. (En el plan se ubicó en la interfaz de solo lectura `CategoryQueryService` para evitar el ciclo `category ↔ document` de la desviación D-4; ver research.md R3.)
 - Q: Cuando una edición no envía el campo "Requiere aprobación", ¿se conserva el valor actual o se rechaza la solicitud? → A: El campo es opcional en la edición; si no se envía, se conserva el valor actual (sin error de validación).
 - Q: Al crear una categoría, ¿el registro `CREATE_CATEGORY` debe indicar el valor inicial de "Requiere aprobación"? → A: Sí, siempre: el detalle añade el valor inicial, por ejemplo "Categoria creada: Actas (requires_approval: true)".
 
@@ -204,7 +204,8 @@ predefinidas, consultar el listado y verificar que todas están en No.
   indicador desactivado.
 - **FR-013**: Los textos del aviso de alcance y de la advertencia MUST externalizarse como el
   resto de mensajes del sistema.
-- **FR-014**: El sistema MUST ofrecer en la interfaz `CategoryService` el método
+- **FR-014**: El sistema MUST ofrecer en una interfaz de solo lectura del módulo de categorías
+  (`CategoryQueryService`, que no depende del módulo de documentos) el método
   `requiresApproval(categoryId)`, que consulta el valor vigente del indicador en la base de datos
   y lo devuelve. Si la categoría no existe, MUST responder con el error de recurso no encontrado
   habitual. La carga de documentos (HU-33, funcionalidad posterior) MUST usar este método en cada
