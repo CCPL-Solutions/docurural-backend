@@ -8,6 +8,14 @@
 
 **Input**: User description: "HU-31 — Configuración de aprobación por categoría (RF-07, prioridad Alta, versión v2.0 Flujo de aprobación). Como administrador del sistema, quiero indicar qué categorías documentales requieren aprobación, para que solo los documentos que lo necesitan pasen por el flujo, sin agregar pasos a los demás."
 
+## Clarifications
+
+### Session 2026-09-26
+
+- Q: ¿Esta historia entrega un método reutilizable para saber si una categoría requiere aprobación o solo guarda y expone el indicador? → A: Entrega `CategoryService.requiresApproval(categoryId)`, que lee el valor vigente de la base de datos, con pruebas unitarias.
+- Q: Cuando una edición no envía el campo "Requiere aprobación", ¿se conserva el valor actual o se rechaza la solicitud? → A: El campo es opcional en la edición; si no se envía, se conserva el valor actual (sin error de validación).
+- Q: Al crear una categoría, ¿el registro `CREATE_CATEGORY` debe indicar el valor inicial de "Requiere aprobación"? → A: Sí, siempre: el detalle añade el valor inicial, por ejemplo "Categoria creada: Actas (requires_approval: true)".
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Marcar una categoría como "Requiere aprobación" (Priority: P1)
@@ -163,8 +171,10 @@ predefinidas, consultar el listado y verificar que todas están en No.
   desactivado por defecto.
 - **FR-002**: La creación de categorías MUST aceptar el indicador; si la solicitud no lo incluye,
   la categoría se crea con el valor desactivado.
-- **FR-003**: La edición de categorías MUST aceptar el indicador; si la solicitud no lo incluye,
-  MUST conservarse el valor actual.
+- **FR-003**: La edición de categorías MUST aceptar el indicador como campo opcional; si la
+  solicitud no lo incluye, MUST conservarse el valor actual y MUST NOT devolverse error de
+  validación, de modo que los clientes que aún no envían el campo sigan funcionando. Omitir el
+  campo cuenta como "sin cambio" (sin aviso de alcance ni línea en la bitácora).
 - **FR-004**: Solo un usuario con rol ADMIN MUST poder crear o editar categorías y, por tanto,
   modificar el indicador. Cualquier otro rol MUST recibir acceso denegado (HTTP 403) con el
   mensaje "No tiene permisos para realizar esta acción", sin guardar cambios.
@@ -188,11 +198,18 @@ predefinidas, consultar el listado y verificar que todas están en No.
 - **FR-011**: Cada vez que el valor del indicador cambie en una edición, el sistema MUST registrar
   en la bitácora de actividad una entrada con la acción EDIT_CATEGORY cuyo detalle incluya
   `requires_approval: [valor anterior] → [valor nuevo]`. Si el valor no cambia, MUST NOT incluirse
-  esa línea.
+  esa línea. Al crear una categoría, el detalle de la entrada `CREATE_CATEGORY` MUST incluir
+  siempre el valor inicial, con el formato `Categoria creada: [nombre] (requires_approval: [valor])`.
 - **FR-012**: Al introducir la funcionalidad, todas las categorías existentes MUST quedar con el
   indicador desactivado.
 - **FR-013**: Los textos del aviso de alcance y de la advertencia MUST externalizarse como el
   resto de mensajes del sistema.
+- **FR-014**: El sistema MUST ofrecer en la interfaz `CategoryService` el método
+  `requiresApproval(categoryId)`, que consulta el valor vigente del indicador en la base de datos
+  y lo devuelve. Si la categoría no existe, MUST responder con el error de recurso no encontrado
+  habitual. La carga de documentos (HU-33, funcionalidad posterior) MUST usar este método en cada
+  carga para decidir si el documento entra al flujo de aprobación, de modo que un cambio del
+  indicador aplique desde la siguiente carga.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -214,7 +231,7 @@ predefinidas, consultar el listado y verificar que todas están en No.
 - **SC-002**: El 100% de los intentos de modificar el indicador por usuarios que no son ADMIN son
   rechazados y no alteran ninguna categoría.
 - **SC-003**: El 100% de los cambios del indicador quedan registrados en la bitácora con el valor
-  anterior y el nuevo.
+  anterior y el nuevo, y el 100% de las categorías creadas registran su valor inicial.
 - **SC-004**: Ningún documento existente cambia de estado como consecuencia de cambiar el
   indicador de su categoría.
 - **SC-005**: En el 100% de las activaciones con menos de dos aprobadores activos, el
@@ -223,6 +240,8 @@ predefinidas, consultar el listado y verificar que todas están en No.
   listado, sin abrir el detalle de cada una.
 - **SC-007**: Tras la actualización, las 8 categorías predefinidas aparecen con "Requiere
   aprobación" en No.
+- **SC-008**: Tras cambiar el indicador de una categoría, `requiresApproval` devuelve el valor
+  nuevo en la siguiente consulta, sin esperas ni reinicios.
 
 ## Assumptions
 
@@ -231,6 +250,7 @@ predefinidas, consultar el listado y verificar que todas están en No.
   los extiende.
 - El flujo de aprobación de documentos (estados Borrador y En revisión, aprobar, devolver) y el
   aviso en la carga de documentos (HU-33) son posteriores y quedan fuera de alcance. Aquí se
+  entrega la consulta `requiresApproval(categoryId)` que esa funcionalidad deberá usar y se
   garantiza que cambiar el indicador no toca documentos existentes, lo que asegura FR-008 cuando
   esos estados existan.
 - La gestión de categorías ya es exclusiva del rol ADMIN y la consulta (listado y detalle) ya está
@@ -243,8 +263,8 @@ predefinidas, consultar el listado y verificar que todas están en No.
   porque la categoría no tiene documentos previos.
 - La advertencia de pocos aprobadores se evalúa solo cuando el indicador pasa a activado (en
   creación con Sí o en edición de No a Sí), no en ediciones que lo mantienen activado.
-- La creación de una categoría con el indicador en Sí se registra con la acción CREATE_CATEGORY
-  como hasta ahora; la línea `requires_approval: anterior → nuevo` aplica solo a ediciones.
+- La línea `requires_approval: anterior → nuevo` aplica solo a ediciones; la creación registra el
+  valor inicial dentro del detalle de `CREATE_CATEGORY` (FR-011).
 - Las reglas vigentes de edición (una categoría inactiva no se puede editar, el nombre debe ser
   único) se mantienen sin cambios.
 - Los cambios de esta historia deben quedar en `CHANGELOG.md` como establece la constitución.
