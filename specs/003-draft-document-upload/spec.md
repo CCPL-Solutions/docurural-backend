@@ -20,6 +20,10 @@
 - Q: Mientras no exista HU-42, ¿quién ve los documentos en Borrador? → A: Siguen las reglas
   actuales (solo sensibilidad de HU-29). La rama de la v2.0 no se despliega a producción hasta
   completar HU-42; queda como condición de despliegue en Supuestos.
+- Q: ¿Además de la respuesta de la carga, el estado del flujo debe exponerse ya en la ficha del
+  documento y en la respuesta de la edición de metadatos? → A: Sí: carga (individual y por lote),
+  ficha (consulta por ID) y respuesta de la edición de metadatos. Listado y búsqueda quedan para
+  HU-42; etiqueta de color e historial, para HU-41.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -125,9 +129,9 @@ flujo.
 **Acceptance Scenarios**:
 
 1. **Given** un documento en Borrador, **When** se edita su categoría a una sin aprobación,
-   **Then** el documento sigue en Borrador.
+   **Then** la respuesta de la edición y la ficha del documento indican que sigue en Borrador.
 2. **Given** un documento Sin flujo, **When** se edita su categoría a una con aprobación,
-   **Then** el documento sigue Sin flujo.
+   **Then** la respuesta de la edición y la ficha del documento indican que sigue Sin flujo.
 3. **Given** documentos ya cargados en una categoría, **When** el administrador cambia su
    indicador "Requiere aprobación", **Then** ningún documento existente cambia de estado; solo
    las cargas posteriores usan el valor nuevo.
@@ -200,6 +204,9 @@ eliminados, y verificar el estado del flujo asignado a cada grupo.
   NOT_REQUIRED, MUST conservarse el mensaje actual "Documento cargado exitosamente".
 - **FR-007**: En la carga múltiple, el resultado de cada archivo cargado con éxito MUST incluir
   el estado del flujo con que quedó el documento. Los archivos fallidos no lo incluyen.
+- **FR-007a**: La ficha del documento (consulta por ID) y la respuesta de la edición de metadatos
+  MUST incluir el estado del flujo vigente del documento, para cualquiera de sus cinco valores.
+  El listado y la búsqueda MUST NOT cambiar en esta historia (corresponde a HU-42).
 - **FR-008**: La entrada UPLOAD de la bitácora de actividad de cada documento creado MUST incluir
   en su detalle `workflow_status: DRAFT` o `workflow_status: NOT_REQUIRED`, además de la
   información que ya registra hoy (nombre del archivo).
@@ -268,8 +275,9 @@ eliminados, y verificar el estado del flujo asignado a cada grupo.
   de la carga individual, como sugiere la nota técnica de la HU; ambas vías quedan cubiertas.
 - En la carga múltiple solo se cambia el resultado por archivo; el resumen del lote (totales) se
   mantiene igual.
-- La exposición del estado del flujo en la ficha, el listado y la búsqueda, con su etiqueta de
-  color y su filtro, corresponde a HU-41 y HU-42 y queda fuera de alcance.
+- Esta historia solo añade el dato del estado del flujo a la carga, la ficha y la edición
+  (FR-007a). La etiqueta de color y el historial en la ficha (HU-41), y el estado y su filtro en
+  el listado y la búsqueda (HU-42), quedan fuera de alcance.
 - El envío a revisión (HU-35), el reemplazo de archivo (HU-34), la aprobación y devolución
   (HU-37/HU-38), el archivo (HU-39), las restricciones de edición y eliminación por estado
   (HU-40) y la tabla de eventos del flujo quedan fuera de alcance.
