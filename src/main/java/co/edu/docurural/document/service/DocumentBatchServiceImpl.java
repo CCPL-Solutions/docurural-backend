@@ -93,13 +93,14 @@ public class DocumentBatchServiceImpl implements DocumentBatchService {
                     file, resolvedTitle, request.categoryId(),
                     request.responsibleArea(), LocalDate.now(),
                     request.sensitivityLevel(), audit);
-            return new BatchUploadItemResultDto(fileName, true, saved.getId(), null);
+            return new BatchUploadItemResultDto(
+                    fileName, true, saved.getId(), saved.getWorkflowStatus().name(), null);
         } catch (BusinessRuleException e) {
             log.warn("Archivo '{}' rechazado en lote: {}", fileName, e.getMessage());
-            return new BatchUploadItemResultDto(fileName, false, null, e.getMessage());
+            return new BatchUploadItemResultDto(fileName, false, null, null, e.getMessage());
         } catch (FileStorageException e) {
             log.error("Error de almacenamiento para '{}' en lote: {}", fileName, e.getMessage());
-            return new BatchUploadItemResultDto(fileName, false, null, e.getMessage());
+            return new BatchUploadItemResultDto(fileName, false, null, null, e.getMessage());
         }
     }
 

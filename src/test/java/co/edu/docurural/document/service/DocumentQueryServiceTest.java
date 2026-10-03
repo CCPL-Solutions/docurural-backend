@@ -143,4 +143,15 @@ class DocumentQueryServiceTest {
             @Override public Long getCount() { return count; }
         };
     }
+
+    @Test
+    void findDetailById_returnsWorkflowStatus_whenDocumentIsDraft() {
+        Document doc = TestFixtures.documentDraft(48L,
+                TestFixtures.categoryRequiringApproval(1L, "Actas"), TestFixtures.userAdmin(ACTOR_ID));
+        when(documentRepository.findByIdAndStatus(48L, DocumentStatus.ACTIVE)).thenReturn(Optional.of(doc));
+
+        DocumentDetailResponseDto response = documentQueryService.findDetailById(48L, AUDIT);
+
+        assertThat(response.workflowStatus()).isEqualTo("DRAFT");
+    }
 }

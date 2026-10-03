@@ -5,6 +5,7 @@ import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.enums.CategoryStatus;
 import co.edu.docurural.category.repository.CategoryRepository;
+import co.edu.docurural.category.service.CategoryQueryService;
 import co.edu.docurural.document.dto.DeleteDocumentResponseDto;
 import co.edu.docurural.document.dto.UpdateDocumentMetadataRequestDto;
 import co.edu.docurural.document.dto.UpdateDocumentMetadataResponseDto;
@@ -13,6 +14,7 @@ import co.edu.docurural.document.dto.UploadDocumentResponseDto;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.document.enums.DocumentStatus;
+import co.edu.docurural.document.enums.DocumentWorkflowStatus;
 import co.edu.docurural.document.mapper.DocumentMapper;
 import co.edu.docurural.document.repository.DocumentRepository;
 import co.edu.docurural.document.storage.FileStorageService;
@@ -61,6 +63,7 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
     private final MessageResolver messageResolver;
     private final DocumentMapper documentMapper;
     private final SensitivityPolicy sensitivityPolicy;
+    private final CategoryQueryService categoryQueryService;
 
     @Override
     @Transactional
@@ -84,10 +87,12 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
                 request.responsibleArea(), request.documentDate(), request.description(),
                 request.sensitivityLevel(), "Archivo: ", actorId, audit);
 
-        log.info("Documento cargado: id={} title='{}' format={} sensitivityLevel={} uploadedBy={}",
-                saved.getId(), saved.getTitle(), saved.getFileFormat(), saved.getSensitivityLevel(), actorId);
+        log.info("Documento cargado: id={} title='{}' format={} sensitivityLevel={} workflowStatus={} uploadedBy={}",
+                saved.getId(), saved.getTitle(), saved.getFileFormat(), saved.getSensitivityLevel(),
+                saved.getWorkflowStatus(), actorId);
 
-        return documentMapper.toUploadResponse(saved, messageResolver.get("document.uploaded.success"));
+        return documentMapper.toUploadResponse(saved,
+                messageResolver.get(uploadMessageKey(saved.getWorkflowStatus())));
     }
 
     @Override
@@ -179,8 +184,9 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
                 file, title, category, responsibleArea, documentDate,
                 null, sensitivityLevel, "Carga múltiple — Archivo: ", actorId, audit);
 
-        log.info("Documento cargado (lote): id={} title='{}' format={} sensitivityLevel={} uploadedBy={}",
-                saved.getId(), saved.getTitle(), saved.getFileFormat(), saved.getSensitivityLevel(), actorId);
+        log.info("Documento cargado (lote): id={} title='{}' format={} sensitivityLevel={} workflowStatus={} uploadedBy={}",
+                saved.getId(), saved.getTitle(), saved.getFileFormat(), saved.getSensitivityLevel(),
+                saved.getWorkflowStatus(), actorId);
 
         return saved;
     }
@@ -220,13 +226,24 @@ public class DocumentCommandServiceImpl implements DocumentCommandService {
         validateFile(file);
         String fileHash = documentHashService.calculateSha256(file).orElse(null);
         DocumentFormat format = fileValidationService.validate(file);
+        // Se consulta en cada carga para que un cambio del indicador aplique desde la siguiente (HU-33).
+        DocumentWorkflowStatus workflowStatus = DocumentWorkflowStatus.initialFor(
+                categoryQueryService.requiresApproval(category.getId()));
         StoredFile stored = storeWithRollback(file, format);
         Document document = buildDocument(title, category, responsibleArea, documentDate,
                 description, sensitivityLevel, stored, format, file, actorId, fileHash);
+        document.setWorkflowStatus(workflowStatus);
         Document saved = documentRepository.save(document);
         activityLogService.record(ActivityAction.UPLOAD, audit, saved.getId(),
-                activityDetailPrefix + saved.getOriginalFileName());
+                activityDetailPrefix + saved.getOriginalFileName()
+                        + "; workflow_status: " + saved.getWorkflowStatus().name());
         return saved;
+    }
+
+    private static String uploadMessageKey(DocumentWorkflowStatus workflowStatus) {
+        return workflowStatus == DocumentWorkflowStatus.DRAFT
+                ? "document.uploaded.draft"
+                : "document.uploaded.success";
     }
 
     private void validateFile(MultipartFile file) {

@@ -17,6 +17,10 @@ public record BatchUploadItemResultDto(
         @Schema(description = "ID del documento creado. null si la carga falló", example = "48", nullable = true)
         Long documentId,
 
+        @Schema(description = "Estado del flujo del documento creado. null si la carga falló", nullable = true,
+                example = "DRAFT", allowableValues = {"NOT_REQUIRED", "DRAFT", "IN_REVIEW", "APPROVED", "ARCHIVED"})
+        String workflowStatus,
+
         @Schema(description = "Mensaje de error. null si la carga fue exitosa", nullable = true,
                 example = "El archivo supera el tamaño máximo permitido de 10 MB")
         String errorMessage

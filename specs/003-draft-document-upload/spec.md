@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-27
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "Se requiere implementar la HU-33: Carga de documento en estado Borrador descrita en @docs/DocuRural_HU_v2.0_FlujoAprobacion_v1_0.md. Ten en cuenta la info completa del documento pero el foco es la HU-33."
 

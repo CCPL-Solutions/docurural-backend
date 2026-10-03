@@ -42,6 +42,10 @@ public record UploadDocumentResponseDto(
                 allowableValues = {"INTERNAL", "RESTRICTED", "CONFIDENTIAL"})
         String sensitivityLevel,
 
+        @Schema(description = "Estado del documento en el flujo de aprobación", example = "DRAFT",
+                allowableValues = {"NOT_REQUIRED", "DRAFT", "IN_REVIEW", "APPROVED", "ARCHIVED"})
+        String workflowStatus,
+
         @Schema(description = "Mensaje de confirmación", example = "Documento cargado exitosamente")
         String message
 ) {

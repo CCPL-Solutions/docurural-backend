@@ -4,6 +4,7 @@ import co.edu.docurural.activitylog.enums.ActivityAction;
 import co.edu.docurural.activitylog.service.ActivityLogService;
 import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.repository.CategoryRepository;
+import co.edu.docurural.category.service.CategoryQueryService;
 import co.edu.docurural.document.dto.DeleteDocumentResponseDto;
 import co.edu.docurural.document.dto.UpdateDocumentMetadataRequestDto;
 import co.edu.docurural.document.dto.UpdateDocumentMetadataResponseDto;
@@ -12,6 +13,7 @@ import co.edu.docurural.document.dto.UploadDocumentResponseDto;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.document.enums.DocumentStatus;
+import co.edu.docurural.document.enums.DocumentWorkflowStatus;
 import co.edu.docurural.document.repository.DocumentRepository;
 import co.edu.docurural.document.storage.FileStorageService;
 import co.edu.docurural.document.storage.StoredFile;
@@ -41,6 +43,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import co.edu.docurural.user.enums.UserRole;
 
 import java.util.Collection;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -53,6 +56,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -80,6 +84,8 @@ class DocumentCommandServiceTest {
     MessageResolver messageResolver;
     @Mock
     SensitivityPolicy sensitivityPolicy;
+    @Mock
+    CategoryQueryService categoryQueryService;
     @Spy
     DocumentMapper documentMapper = Mappers.getMapper(DocumentMapper.class);
 
@@ -94,6 +100,8 @@ class DocumentCommandServiceTest {
                 .thenAnswer(inv -> inv.getArgument(0));
         lenient().when(documentHashService.calculateSha256(any()))
                 .thenReturn(Optional.empty());
+        lenient().when(categoryQueryService.requiresApproval(any()))
+                .thenReturn(false);
     }
 
     // ------------------------------------------------------------------
@@ -680,5 +688,243 @@ class DocumentCommandServiceTest {
                 eq(5L), eq(SensitivityLevel.CONFIDENTIAL), levelsCaptor.capture());
         assertThat(levelsCaptor.getValue())
                 .containsExactlyInAnyOrder(SensitivityLevel.INTERNAL, SensitivityLevel.RESTRICTED);
+    }
+
+    // ------------------------------------------------------------------
+    // HU-33 - estado inicial del flujo de aprobación
+    // ------------------------------------------------------------------
+
+    private static final String FILE_HASH = "3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7";
+
+    @Test
+    void upload_createsDraft_whenCategoryRequiresApproval() {
+        MockMultipartFile file = pdfFile();
+        stubSuccessfulUpload(TestFixtures.categoryRequiringApproval(1L, "Actas"), file);
+        when(categoryQueryService.requiresApproval(1L)).thenReturn(true);
+
+        documentCommandService.upload(TestFixtures.uploadDocumentRequest(1L), file, AUDIT);
+
+        Document saved = captureSavedDocument();
+        assertThat(saved.getWorkflowStatus()).isEqualTo(DocumentWorkflowStatus.DRAFT);
+        assertThat(saved.getCycleNumber()).isZero();
+    }
+
+    @Test
+    void upload_returnsDraftMessageAndStatus_whenCategoryRequiresApproval() {
+        MockMultipartFile file = pdfFile();
+        stubSuccessfulUpload(TestFixtures.categoryRequiringApproval(1L, "Actas"), file);
+        when(categoryQueryService.requiresApproval(1L)).thenReturn(true);
+
+        UploadDocumentResponseDto response =
+                documentCommandService.upload(TestFixtures.uploadDocumentRequest(1L), file, AUDIT);
+
+        assertThat(response.workflowStatus()).isEqualTo("DRAFT");
+        assertThat(response.message()).isEqualTo("document.uploaded.draft");
+    }
+
+    @Test
+    void upload_logsWorkflowStatusDraft_whenCategoryRequiresApproval() {
+        MockMultipartFile file = pdfFile();
+        stubSuccessfulUpload(TestFixtures.categoryRequiringApproval(1L, "Actas"), file);
+        when(categoryQueryService.requiresApproval(1L)).thenReturn(true);
+
+        documentCommandService.upload(TestFixtures.uploadDocumentRequest(1L), file, AUDIT);
+
+        verify(activityLogService).record(eq(ActivityAction.UPLOAD), eq(AUDIT), eq(48L),
+                eq("Archivo: acta.pdf; workflow_status: DRAFT"));
+    }
+
+    @Test
+    void upload_calculatesHash_whenDocumentIsDraft() {
+        MockMultipartFile file = pdfFile();
+        stubSuccessfulUpload(TestFixtures.categoryRequiringApproval(1L, "Actas"), file);
+        when(categoryQueryService.requiresApproval(1L)).thenReturn(true);
+        when(documentHashService.calculateSha256(file)).thenReturn(Optional.of(FILE_HASH));
+
+        documentCommandService.upload(TestFixtures.uploadDocumentRequest(1L), file, AUDIT);
+
+        Document saved = captureSavedDocument();
+        assertThat(saved.getWorkflowStatus()).isEqualTo(DocumentWorkflowStatus.DRAFT);
+        assertThat(saved.getFileHash()).isEqualTo(FILE_HASH);
+    }
+
+    @Test
+    void upload_readsRequiresApprovalOnEachUpload_whenCalledTwice() {
+        MockMultipartFile file = pdfFile();
+        stubSuccessfulUpload(TestFixtures.categoryRequiringApproval(1L, "Actas"), file);
+        when(categoryQueryService.requiresApproval(1L)).thenReturn(true, false);
+
+        documentCommandService.upload(TestFixtures.uploadDocumentRequest(1L), file, AUDIT);
+        documentCommandService.upload(TestFixtures.uploadDocumentRequest(1L), file, AUDIT);
+
+        ArgumentCaptor<Document> captor = ArgumentCaptor.forClass(Document.class);
+        verify(documentRepository, times(2)).save(captor.capture());
+        assertThat(captor.getAllValues())
+                .extracting(Document::getWorkflowStatus)
+                .containsExactly(DocumentWorkflowStatus.DRAFT, DocumentWorkflowStatus.NOT_REQUIRED);
+        verify(categoryQueryService, times(2)).requiresApproval(1L);
+    }
+
+    @Test
+    void upload_createsNotRequired_whenCategoryDoesNotRequireApproval() {
+        MockMultipartFile file = pdfFile();
+        stubSuccessfulUpload(TestFixtures.categoryActive(1L, "Informes"), file);
+
+        documentCommandService.upload(TestFixtures.uploadDocumentRequest(1L), file, AUDIT);
+
+        Document saved = captureSavedDocument();
+        assertThat(saved.getWorkflowStatus()).isEqualTo(DocumentWorkflowStatus.NOT_REQUIRED);
+        assertThat(saved.getCycleNumber()).isZero();
+    }
+
+    @Test
+    void upload_keepsSuccessMessage_whenCategoryDoesNotRequireApproval() {
+        MockMultipartFile file = pdfFile();
+        stubSuccessfulUpload(TestFixtures.categoryActive(1L, "Informes"), file);
+
+        UploadDocumentResponseDto response =
+                documentCommandService.upload(TestFixtures.uploadDocumentRequest(1L), file, AUDIT);
+
+        assertThat(response.workflowStatus()).isEqualTo("NOT_REQUIRED");
+        assertThat(response.message()).isEqualTo("document.uploaded.success");
+    }
+
+    @Test
+    void upload_logsWorkflowStatusNotRequired_whenCategoryDoesNotRequireApproval() {
+        MockMultipartFile file = pdfFile();
+        stubSuccessfulUpload(TestFixtures.categoryActive(1L, "Informes"), file);
+
+        documentCommandService.upload(TestFixtures.uploadDocumentRequest(1L), file, AUDIT);
+
+        verify(activityLogService).record(eq(ActivityAction.UPLOAD), eq(AUDIT), eq(48L),
+                eq("Archivo: acta.pdf; workflow_status: NOT_REQUIRED"));
+    }
+
+    @Test
+    void upload_doesNotQueryApproval_whenCategoryIsInactive() {
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(TestFixtures.categoryInactive(1L, "Actas")));
+
+        assertThatThrownBy(() -> documentCommandService.upload(
+                TestFixtures.uploadDocumentRequest(1L), pdfFile(), AUDIT))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(categoryQueryService, never()).requiresApproval(any());
+    }
+
+    @Test
+    void upload_doesNotQueryApproval_whenFileValidationFails() {
+        MockMultipartFile file = pdfFile();
+        when(categoryRepository.findById(1L))
+                .thenReturn(Optional.of(TestFixtures.categoryRequiringApproval(1L, "Actas")));
+        when(userRepository.findById(ACTOR_ID)).thenReturn(Optional.of(TestFixtures.userAdmin(ACTOR_ID)));
+        when(fileValidationService.validate(file))
+                .thenThrow(new BusinessRuleException(BusinessErrorCode.UNSUPPORTED_MEDIA_TYPE, "unsupported"));
+
+        assertThatThrownBy(() -> documentCommandService.upload(TestFixtures.uploadDocumentRequest(1L), file, AUDIT))
+                .isInstanceOf(BusinessRuleException.class);
+
+        verify(categoryQueryService, never()).requiresApproval(any());
+        verify(documentRepository, never()).save(any());
+        verify(activityLogService, never()).record(eq(ActivityAction.UPLOAD), any(), anyLong(), anyString());
+    }
+
+    @Test
+    void uploadSingleForBatch_createsDraftAndLogsBatchDetail_whenCategoryRequiresApproval() {
+        MockMultipartFile file = pdfFile();
+        stubSuccessfulUpload(TestFixtures.categoryRequiringApproval(1L, "Actas"), file);
+        when(categoryQueryService.requiresApproval(1L)).thenReturn(true);
+
+        Document saved = documentCommandService.uploadSingleForBatch(file, "Acta enero", 1L,
+                "Rectoría", LocalDate.of(2026, 1, 15), SensitivityLevel.INTERNAL, AUDIT);
+
+        assertThat(saved.getWorkflowStatus()).isEqualTo(DocumentWorkflowStatus.DRAFT);
+        verify(activityLogService).record(eq(ActivityAction.UPLOAD), eq(AUDIT), eq(48L),
+                eq("Carga múltiple — Archivo: acta.pdf; workflow_status: DRAFT"));
+    }
+
+    @Test
+    void uploadSingleForBatch_createsNotRequired_whenCategoryDoesNotRequireApproval() {
+        MockMultipartFile file = pdfFile();
+        stubSuccessfulUpload(TestFixtures.categoryActive(1L, "Informes"), file);
+
+        Document saved = documentCommandService.uploadSingleForBatch(file, "Informe enero", 1L,
+                "Rectoría", LocalDate.of(2026, 1, 15), SensitivityLevel.INTERNAL, AUDIT);
+
+        assertThat(saved.getWorkflowStatus()).isEqualTo(DocumentWorkflowStatus.NOT_REQUIRED);
+        verify(activityLogService).record(eq(ActivityAction.UPLOAD), eq(AUDIT), eq(48L),
+                eq("Carga múltiple — Archivo: acta.pdf; workflow_status: NOT_REQUIRED"));
+    }
+
+    @Test
+    void updateMetadata_keepsDraft_whenCategoryChangesToOneWithoutApproval() {
+        Document doc = TestFixtures.documentDraft(48L,
+                TestFixtures.categoryRequiringApproval(1L, "Actas"), TestFixtures.userEditor(33L));
+        stubMetadataUpdate(doc, TestFixtures.categoryActive(2L, "Informes"));
+
+        UpdateDocumentMetadataResponseDto response = documentCommandService.updateMetadata(
+                48L, TestFixtures.updateDocumentMetadataRequest(2L), AUDIT);
+
+        assertThat(doc.getWorkflowStatus()).isEqualTo(DocumentWorkflowStatus.DRAFT);
+        assertThat(response.category()).isEqualTo("Informes");
+        assertThat(response.workflowStatus()).isEqualTo("DRAFT");
+        verify(categoryQueryService, never()).requiresApproval(any());
+    }
+
+    @Test
+    void updateMetadata_keepsNotRequired_whenCategoryChangesToOneRequiringApproval() {
+        Document doc = TestFixtures.documentActive(48L,
+                TestFixtures.categoryActive(1L, "Informes"), TestFixtures.userEditor(33L));
+        stubMetadataUpdate(doc, TestFixtures.categoryRequiringApproval(2L, "Actas"));
+
+        UpdateDocumentMetadataResponseDto response = documentCommandService.updateMetadata(
+                48L, TestFixtures.updateDocumentMetadataRequest(2L), AUDIT);
+
+        assertThat(doc.getWorkflowStatus()).isEqualTo(DocumentWorkflowStatus.NOT_REQUIRED);
+        assertThat(response.workflowStatus()).isEqualTo("NOT_REQUIRED");
+        verify(categoryQueryService, never()).requiresApproval(any());
+    }
+
+    @Test
+    void deleteLogical_keepsWorkflowStatus_whenDocumentIsDraft() {
+        Document doc = TestFixtures.documentDraft(48L,
+                TestFixtures.categoryRequiringApproval(1L, "Actas"), TestFixtures.userAdmin(20L));
+        when(documentRepository.findByIdAndStatus(48L, DocumentStatus.ACTIVE)).thenReturn(Optional.of(doc));
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        documentCommandService.deleteLogical(48L, AUDIT);
+
+        assertThat(doc.getStatus()).isEqualTo(DocumentStatus.DELETED);
+        assertThat(doc.getWorkflowStatus()).isEqualTo(DocumentWorkflowStatus.DRAFT);
+    }
+
+    private static MockMultipartFile pdfFile() {
+        return new MockMultipartFile("file", "acta.pdf", "application/pdf", new byte[100]);
+    }
+
+    private void stubSuccessfulUpload(Category category, MockMultipartFile file) {
+        User uploader = TestFixtures.userAdmin(ACTOR_ID);
+        when(categoryRepository.findById(category.getId())).thenReturn(Optional.of(category));
+        when(userRepository.findById(ACTOR_ID)).thenReturn(Optional.of(uploader));
+        when(fileValidationService.validate(file)).thenReturn(DocumentFormat.PDF);
+        when(fileStorageService.store(file, DocumentFormat.PDF)).thenReturn(new StoredFile("2026/05/uuid.pdf"));
+        when(userRepository.getReferenceById(ACTOR_ID)).thenReturn(uploader);
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> {
+            Document d = inv.getArgument(0);
+            d.setId(48L);
+            return d;
+        });
+    }
+
+    private void stubMetadataUpdate(Document doc, Category newCategory) {
+        when(documentRepository.findByIdAndStatus(doc.getId(), DocumentStatus.ACTIVE)).thenReturn(Optional.of(doc));
+        when(categoryRepository.findById(newCategory.getId())).thenReturn(Optional.of(newCategory));
+        when(userRepository.findById(ACTOR_ID)).thenReturn(Optional.of(TestFixtures.userAdmin(ACTOR_ID)));
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+    }
+
+    private Document captureSavedDocument() {
+        ArgumentCaptor<Document> captor = ArgumentCaptor.forClass(Document.class);
+        verify(documentRepository).save(captor.capture());
+        return captor.getValue();
     }
 }
