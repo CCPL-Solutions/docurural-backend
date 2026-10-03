@@ -131,6 +131,9 @@ public abstract class DocumentMapper {
 `DocumentHashService` (cálculo del SHA-256 de integridad) es un servicio de apoyo interno, fuera del reparto
 CQRS.
 
+El estado inicial del flujo de aprobación (`DocumentWorkflowStatus`) lo fija `DocumentCommandService` en cada carga
+consultando `CategoryQueryService.requiresApproval` (HU-33); ninguna otra operación lo recalcula.
+
 ## Módulo `category` — lectura para otros módulos
 
 | Interfaz               | Responsabilidad                                                                                  |
