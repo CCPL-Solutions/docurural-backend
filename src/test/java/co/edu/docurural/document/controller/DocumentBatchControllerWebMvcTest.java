@@ -30,6 +30,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -70,8 +71,8 @@ class DocumentBatchControllerWebMvcTest {
         BatchUploadDocumentResponseDto response = new BatchUploadDocumentResponseDto(
                 2, 2, 0,
                 List.of(
-                        new BatchUploadItemResultDto("acta_enero.pdf", true, 48L, null),
-                        new BatchUploadItemResultDto("acta_febrero.pdf", true, 49L, null)));
+                        new BatchUploadItemResultDto("acta_enero.pdf", true, 48L, "NOT_REQUIRED", null),
+                        new BatchUploadItemResultDto("acta_febrero.pdf", true, 49L, "NOT_REQUIRED", null)));
 
         when(documentBatchService.uploadBatch(any(), any(), any())).thenReturn(response);
 
@@ -104,8 +105,8 @@ class DocumentBatchControllerWebMvcTest {
         BatchUploadDocumentResponseDto response = new BatchUploadDocumentResponseDto(
                 2, 1, 1,
                 List.of(
-                        new BatchUploadItemResultDto("bueno.pdf", true, 48L, null),
-                        new BatchUploadItemResultDto("malo.pdf", false, null, "El archivo supera el tamaño máximo")));
+                        new BatchUploadItemResultDto("bueno.pdf", true, 48L, "NOT_REQUIRED", null),
+                        new BatchUploadItemResultDto("malo.pdf", false, null, null, "El archivo supera el tamaño máximo")));
 
         when(documentBatchService.uploadBatch(any(), any(), any())).thenReturn(response);
 
@@ -175,5 +176,27 @@ class DocumentBatchControllerWebMvcTest {
                         .param("documentDate", "2026-03-15")
                         .param("sensitivityLevel", "INTERNAL"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void uploadBatch_returns200WithWorkflowStatusPerItem_whenServiceReturnsResults() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        BatchUploadDocumentResponseDto response = new BatchUploadDocumentResponseDto(
+                2, 1, 1,
+                List.of(
+                        new BatchUploadItemResultDto("acta.pdf", true, 48L, "DRAFT", null),
+                        new BatchUploadItemResultDto("virus.exe", false, null, null, "Formato de archivo no permitido")));
+        when(documentBatchService.uploadBatch(any(), any(), any())).thenReturn(response);
+
+        mockMvc.perform(multipart("/documents/batch")
+                        .file(new MockMultipartFile("files", "acta.pdf", "application/pdf", new byte[100]))
+                        .file(new MockMultipartFile("files", "virus.exe", "application/octet-stream", new byte[100]))
+                        .param("categoryId", "1")
+                        .param("responsibleArea", "Rectoría")
+                        .param("documentDate", "2026-03-15")
+                        .param("sensitivityLevel", "INTERNAL"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.results[0].workflowStatus").value("DRAFT"))
+                .andExpect(jsonPath("$.results[1].workflowStatus").value(nullValue()));
     }
 }

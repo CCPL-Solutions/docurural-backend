@@ -4,6 +4,7 @@ import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.user.entity.User;
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.document.enums.DocumentStatus;
+import co.edu.docurural.document.enums.DocumentWorkflowStatus;
 import co.edu.docurural.shared.enums.SensitivityLevel;
 import co.edu.docurural.shared.exception.BusinessErrorCode;
 import co.edu.docurural.shared.exception.BusinessRuleException;
@@ -95,6 +96,13 @@ public class Document {
     @Column(name = "sensitivity_level", nullable = false, length = 20)
     private SensitivityLevel sensitivityLevel;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "workflow_status", nullable = false, length = 20)
+    private DocumentWorkflowStatus workflowStatus;
+
+    @Column(name = "cycle_number", nullable = false)
+    private int cycleNumber;
+
     /** Garantiza que solo los documentos ACTIVE pueden editarse o descargarse. */
     public void assertEditable(String errorMessage) {
         if (this.status != DocumentStatus.ACTIVE) {
@@ -117,6 +125,9 @@ public class Document {
         }
         if (sensitivityLevel == null) {
             sensitivityLevel = SensitivityLevel.INTERNAL;
+        }
+        if (workflowStatus == null) {
+            workflowStatus = DocumentWorkflowStatus.NOT_REQUIRED;
         }
     }
 }

@@ -38,6 +38,16 @@ La fecha de cada versión corresponde a su **paso a producción**.
   cambios se registran en la bitácora (`requires_approval: a → b`; el valor inicial al crear), y
   `CategoryQueryService.requiresApproval` expone el valor vigente para la carga de documentos.
   Incluye la migración `V4__add_requires_approval_to_categories.sql`.
+- Añadido el **estado del flujo de aprobación** en la carga de documentos (HU-33): los documentos
+  cargados en categorías que requieren aprobación quedan en Borrador (`DRAFT`) con el mensaje
+  "Documento cargado como borrador", y los demás Sin flujo (`NOT_REQUIRED`), tanto en la carga
+  individual como en la múltiple. El estado lo fija el backend a partir de la categoría vigente en
+  cada carga, se expone como `workflowStatus` en las respuestas de carga (también por archivo del
+  lote), detalle y edición, no se recalcula al editar la categoría y se registra en la bitácora
+  (`workflow_status: X` en `UPLOAD`). Los documentos activos existentes pasan a Aprobado
+  (`APPROVED`) sin aprobador registrado. Incluye la migración
+  `V5__add_workflow_status_to_documents.sql`. **Condición de despliegue:** no pasar a producción
+  antes de HU-42, que oculta los borradores a quien no es autor, aprobador ni administrador.
 
 ### Fixed
 

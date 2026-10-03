@@ -101,6 +101,7 @@ class DocumentControllerWebMvcTest {
                 "acta.pdf",
                 LocalDateTime.of(2026, 4, 17, 10, 20),
                 "INTERNAL",
+                "NOT_REQUIRED",
                 "Documento cargado exitosamente");
 
         when(documentCommandService.upload(any(), any(), any())).thenReturn(response);
@@ -258,6 +259,7 @@ class DocumentControllerWebMvcTest {
                 LocalDate.of(2026, 3, 15),
                 "Descripción",
                 "INTERNAL",
+                "NOT_REQUIRED",
                 "Documento actualizado exitosamente");
 
         when(documentCommandService.updateMetadata(eq(47L), any(), any())).thenReturn(response);
@@ -370,7 +372,8 @@ class DocumentControllerWebMvcTest {
                 new DocumentDetailResponseDto.UploadedByRef(10L, "Ana Admin"),
                 LocalDateTime.of(2026, 4, 10, 9, 30),
                 "3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7",
-                "INTERNAL");
+                "INTERNAL",
+                "NOT_REQUIRED");
 
         when(documentQueryService.findDetailById(eq(48L), any())).thenReturn(response);
 
@@ -723,5 +726,116 @@ class DocumentControllerWebMvcTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.categories").isArray())
                 .andExpect(jsonPath("$.users").doesNotExist());
+    }
+
+    // ------------------------------------------------------------------
+    // HU-33 - estado del flujo de aprobación en las respuestas
+    // ------------------------------------------------------------------
+
+    @Test
+    void upload_returns201WithDraftStatus_whenServiceReturnsDraft() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        when(documentCommandService.upload(any(), any(), any())).thenReturn(draftUploadResponse());
+
+        mockMvc.perform(multipart("/documents")
+                        .file(new MockMultipartFile("file", "acta.pdf", "application/pdf", new byte[100]))
+                        .param("title", "Acta Consejo Directivo Marzo 2026")
+                        .param("categoryId", "1")
+                        .param("responsibleArea", "Rectoría")
+                        .param("documentDate", "2026-03-15")
+                        .param("sensitivityLevel", "INTERNAL"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.workflowStatus").value("DRAFT"))
+                .andExpect(jsonPath("$.message").value("Documento cargado como borrador"));
+    }
+
+    @Test
+    void upload_ignoresWorkflowStatusParam_whenClientSendsIt() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        when(documentCommandService.upload(any(), any(), any())).thenReturn(draftUploadResponse());
+
+        mockMvc.perform(multipart("/documents")
+                        .file(new MockMultipartFile("file", "acta.pdf", "application/pdf", new byte[100]))
+                        .param("title", "Acta Consejo Directivo Marzo 2026")
+                        .param("categoryId", "1")
+                        .param("responsibleArea", "Rectoría")
+                        .param("documentDate", "2026-03-15")
+                        .param("sensitivityLevel", "INTERNAL")
+                        .param("workflowStatus", "APPROVED"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.workflowStatus").value("DRAFT"));
+
+        verify(documentCommandService).upload(any(), any(), eq(EDITOR_AUDIT));
+    }
+
+    @Test
+    void getById_returnsWorkflowStatus_whenDocumentIsDraft() throws Exception {
+        DocumentDetailResponseDto response = new DocumentDetailResponseDto(
+                48L,
+                "Acta Consejo Directivo Marzo 2026",
+                "Acta de reunión",
+                new DocumentDetailResponseDto.CategoryRef(1L, "Actas"),
+                "Rectoría",
+                LocalDate.of(2026, 3, 15),
+                "PDF",
+                524288L,
+                "acta.pdf",
+                new DocumentDetailResponseDto.UploadedByRef(10L, "Ana Admin"),
+                LocalDateTime.of(2026, 4, 10, 9, 30),
+                null,
+                "INTERNAL",
+                "DRAFT");
+        when(documentQueryService.findDetailById(eq(48L), any())).thenReturn(response);
+
+        mockMvc.perform(get("/documents/48"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.workflowStatus").value("DRAFT"));
+    }
+
+    @Test
+    void updateMetadata_returnsWorkflowStatus_whenUpdated() throws Exception {
+        when(auditContextResolver.resolve(any())).thenReturn(EDITOR_AUDIT);
+        UpdateDocumentMetadataResponseDto response = new UpdateDocumentMetadataResponseDto(
+                47L,
+                "Acta Consejo Directivo Marzo 2026 - Revisado",
+                "Informes",
+                "Rectoría",
+                LocalDate.of(2026, 3, 15),
+                "Descripción",
+                "INTERNAL",
+                "DRAFT",
+                "Documento actualizado exitosamente");
+        when(documentCommandService.updateMetadata(eq(47L), any(), any())).thenReturn(response);
+
+        mockMvc.perform(put("/documents/47")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "title": "Acta Consejo Directivo Marzo 2026 - Revisado",
+                                  "categoryId": 2,
+                                  "responsibleArea": "Rectoría",
+                                  "documentDate": "2026-03-15",
+                                  "description": "Descripción",
+                                  "sensitivityLevel": "INTERNAL"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.workflowStatus").value("DRAFT"));
+    }
+
+    private static UploadDocumentResponseDto draftUploadResponse() {
+        return new UploadDocumentResponseDto(
+                48L,
+                "Acta Consejo Directivo Marzo 2026",
+                "Actas",
+                "Rectoría",
+                LocalDate.of(2026, 3, 15),
+                "PDF",
+                524288L,
+                "acta.pdf",
+                LocalDateTime.of(2026, 4, 17, 10, 20),
+                "INTERNAL",
+                "DRAFT",
+                "Documento cargado como borrador");
     }
 }

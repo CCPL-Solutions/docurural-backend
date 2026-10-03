@@ -11,6 +11,7 @@ import co.edu.docurural.document.dto.UploadDocumentRequestDto;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.document.enums.DocumentFormat;
 import co.edu.docurural.document.enums.DocumentStatus;
+import co.edu.docurural.document.enums.DocumentWorkflowStatus;
 import co.edu.docurural.shared.enums.SensitivityLevel;
 import co.edu.docurural.user.entity.User;
 import co.edu.docurural.user.enums.UserRole;
@@ -282,6 +283,7 @@ public final class TestFixtures {
                 .fileSizeBytes(524288L)
                 .uploadedBy(uploadedBy)
                 .status(DocumentStatus.ACTIVE)
+                .workflowStatus(DocumentWorkflowStatus.NOT_REQUIRED)
                 .sensitivityLevel(SensitivityLevel.INTERNAL)
                 .createdAt(FIXED_CREATED_AT)
                 .build();
@@ -302,8 +304,15 @@ public final class TestFixtures {
                 .fileSizeBytes(524288L)
                 .uploadedBy(uploadedBy)
                 .status(DocumentStatus.ACTIVE)
+                .workflowStatus(DocumentWorkflowStatus.NOT_REQUIRED)
                 .sensitivityLevel(sensitivityLevel)
                 .createdAt(FIXED_CREATED_AT)
                 .build();
+    }
+
+    public static Document documentDraft(Long id, Category category, User uploadedBy) {
+        Document document = documentActive(id, category, uploadedBy);
+        document.setWorkflowStatus(DocumentWorkflowStatus.DRAFT);
+        return document;
     }
 }

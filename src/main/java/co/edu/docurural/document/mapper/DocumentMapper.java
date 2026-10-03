@@ -29,6 +29,8 @@ public abstract class DocumentMapper {
             expression = "java(document.getFileFormat() != null ? document.getFileFormat().name() : null)")
     @Mapping(target = "sensitivityLevel",
             expression = "java(document.getSensitivityLevel() != null ? document.getSensitivityLevel().name() : null)")
+    @Mapping(target = "workflowStatus",
+            expression = "java(document.getWorkflowStatus() != null ? document.getWorkflowStatus().name() : null)")
     public abstract UploadDocumentResponseDto toUploadResponse(Document document, String message);
 
     @Mapping(source = "category.id", target = "category.id")
@@ -39,11 +41,15 @@ public abstract class DocumentMapper {
             expression = "java(document.getFileFormat() != null ? document.getFileFormat().name() : null)")
     @Mapping(target = "sensitivityLevel",
             expression = "java(document.getSensitivityLevel() != null ? document.getSensitivityLevel().name() : null)")
+    @Mapping(target = "workflowStatus",
+            expression = "java(document.getWorkflowStatus() != null ? document.getWorkflowStatus().name() : null)")
     public abstract DocumentDetailResponseDto toDetailResponse(Document document);
 
     @Mapping(source = "document.category.name", target = "category")
     @Mapping(target = "sensitivityLevel",
             expression = "java(document.getSensitivityLevel() != null ? document.getSensitivityLevel().name() : null)")
+    @Mapping(target = "workflowStatus",
+            expression = "java(document.getWorkflowStatus() != null ? document.getWorkflowStatus().name() : null)")
     public abstract UpdateDocumentMetadataResponseDto toUpdateMetadataResponse(Document document, String message);
 
     public abstract DeleteDocumentResponseDto toDeleteResponse(Document document, String message);

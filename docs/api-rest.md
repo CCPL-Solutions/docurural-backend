@@ -72,6 +72,15 @@ Todos los endpoints de usuarios requieren rol **`ADMIN`**.
 
 > Los endpoints `/view` y `/download` añaden los headers `X-File-Name` y `X-File-Size` en la respuesta.
 
+- **`workflowStatus`** (HU-33): estado del documento en el flujo de aprobación (`NOT_REQUIRED`, `DRAFT`,
+  `IN_REVIEW`, `APPROVED`, `ARCHIVED`).
+  - Lo fija el backend al cargar: `DRAFT` si la categoría requiere aprobación, `NOT_REQUIRED` si no. El cliente no
+    puede enviarlo.
+  - Respuestas: `POST /documents` (con el mensaje "Documento cargado como borrador" cuando es `DRAFT`), cada
+    resultado exitoso de `POST /documents/batch` (`null` en los fallidos), `GET /documents/{id}` y
+    `PUT /documents/{id}`. El listado y la búsqueda aún no lo incluyen.
+  - Editar la categoría del documento no lo recalcula.
+
 ## Dashboard
 
 | Método | Ruta                | Acceso                      | Descripción                                                                                        |

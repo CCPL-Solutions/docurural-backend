@@ -4,6 +4,7 @@ import co.edu.docurural.category.entity.Category;
 import co.edu.docurural.category.repository.CategoryRepository;
 import co.edu.docurural.document.dto.BatchUploadDocumentRequestDto;
 import co.edu.docurural.document.dto.BatchUploadDocumentResponseDto;
+import co.edu.docurural.document.dto.BatchUploadItemResultDto;
 import co.edu.docurural.document.entity.Document;
 import co.edu.docurural.shared.audit.AuditContext;
 import co.edu.docurural.shared.enums.SensitivityLevel;
@@ -268,6 +269,50 @@ class DocumentBatchServiceTest {
     // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------
+
+    // ------------------------------------------------------------------
+    // HU-33 - estado del flujo por archivo
+    // ------------------------------------------------------------------
+
+    @Test
+    void uploadBatch_includesWorkflowStatusPerItem_whenAllFilesValid() {
+        Category category = TestFixtures.categoryRequiringApproval(1L, "Actas");
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+
+        MultipartFile[] files = {pdf("acta_enero.pdf"), pdf("acta_febrero.pdf")};
+        when(documentService.uploadSingleForBatch(eq(files[0]), any(), any(), any(), any(), any(), any()))
+                .thenReturn(TestFixtures.documentDraft(48L, category, TestFixtures.userEditor(ACTOR_ID)));
+        when(documentService.uploadSingleForBatch(eq(files[1]), any(), any(), any(), any(), any(), any()))
+                .thenReturn(TestFixtures.documentDraft(49L, category, TestFixtures.userEditor(ACTOR_ID)));
+
+        BatchUploadDocumentResponseDto response = batchService.uploadBatch(request(1L, null), files, AUDIT);
+
+        assertThat(response.results())
+                .extracting(BatchUploadItemResultDto::workflowStatus)
+                .containsExactly("DRAFT", "DRAFT");
+    }
+
+    @Test
+    void uploadBatch_returnsNullWorkflowStatus_whenFileFails() {
+        Category category = TestFixtures.categoryRequiringApproval(1L, "Actas");
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+
+        MultipartFile[] files = {pdf("bueno.pdf"), pdf("malo.pdf"), pdf("otro.pdf")};
+        when(documentService.uploadSingleForBatch(eq(files[0]), any(), any(), any(), any(), any(), any()))
+                .thenReturn(TestFixtures.documentDraft(48L, category, TestFixtures.userEditor(ACTOR_ID)));
+        when(documentService.uploadSingleForBatch(eq(files[1]), any(), any(), any(), any(), any(), any()))
+                .thenThrow(new BusinessRuleException(BusinessErrorCode.UNSUPPORTED_MEDIA_TYPE, "unsupported"));
+        when(documentService.uploadSingleForBatch(eq(files[2]), any(), any(), any(), any(), any(), any()))
+                .thenReturn(TestFixtures.documentDraft(49L, category, TestFixtures.userEditor(ACTOR_ID)));
+
+        BatchUploadDocumentResponseDto response = batchService.uploadBatch(request(1L, null), files, AUDIT);
+
+        assertThat(response.totalSuccessful()).isEqualTo(2);
+        assertThat(response.totalFailed()).isEqualTo(1);
+        assertThat(response.results())
+                .extracting(BatchUploadItemResultDto::workflowStatus)
+                .containsExactly("DRAFT", null, "DRAFT");
+    }
 
     private static MultipartFile pdf(String name) {
         return new MockMultipartFile("files", name, "application/pdf", new byte[100]);

@@ -182,4 +182,67 @@ class DocumentMapperTest {
         assertThatThrownBy(() -> mapper.toListResponse(null, 1, 20))
                 .isInstanceOf(NullPointerException.class);
     }
+
+    // ------------------------------------------------------------------
+    // HU-33 - estado del flujo de aprobación
+    // ------------------------------------------------------------------
+
+    @Test
+    void toUploadResponse_mapsWorkflowStatus_whenDraft() {
+        Document doc = TestFixtures.documentDraft(48L,
+                TestFixtures.categoryRequiringApproval(1L, "Actas"), TestFixtures.userEditor(20L));
+
+        UploadDocumentResponseDto response = mapper.toUploadResponse(doc, "Documento cargado como borrador");
+
+        assertThat(response.workflowStatus()).isEqualTo("DRAFT");
+    }
+
+    @Test
+    void toUploadResponse_mapsNullWorkflowStatus_whenStatusIsNull() {
+        Document doc = TestFixtures.documentActive(48L,
+                TestFixtures.categoryActive(1L, "Actas"), TestFixtures.userAdmin(10L));
+        doc.setWorkflowStatus(null);
+
+        UploadDocumentResponseDto response = mapper.toUploadResponse(doc, "ok");
+
+        assertThat(response.workflowStatus()).isNull();
+    }
+
+    @Test
+    void toDetailResponse_mapsWorkflowStatus_whenDraft() {
+        Document doc = TestFixtures.documentDraft(48L,
+                TestFixtures.categoryRequiringApproval(1L, "Actas"), TestFixtures.userEditor(20L));
+
+        DocumentDetailResponseDto response = mapper.toDetailResponse(doc);
+
+        assertThat(response.workflowStatus()).isEqualTo("DRAFT");
+    }
+
+    @Test
+    void toDetailResponse_mapsNullWorkflowStatus_whenStatusIsNull() {
+        Document doc = TestFixtures.documentActive(48L,
+                TestFixtures.categoryActive(1L, "Actas"), TestFixtures.userAdmin(10L));
+        doc.setWorkflowStatus(null);
+
+        assertThat(mapper.toDetailResponse(doc).workflowStatus()).isNull();
+    }
+
+    @Test
+    void toUpdateMetadataResponse_mapsWorkflowStatus_whenNotRequired() {
+        Document doc = TestFixtures.documentActive(48L,
+                TestFixtures.categoryActive(1L, "Actas"), TestFixtures.userAdmin(10L));
+
+        UpdateDocumentMetadataResponseDto response = mapper.toUpdateMetadataResponse(doc, "ok");
+
+        assertThat(response.workflowStatus()).isEqualTo("NOT_REQUIRED");
+    }
+
+    @Test
+    void toUpdateMetadataResponse_mapsNullWorkflowStatus_whenStatusIsNull() {
+        Document doc = TestFixtures.documentActive(48L,
+                TestFixtures.categoryActive(1L, "Actas"), TestFixtures.userAdmin(10L));
+        doc.setWorkflowStatus(null);
+
+        assertThat(mapper.toUpdateMetadataResponse(doc, "ok").workflowStatus()).isNull();
+    }
 }

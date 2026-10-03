@@ -35,7 +35,10 @@ public record DocumentDetailResponseDto(
         String fileHash,
         @Schema(description = "Nivel de sensibilidad del documento.", example = "INTERNAL",
                 allowableValues = {"INTERNAL", "RESTRICTED", "CONFIDENTIAL"})
-        String sensitivityLevel) {
+        String sensitivityLevel,
+        @Schema(description = "Estado del documento en el flujo de aprobación", example = "DRAFT",
+                allowableValues = {"NOT_REQUIRED", "DRAFT", "IN_REVIEW", "APPROVED", "ARCHIVED"})
+        String workflowStatus) {
 
     @Schema(description = "Referencia resumida de la categoría del documento.")
     public record CategoryRef(

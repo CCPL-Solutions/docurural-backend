@@ -9,7 +9,8 @@ src/main/resources/db/migration/
 ├── V1__init_schema.sql                          # Esquema consolidado: users, categories, documents, activity_log
 ├── V2__seed_categories.sql                      # Carga las 8 categorías documentales predefinidas
 ├── V3__add_can_approve_to_users.sql             # users.can_approve + CHECK que lo prohíbe en READER (HU-32)
-└── V4__add_requires_approval_to_categories.sql  # categories.requires_approval, false por defecto (HU-31)
+├── V4__add_requires_approval_to_categories.sql  # categories.requires_approval, false por defecto (HU-31)
+└── V5__add_workflow_status_to_documents.sql     # documents.workflow_status + cycle_number; activos → APPROVED (HU-33)
 ```
 
 El modo DDL de Hibernate es `validate`: **nunca crea ni modifica tablas automáticamente**. Cualquier cambio de
@@ -42,6 +43,18 @@ Todas las relaciones son `@ManyToOne(fetch = LAZY)` y unidireccionales (no hay c
 Los cambios de ambos indicadores quedan en `activity_log.detail` con el formato `can_approve: a → b` (`EDIT_USER`)
 y `requires_approval: a → b` (`EDIT_CATEGORY`).
 
+## Estado del flujo de aprobación de documentos
+
+| Tabla.columna               | Tipo                                         | Significado                                                                                          |
+|-----------------------------|----------------------------------------------|------------------------------------------------------------------------------------------------------|
+| `documents.workflow_status` | `VARCHAR(20) NOT NULL DEFAULT 'NOT_REQUIRED'` | Estado en el flujo (`CHECK ck_documents_workflow_status`). Independiente de `status` (vigente/eliminado). Índice `idx_documents_workflow_status`. |
+| `documents.cycle_number`    | `INT NOT NULL DEFAULT 0`                     | Ciclos de envío a revisión (`CHECK ck_documents_cycle_number`, `>= 0`).                              |
+
+Al cargar, el backend fija `DRAFT` si la categoría tiene `requires_approval = true` en ese momento y `NOT_REQUIRED`
+en caso contrario (HU-33); el cliente no puede enviarlo y editar la categoría del documento no lo recalcula. La
+entrada `UPLOAD` de `activity_log.detail` añade `; workflow_status: X`. Tras la migración `V5`, los documentos
+activos existentes quedan en `APPROVED` (sin aprobador registrado) y los eliminados en `NOT_REQUIRED`.
+
 ## Enums de dominio
 
 | Enum                | Valores                                                                                                                                                |
@@ -49,6 +62,7 @@ y `requires_approval: a → b` (`EDIT_CATEGORY`).
 | `UserRole`            | `ADMIN`, `EDITOR`, `READER`                                                                                                                              |
 | `UserStatus`           | `ACTIVE`, `INACTIVE`                                                                                                                                       |
 | `DocumentStatus`        | `ACTIVE`, `DELETED`                                                                                                                                          |
+| `DocumentWorkflowStatus` | `NOT_REQUIRED`, `DRAFT`, `IN_REVIEW`, `APPROVED`, `ARCHIVED`                                                                                                |
 | `DocumentFormat`         | `PDF`, `DOCX`, `XLSX`, `JPG`, `PNG`                                                                                                                             |
 | `CategoryStatus`          | `ACTIVE`, `INACTIVE`                                                                                                                                               |
 | `SensitivityLevel`         | `INTERNAL`, `RESTRICTED`, `CONFIDENTIAL` (jerárquico)                                                                                                                 |
